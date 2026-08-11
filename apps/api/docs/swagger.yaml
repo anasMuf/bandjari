@@ -1,0 +1,161 @@
+basePath: /api
+definitions:
+  dto.CreateUserRequest:
+    properties:
+      address:
+        type: string
+      email:
+        type: string
+      full_name:
+        minLength: 3
+        type: string
+      password:
+        minLength: 6
+        type: string
+      phone:
+        type: string
+      username:
+        minLength: 3
+        type: string
+    required:
+    - address
+    - email
+    - full_name
+    - password
+    - phone
+    - username
+    type: object
+  dto.ErrorResponse:
+    properties:
+      code:
+        type: string
+      details: {}
+      message:
+        type: string
+      status:
+        type: integer
+    type: object
+  dto.LoginUserRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  dto.LoginUserResponse:
+    properties:
+      token:
+        type: string
+    type: object
+  dto.SuccessResponse:
+    properties:
+      data: {}
+      message:
+        type: string
+      status:
+        type: integer
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: Ini adalah API starter kit menggunakan Echo Go.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Starter Kit API
+  version: "1.0"
+paths:
+  /users:
+    get:
+      consumes:
+      - application/json
+      description: Get current logged in user profile based on JWT token
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get user profile
+      tags:
+      - users
+  /users/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user and return JWT token
+      parameters:
+      - description: User login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.LoginUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.LoginUserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Login user
+      tags:
+      - users
+  /users/register:
+    post:
+      consumes:
+      - application/json
+      description: Create a new user with the provided details
+      parameters:
+      - description: User registration details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Register new user
+      tags:
+      - users
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

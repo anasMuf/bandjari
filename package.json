@@ -1,0 +1,17 @@
+{
+  "name": "monorepo_gots_starterkit",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nx run-many -t dev",
+    "build": "nx run-many -t build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "nx": "^22.7.1"
+  }
+}

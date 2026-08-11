@@ -1,0 +1,42 @@
+# Node
+node_modules
+dist
+dist-ssr
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Next / Vite / TanStack
+.tanstack
+.nx
+.nitro
+.output
+.vinxi
+.wrangler
+__unconfig*
+.local
+todos.json
+
+# Go
+bin/
+obj/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+tmp/
+
+# Env
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# OS
+.DS_Store
+Thumbs.db

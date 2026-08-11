@@ -1,0 +1,9 @@
+{
+  "name": "api",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "go run github.com/air-verse/air@latest",
+    "build": "go build -o bin/api main.go"
+  }
+}
