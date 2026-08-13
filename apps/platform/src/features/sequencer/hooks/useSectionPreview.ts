@@ -6,6 +6,8 @@ export interface SectionPreviewPart {
   id: number;
   steps: string;
   slots: Array<{ key: string; sample_id: number | null }>;
+  /** Part yang di-mute tidak dibunyikan; bunyi yang sedang berdering dipotong. */
+  muted?: boolean;
 }
 
 interface PlaybackUrlData {
@@ -90,19 +92,25 @@ export function useSectionPreview() {
           // Normalisasi ke lebar grid minimal agar siklus mengikuti jumlah kolom
           // yang tampil (bukan jumlah kotak terisi) — 1 kotak = 1 pukulan per
           // siklus 8 langkah, bukan bunyi diulang tiap langkah.
-          const parts = getParts()
-            .map((p) => ({ ...p, steps: normalizeStepsToGrid(p.steps) }))
-            .filter((p) => stepCount(p.steps) > 0);
+          const parts = getParts().map((p) => ({ ...p, steps: normalizeStepsToGrid(p.steps) }));
+          // Siklus tetap dihitung dari SEMUA part (termasuk yang di-mute) agar
+          // playhead tidak melompat saat mute di-toggle.
           const contentLen = parts.reduce((max, p) => Math.max(max, stepCount(p.steps)), 0);
           // Bila belum ada isi sama sekali, indikator playhead tetap berjalan
           // menyusuri lebar grid (metronom visual).
           const cycleLen = contentLen > 0 ? contentLen : MIN_GRID_COLUMNS;
 
           for (const part of parts) {
+            const srcKey = `part-${part.id}`;
+            if (part.muted) {
+              // Mute terasa seketika (tanpa stop): potong bunyi yang sedang
+              // berdering dari part ini.
+              chokePart(srcKey);
+              continue;
+            }
             const keys = keyAt(part.steps, step);
             if (!keys || keys.length === 0) continue;
             const sampleByKey = new Map(part.slots.map((slot) => [slot.key, slot.sample_id]));
-            const srcKey = `part-${part.id}`;
             let started = false;
             for (const key of keys) {
               const sampleId = sampleByKey.get(key);

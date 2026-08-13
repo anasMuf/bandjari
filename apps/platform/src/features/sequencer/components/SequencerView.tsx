@@ -202,17 +202,17 @@ export function SequencerView({ songId, sectionId, sectionName, songBpm, bpmOver
       return;
     }
     // Getter dipanggil ulang tiap tick → edit kotak & mute part saat preview
-    // berjalan langsung terdengar (real-time).
+    // berjalan langsung terdengar (real-time). Part yang di-mute tetap ikut
+    // dikirim (dengan flag) agar bunyi berderingnya langsung dipotong.
     preview
       .play(
         () =>
-          orderedParts
-            .filter((part) => !mutedPartsRef.current.has(part.part))
-            .map((part) => ({
-              id: part.id,
-              steps: stepsByPartRef.current[part.id] ?? part.steps ?? '',
-              slots: part.sound_slots.map((slot) => ({ key: slot.key, sample_id: slot.sample_id })),
-            })),
+          orderedParts.map((part) => ({
+            id: part.id,
+            steps: stepsByPartRef.current[part.id] ?? part.steps ?? '',
+            slots: part.sound_slots.map((slot) => ({ key: slot.key, sample_id: slot.sample_id })),
+            muted: mutedPartsRef.current.has(part.part),
+          })),
         effectiveBpm,
       )
       .catch((error: unknown) => {
