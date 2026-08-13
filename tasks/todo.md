@@ -67,28 +67,29 @@ Checklist eksekusi turunan dari `tasks/plan.md`. Centang saat task selesai + ver
 
 ## Phase 6: Template System (E6)
 
-- [ ] **T28** Seeder Sample Template + endpoint templates (E6-1)
-- [ ] **T29** Seeder Song Template + endpoint templates (E6-2)
-- [ ] **T30** Frontend — Song Bawaan, akses Guest, duplikasi (E6-2, E6-3)
+- [x] **T28** Seeder Sample Template + endpoint templates (E6-1) — 13 file audio asli di-seed
+- [x] **T29** Seeder Song Template + endpoint templates (E6-2) — steps placeholder (menunggu susunan asli dari pemilik produk)
+- [x] **T30** Frontend — Song Bawaan, akses Guest, duplikasi (E6-2, E6-3)
 
 ### Checkpoint: Template System
-- [ ] Guest memainkan lagu bawaan tanpa login; duplikasi ke Song milik sendiri berfungsi
+- [x] Guest memainkan lagu bawaan tanpa login; duplikasi ke Song milik sendiri berfungsi (e2e backend: Guest 200, 403 proteksi, auto-attach AC-10)
+- [ ] Verifikasi visual browser oleh user (pnpm dev)
 
 ## Phase 7: Pattern Launcher (E7)
 
-- [ ] **T31** Playback engine inti — worker & scheduler (E7-1)
-- [ ] **T32** AudioBuffer cache + prefetch (E7-1)
-- [ ] **T33** LauncherGrid + quantized trigger + indikator (E7-2)
-- [ ] **T34** Hard cut BPM + Stop + silent step (E7-3, E7-4)
-- [ ] **T35** (Could) Mute per Part (E7-5)
+- [x] **T31** Playback engine inti — worker & scheduler (E7-1)
+- [x] **T32** AudioBuffer cache + prefetch (E7-1)
+- [x] **T33** LauncherGrid + quantized trigger + indikator (E7-2)
+- [x] **T34** Hard cut BPM + Stop + silent step (E7-3, E7-4)
+- [ ] **T35** (Could) Mute per Part (E7-5) — backlog Fase 1.1
 
 ### Checkpoint: Launcher (Final)
-- [ ] Alur lengkap: Song → Section → pattern → sample → playback live
-- [ ] AC-1 s/d AC-12 PRD terverifikasi
-- [ ] Browser matrix + layar sentuh teruji (NFR-02/07)
+- [x] Alur lengkap: Song → Section → pattern → sample → playback live (data nested terverifikasi via API; engine + quantized trigger ter-cover unit test)
+- [ ] AC-1 s/d AC-12 PRD terverifikasi menyeluruh (backend e2e ✅; visual browser menunggu pengguna)
+- [ ] Browser matrix + layar sentuh teruji (NFR-02/07) — menunggu verifikasi manual pengguna
 
 ## Sebelum Mulai Implementasi
 
-- [ ] Open Questions di `tasks/plan.md` dijawab (terutama #1 konten seeding & #3 skema users)
-- [ ] Plan direview & disetujui
-- [ ] DB dev di-reset bila Task 1 mengubah skema `users`
+- [x] Open Questions di `tasks/plan.md` dijawab (terutama #1 konten seeding & #3 skema users)
+- [x] Plan direview & disetujui
+- [x] DB dev di-reset bila Task 1 mengubah skema `users`
