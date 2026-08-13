@@ -21,7 +21,7 @@ function SectionSequencerPage() {
 
   const data = songQuery.data?.data;
   const song =
-    data && 'data' in data && data.status === 200
+    data && 'data' in data
       ? (data.data as { name: string; is_system_template?: boolean; sections?: SectionItem[] })
       : undefined;
   const sectionName = song?.sections?.find((s) => s.id === sid)?.name ?? 'Section';

@@ -34,8 +34,7 @@ function SongDetailPage() {
   }
 
   const resp = songQuery.data?.data;
-  const song =
-    resp && 'data' in resp && resp.status === 200 ? (resp.data as SongDetail) : undefined;
+  const song = resp && 'data' in resp ? (resp.data as SongDetail) : undefined;
   if (!song) return null;
 
   return (

@@ -30,8 +30,7 @@ function LauncherPage() {
   const songQuery = useGetSongsId(id)
   const { isAuthenticated } = useAuth()
   const resp = songQuery.data?.data;
-  const song =
-    resp && 'data' in resp && resp.status === 200 ? (resp.data as SongDetail) : undefined;
+  const song = resp && 'data' in resp ? (resp.data as SongDetail) : undefined;
 
   const playback = useLauncherPlayback(song?.bpm ?? 90);
 
