@@ -1,16 +1,11 @@
 import { createContext, useContext, useState, useEffect, type ReactNode, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useGetUsers, getGetUsersQueryKey } from '../../api/endpoints/users/users';
+import { useGetUsers, getGetUsersQueryKey } from '../../api/endpoints/auth/auth';
 
 export interface User {
   id: number;
-  full_name: string;
-  username: string;
+  name: string;
   email: string;
-  phone: string;
-  address: string;
-  role: string;
-  deposit: number;
 }
 
 interface AuthContextType {

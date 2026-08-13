@@ -1,4 +1,4 @@
-import { Outlet, createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
+import { Outlet, createFileRoute, redirect, useNavigate, Link } from '@tanstack/react-router'
 import { useState, useEffect, useCallback } from 'react'
 import { hasToken, useAuth } from '../features/auth/AuthContext'
 import { Button } from '../components/atoms/Button'
@@ -46,10 +46,24 @@ function AuthenticatedLayout() {
       {/* Navbar */}
       <nav className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-          <h1 className="text-lg font-semibold text-gray-900">Starter Kit</h1>
+          <h1 className="text-lg font-semibold text-gray-900">BandJari</h1>
           <div className="flex items-center gap-4">
+            <Link
+              to="/songs"
+              className="text-sm text-gray-600 hover:text-gray-900"
+              activeProps={{ className: 'text-indigo-600 font-semibold' }}
+            >
+              Lagu Saya
+            </Link>
+            <Link
+              to="/samples"
+              className="text-sm text-gray-600 hover:text-gray-900"
+              activeProps={{ className: 'text-indigo-600 font-semibold' }}
+            >
+              Sample
+            </Link>
             <span className="text-sm text-gray-600">
-              {user?.full_name || 'User'}
+              {user?.name || 'User'}
             </span>
             <Button type="button" variant="secondary" size="sm" onClick={() => setShowLogoutDialog(true)}>
               Logout

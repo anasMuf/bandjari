@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { FormField } from '../../../components/molecules/FormField';
 import { Button } from '../../../components/atoms/Button';
 import { useToast } from '../../../components/molecules/Toast';
-import { usePostUsersLogin, type postUsersLoginResponse } from '../../../api/endpoints/users/users';
+import { usePostAuthLogin, type postAuthLoginResponse } from '../../../api/endpoints/auth/auth';
 import { ApiError } from '../../../api/mutator/custom-instance';
 import { useAuth } from '../AuthContext';
 
@@ -15,20 +15,20 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
     password: '',
   });
 
-  const loginMutation = usePostUsersLogin({
+  const loginMutation = usePostAuthLogin({
     mutation: {
-      onSuccess: (response: postUsersLoginResponse) => {
+      onSuccess: (response: postAuthLoginResponse) => {
         if (response.status === 200 && response.data.token) {
           login(response.data.token);
-          addToast({ variant: 'success', title: 'Welcome back!', message: 'You have signed in successfully.' });
+          addToast({ variant: 'success', title: 'Selamat datang!', message: 'Anda berhasil masuk.' });
           onSuccess();
         }
       },
       onError: (error: Error) => {
         const message = error instanceof ApiError
           ? error.message
-          : 'An unexpected error occurred. Please try again.';
-        addToast({ variant: 'error', title: 'Sign in failed', message });
+          : 'Terjadi kesalahan tak terduga. Silakan coba lagi.';
+        addToast({ variant: 'error', title: 'Gagal masuk', message });
       }
     }
   });
@@ -48,7 +48,7 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
         id="email"
         name="email"
         type="email"
-        label="Email address"
+        label="Email"
         onChange={handleChange}
         required
       />
@@ -57,7 +57,7 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
         id="password"
         name="password"
         type="password"
-        label="Password"
+        label="Kata sandi"
         onChange={handleChange}
         required
       />
@@ -67,7 +67,7 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
         className="w-full"
         disabled={loginMutation.isPending}
       >
-        {loginMutation.isPending ? 'Signing in...' : 'Sign in'}
+        {loginMutation.isPending ? 'Memproses...' : 'Masuk'}
       </Button>
     </form>
   );

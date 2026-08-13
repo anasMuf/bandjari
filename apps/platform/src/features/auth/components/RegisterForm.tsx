@@ -2,35 +2,30 @@ import { useState } from 'react';
 import { FormField } from '../../../components/molecules/FormField';
 import { Button } from '../../../components/atoms/Button';
 import { useToast } from '../../../components/molecules/Toast';
-import { usePostUsersRegister, type postUsersRegisterResponse } from '../../../api/endpoints/users/users';
+import { usePostAuthRegister, type postAuthRegisterResponse } from '../../../api/endpoints/auth/auth';
 import { ApiError } from '../../../api/mutator/custom-instance';
 
 export function RegisterForm({ onSuccess }: { onSuccess: () => void }) {
   const { addToast } = useToast();
   const [formData, setFormData] = useState({
-    full_name: '',
-    username: '',
+    name: '',
     email: '',
     password: '',
-    phone: '',
-    address: '',
   });
 
-  const registerMutation = usePostUsersRegister({
+  const registerMutation = usePostAuthRegister({
     mutation: {
-      onSuccess: (response: postUsersRegisterResponse) => {
+      onSuccess: (response: postAuthRegisterResponse) => {
         if (response.status === 201) {
-          addToast({ variant: 'success', title: 'Account created!', message: 'Please sign in with your new account.' });
+          addToast({ variant: 'success', title: 'Akun berhasil dibuat!', message: 'Silakan masuk dengan akun baru Anda.' });
           onSuccess();
-        } else if (response.status === 400 && 'message' in response.data) {
-          addToast({ variant: 'error', title: 'Registration failed', message: response.data.message || 'Please check your input.' });
         }
       },
       onError: (error: Error) => {
         const message = error instanceof ApiError
           ? error.message
-          : 'An unexpected error occurred. Please try again.';
-        addToast({ variant: 'error', title: 'Registration failed', message });
+          : 'Terjadi kesalahan tak terduga. Silakan coba lagi.';
+        addToast({ variant: 'error', title: 'Pendaftaran gagal', message });
       }
     }
   });
@@ -46,36 +41,19 @@ export function RegisterForm({ onSuccess }: { onSuccess: () => void }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
-        <FormField
-          id="full_name" name="full_name" type="text" label="Full Name"
-          onChange={handleChange} required maxLength={100} minLength={3}
-        />
-        <FormField
-          id="username" name="username" type="text" label="Username"
-          onChange={handleChange} required maxLength={50} minLength={3}
-        />
-      </div>
-
       <FormField
-        id="email" name="email" type="email" label="Email address"
-        onChange={handleChange} required maxLength={100}
+        id="name" name="name" type="text" label="Nama"
+        onChange={handleChange} required maxLength={255} minLength={1}
       />
 
-      <div className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
-        <FormField
-          id="phone" name="phone" type="tel" label="Phone"
-          onChange={handleChange} required maxLength={15}
-        />
-        <FormField
-          id="address" name="address" type="text" label="Address"
-          onChange={handleChange} required
-        />
-      </div>
+      <FormField
+        id="email" name="email" type="email" label="Email"
+        onChange={handleChange} required maxLength={255}
+      />
 
       <FormField
-        id="password" name="password" type="password" label="Password"
-        onChange={handleChange} required minLength={6} maxLength={100}
+        id="password" name="password" type="password" label="Kata sandi"
+        onChange={handleChange} required minLength={6} maxLength={255}
       />
 
       <Button
@@ -83,7 +61,7 @@ export function RegisterForm({ onSuccess }: { onSuccess: () => void }) {
         className="w-full"
         disabled={registerMutation.isPending}
       >
-        {registerMutation.isPending ? 'Creating account...' : 'Create account'}
+        {registerMutation.isPending ? 'Membuat akun...' : 'Daftar'}
       </Button>
     </form>
   );

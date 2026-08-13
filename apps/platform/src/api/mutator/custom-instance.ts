@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
 
 export class ApiError extends Error {
   status: number;
@@ -29,11 +29,13 @@ export const customInstance = async <T>(
   }
 
   const token = localStorage.getItem('token');
+  // Untuk FormData (upload file), biarkan browser menentukan Content-Type + boundary.
+  const isFormData = options?.body instanceof FormData;
 
   const response = await fetch(url.toString(), {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options?.headers,
     },
