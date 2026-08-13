@@ -90,6 +90,21 @@ func EnsureConstraints(db *gorm.DB) error {
 				ALTER TABLE section_parts ADD CONSTRAINT chk_section_parts_part CHECK (part IN ('rebana1','rebana2','rebana3','rebana4','bass'));
 			END IF;
 		END $$;`,
+		// sound_slots: key unik per SectionPart HANYA untuk baris aktif.
+		// Tag uniqueIndex GORM membuat indeks unik penuh yang ikut menahan baris
+		// soft-deleted — recreate key bekas slot terhapus jadi 500. Ganti dengan
+		// indeks unik parsial (deleted_at IS NULL) agar key terhapus bisa dipakai
+		// ulang; indeks lama dibuang bila masih ada.
+		`DO $$ BEGIN
+			IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_slot_key') THEN
+				DROP INDEX idx_slot_key;
+			END IF;
+		END $$;`,
+		`DO $$ BEGIN
+			IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_slot_key_active') THEN
+				CREATE UNIQUE INDEX idx_slot_key_active ON sound_slots (section_part_id, key) WHERE deleted_at IS NULL;
+			END IF;
+		END $$;`,
 	}
 
 	for _, stmt := range stmts {
