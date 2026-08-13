@@ -18,6 +18,7 @@ import { EmptyState } from '../../../components/molecules/EmptyState';
 import { useToast } from '../../../components/molecules/Toast';
 import { ApiError } from '../../../api/mutator/custom-instance';
 import { PART_LABELS } from '../../sequencer/utils/parts';
+import { sampleNameFromFileName } from '../sample-name';
 
 interface SampleItem {
   id: number;
@@ -44,9 +45,9 @@ export function SampleLibraryView() {
   const deleteMutation = useDeleteSamplesId();
 
   const [uploadOpen, setUploadOpen] = useState(false);
-  const [uploadName, setUploadName] = useState('');
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploadPart, setUploadPart] = useState<string>(PARTS[0]);
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
   const [renaming, setRenaming] = useState<SampleItem | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [deleting, setDeleting] = useState<SampleItem | null>(null);
@@ -72,22 +73,41 @@ export function SampleLibraryView() {
     templatesQuery.refetch();
   };
 
-  const handleUpload = (e: React.FormEvent) => {
+  // Bulk upload: nama tiap sample diekstrak dari nama file (tanpa ekstensi),
+  // Part dipilih sekali untuk seluruh batch. File diunggah berurutan; file
+  // yang gagal (bukan .wav / >5MB) dilaporkan tanpa menghentikan sisanya.
+  const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!uploadFile) return;
-    uploadMutation.mutate(
-      { data: { file: uploadFile, name: uploadName.trim(), part: uploadPart } },
-      {
-        onSuccess: () => {
-          notify('Sample diunggah', 'File audio berhasil disimpan sebagai Sample Saya.');
-          setUploadOpen(false);
-          setUploadName('');
-          setUploadFile(null);
-          refreshAll();
-        },
-        onError: (error) => showError(error, 'Gagal mengunggah sample'),
-      },
-    );
+    if (uploadFiles.length === 0) return;
+    setUploadProgress({ done: 0, total: uploadFiles.length });
+    let ok = 0;
+    const failed: string[] = [];
+    for (const file of uploadFiles) {
+      try {
+        await uploadMutation.mutateAsync({
+          data: { file, name: sampleNameFromFileName(file.name), part: uploadPart },
+        });
+        ok++;
+      } catch (error) {
+        failed.push(
+          `${file.name}: ${error instanceof ApiError ? error.message : 'gagal diunggah'}`,
+        );
+      }
+      setUploadProgress((prev) => (prev ? { ...prev, done: prev.done + 1 } : prev));
+    }
+
+    if (failed.length === 0) {
+      notify('Sample diunggah', `${ok} file berhasil disimpan sebagai Sample Saya.`);
+    } else {
+      addToast({
+        variant: 'error',
+        title: `${failed.length} dari ${uploadFiles.length} file gagal`,
+        message: `${ok} berhasil. ${failed.join('; ')}`,
+      });
+    }
+    setUploadProgress(null);
+    setUploadFiles([]);
+    refreshAll();
   };
 
   const handleRename = (e: React.FormEvent) => {
@@ -183,34 +203,24 @@ export function SampleLibraryView() {
 
       {uploadOpen && (
         <form onSubmit={handleUpload} className="mt-4 rounded-lg bg-white p-4 ring-1 ring-stone-900/5">
-          <h2 className="text-sm font-semibold text-stone-900">Upload Sample Baru</h2>
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <h2 className="text-sm font-semibold text-stone-900">Upload Sample Baru (bulk)</h2>
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label htmlFor="upload-file" className="block text-sm/6 font-medium text-stone-900">
-                File (.wav, maks 5MB)
+                File (.wav, maks 5MB tiap file — bisa pilih banyak)
               </label>
               <input
                 id="upload-file"
                 type="file"
+                multiple
                 accept=".wav,audio/wav,audio/x-wav"
-                onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
+                onChange={(e) => setUploadFiles(Array.from(e.target.files ?? []))}
                 className="mt-2 block w-full text-sm text-stone-700 file:mr-3 file:rounded-md file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-brand-800 hover:file:bg-brand-100"
               />
             </div>
-            <FormField
-              id="upload-name"
-              name="upload-name"
-              type="text"
-              label="Nama"
-              value={uploadName}
-              onChange={(e) => setUploadName(e.target.value)}
-              placeholder="Rebana 1 - Tak Keras"
-              required
-              maxLength={255}
-            />
             <div>
               <label htmlFor="upload-part" className="block text-sm/6 font-medium text-stone-900">
-                Part
+                Part (berlaku untuk seluruh batch)
               </label>
               <select
                 id="upload-part"
@@ -226,15 +236,44 @@ export function SampleLibraryView() {
               </select>
             </div>
           </div>
+
+          {uploadFiles.length > 0 && (
+            <div className="mt-3 rounded-md bg-stone-50 p-3">
+              <p className="text-xs font-semibold text-stone-700">
+                {uploadFiles.length} file dipilih — nama sample otomatis dari nama file:
+              </p>
+              <ul className="mt-1 max-h-32 space-y-0.5 overflow-y-auto text-xs text-stone-600">
+                {uploadFiles.map((file) => (
+                  <li key={`${file.name}-${file.size}`}>
+                    {file.name} → <span className="font-medium text-stone-800">{sampleNameFromFileName(file.name)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <p className="mt-2 text-xs text-stone-500">
             Jenis bunyi (Tak/Dung/Duk/dst) tidak ditentukan di sini — akan dipilih saat Sample ini
             dipasangkan ke sebuah SoundSlot di Sequencer Mode.
           </p>
-          <div className="mt-4 flex gap-2">
-            <Button type="submit" disabled={uploadMutation.isPending || !uploadFile}>
-              Unggah
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <Button
+              type="submit"
+              disabled={uploadFiles.length === 0 || uploadProgress !== null}
+            >
+              {uploadProgress
+                ? `Mengunggah ${uploadProgress.done}/${uploadProgress.total}…`
+                : `Unggah ${uploadFiles.length > 0 ? `${uploadFiles.length} File` : ''}`}
             </Button>
-            <Button type="button" variant="ghost" onClick={() => setUploadOpen(false)}>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setUploadOpen(false);
+                setUploadFiles([]);
+              }}
+              disabled={uploadProgress !== null}
+            >
               Batal
             </Button>
           </div>
