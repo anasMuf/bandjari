@@ -12,6 +12,15 @@ export const REST_STEP = '.';
 /** Lebar minimal grid sequencer (kolom yang selalu tampil). */
 export const MIN_GRID_COLUMNS = 8;
 
+/** Kolom grid selalu kelipatan beat (4 step = 1 ketukan) agar tidak terpotong. */
+export const GRID_STEP_MULTIPLE = 4;
+
+/** Bulatkan ke atas ke kelipatan GRID_STEP_MULTIPLE, minimal MIN_GRID_COLUMNS. */
+export function roundUpToStepMultiple(count: number): number {
+  const floor = Math.max(MIN_GRID_COLUMNS, count);
+  return Math.ceil(floor / GRID_STEP_MULTIPLE) * GRID_STEP_MULTIPLE;
+}
+
 /** Pecah string steps menjadi sel-sel grid ("." → sel kosong, "T+D" → [T, D]). */
 export function decodeSteps(steps: string): StepCell[] {
   if (!steps) return [];
@@ -89,15 +98,18 @@ export function stepCount(steps: string): number {
 }
 
 /**
- * Normalisasi panjang pola ke lebar grid minimal: pola berisi (1..7 langkah)
- * digenapi menjadi MIN_GRID_COLUMNS dengan langkah istirahat — sehingga siklus
- * playback mengikuti lebar grid yang tampil, bukan jumlah kotak terisi.
- * Pola kosong dibiarkan kosong; pola ≥ MIN_GRID_COLUMNS tidak berubah.
+ * Normalisasi panjang pola ke lebar grid: pola berisi digenapi ke kelipatan
+ * beat (GRID_STEP_MULTIPLE, minimal MIN_GRID_COLUMNS) dengan langkah istirahat
+ * — sehingga siklus playback & jumlah kolom mengikuti grid yang tampil, bukan
+ * jumlah kotak terisi, dan tidak terpotong di tengah kelompok beat.
+ * Pola kosong dibiarkan kosong; pola yang sudah pas tidak berubah.
  */
 export function normalizeStepsToGrid(steps: string): string {
   const count = stepCount(steps);
-  if (count === 0 || count >= MIN_GRID_COLUMNS) return steps;
-  return padSteps(steps, MIN_GRID_COLUMNS - count);
+  if (count === 0) return steps;
+  const target = roundUpToStepMultiple(count);
+  if (count >= target) return steps;
+  return padSteps(steps, target - count);
 }
 
 /** Daftar key aktif pada indeks langkah global — loop sesuai panjang (AC-2). Istirahat → undefined. */

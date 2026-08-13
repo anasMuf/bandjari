@@ -11,7 +11,7 @@ import { LoginPromptInline } from '../../auth/components/LoginPromptInline';
 import { SequencerGrid, previewSampleAudio, type GridSlot } from './SequencerGrid';
 import { SoundSlotManager, type SoundSlotData } from './SoundSlotManager';
 import { useSectionPreview } from '../hooks/useSectionPreview';
-import { padSteps, trimSteps, decodeSteps, encodeSteps, setStepExtending, toggleKeyInCell, stepCount, normalizeStepsToGrid, MIN_GRID_COLUMNS } from '../../../lib/steps';
+import { padSteps, trimSteps, decodeSteps, encodeSteps, setStepExtending, toggleKeyInCell, stepCount, normalizeStepsToGrid, roundUpToStepMultiple } from '../../../lib/steps';
 import { PART_LABELS, PART_ORDER } from '../utils/parts';
 
 interface PartData {
@@ -302,8 +302,8 @@ export function SequencerView({ songId, sectionId, sectionName, songBpm, bpmOver
               </span>
             )}
             {' · '}
-            {Math.max(MIN_GRID_COLUMNS, ...orderedParts.map((p) => stepCount(stepsOf(p))))} step ditampilkan
-            (1 step = 1/16 ketukan; panjang bebas)
+            {roundUpToStepMultiple(Math.max(...orderedParts.map((p) => stepCount(stepsOf(p))), 0))} step ditampilkan
+            (1 step = 1/16 ketukan; kelipatan beat)
           </span>
         </div>
         <div className="flex items-center gap-2">

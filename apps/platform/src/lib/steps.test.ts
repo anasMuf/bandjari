@@ -6,6 +6,7 @@ import {
   keyAt,
   normalizeStepsToGrid,
   padSteps,
+  roundUpToStepMultiple,
   setCell,
   setStepExtending,
   stepCount,
@@ -80,7 +81,25 @@ describe('steps (format koma + multi-bunyi sekolom + istirahat)', () => {
     expect(normalizeStepsToGrid('T,.,D')).toBe('T,.,D,.,.,.,.,.');
     expect(normalizeStepsToGrid('T,D,T,D,T,D,T,D')).toBe('T,D,T,D,T,D,T,D'); // sudah 8 — tak berubah
     expect(normalizeStepsToGrid('')).toBe(''); // kosong dibiarkan kosong
-    expect(normalizeStepsToGrid('T,D,T,D,T,D,T,D,T')).toBe('T,D,T,D,T,D,T,D,T'); // >8 — tak berubah
+    expect(normalizeStepsToGrid('T,D,T,D,T,D,T,D,T')).toBe('T,D,T,D,T,D,T,D,T,.,.,.'); // 9 → 12 (kelipatan 4)
+  });
+
+  it('normalizeStepsToGrid membulatkan ke kelipatan beat (4) agar kolom tidak terpotong', () => {
+    const nine = Array.from({ length: 9 }, () => 'T').join(',');
+    expect(normalizeStepsToGrid(nine)).toBe(`${nine},.,.,.`); // 9 → 12
+    const thirteen = Array.from({ length: 13 }, () => 'T').join(',');
+    expect(normalizeStepsToGrid(thirteen)).toBe(`${thirteen},.,.,.`); // 13 → 16
+    const sixteen = Array.from({ length: 16 }, () => 'T').join(',');
+    expect(normalizeStepsToGrid(sixteen)).toBe(sixteen); // 16 — tak berubah
+  });
+
+  it('roundUpToStepMultiple membulatkan ke kelipatan 4 minimal 8', () => {
+    expect(roundUpToStepMultiple(1)).toBe(8);
+    expect(roundUpToStepMultiple(7)).toBe(8);
+    expect(roundUpToStepMultiple(8)).toBe(8);
+    expect(roundUpToStepMultiple(9)).toBe(12);
+    expect(roundUpToStepMultiple(13)).toBe(16);
+    expect(roundUpToStepMultiple(16)).toBe(16);
   });
 
   it('keyAt loop sesuai panjang steps; istirahat → undefined; multi-bunyi → array', () => {

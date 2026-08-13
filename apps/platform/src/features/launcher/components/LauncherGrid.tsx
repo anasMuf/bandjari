@@ -1,5 +1,5 @@
 import type { LauncherSection } from '../hooks/useLauncherPlayback';
-import { stepCount } from '../../../lib/steps';
+import { roundUpToStepMultiple, stepCount } from '../../../lib/steps';
 import { PART_LABELS, PART_ORDER } from '../../sequencer/utils/parts';
 
 interface LauncherGridProps {
@@ -43,7 +43,9 @@ export function LauncherGrid({
   const hasOverride = (section: LauncherSection) => section.bpm_override !== null;
 
   const cycleLength = activeSection
-    ? activeSection.parts.reduce((max, p) => Math.max(max, stepCount(p.steps ?? '')), 0)
+    ? roundUpToStepMultiple(
+        activeSection.parts.reduce((max, p) => Math.max(max, stepCount(p.steps ?? '')), 0),
+      )
     : 0;
 
   const emptySampleCount = (section: LauncherSection) =>

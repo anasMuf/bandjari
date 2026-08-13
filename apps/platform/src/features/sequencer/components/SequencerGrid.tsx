@@ -1,7 +1,7 @@
 import { Fragment } from 'react';
 import { getSamplesIdPlaybackUrl } from '../../../api/endpoints/samples/samples';
 import { Badge } from '../../../components/atoms/Badge';
-import { decodeSteps, MIN_GRID_COLUMNS, stepCount } from '../../../lib/steps';
+import { decodeSteps, roundUpToStepMultiple, stepCount } from '../../../lib/steps';
 import { PART_LABELS, PART_ORDER } from '../utils/parts';
 
 export interface GridSlot {
@@ -57,9 +57,9 @@ export function SequencerGrid({
     if (!known.has(part.id)) ordered.push(part);
   }
 
-  const maxLen = Math.max(
-    MIN_GRID_COLUMNS,
-    ...ordered.map((part) => stepCount(stepsByPart[part.id] ?? part.steps)),
+  // Kolom selalu kelipatan beat (4), minimal 8 — tidak terpotong di tengah kelompok.
+  const maxLen = roundUpToStepMultiple(
+    Math.max(...ordered.map((part) => stepCount(stepsByPart[part.id] ?? part.steps)), 0),
   );
 
   const stepsOf = (part: GridPart) => stepsByPart[part.id] ?? part.steps;
