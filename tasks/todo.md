@@ -53,16 +53,17 @@ Checklist eksekusi turunan dari `tasks/plan.md`. Centang saat task selesai + ver
 
 ## Phase 5: SoundSlot & Sequencer (E5)
 
-- [ ] **T21** Model & migrasi `SoundSlot` (E0-2, E5-1)
-- [ ] **T22** Endpoint SoundSlot + proteksi key (E5-1, E5-2)
-- [ ] **T23** Default SoundSlot + auto-attach Sample Template (E5-1, FR-SLOT-09)
-- [ ] **T24** `PUT /section-parts/:id` + validator `steps` dinamis (E5-4)
-- [ ] **T25** Frontend — SoundSlotManager + SamplePicker (E5-1, E5-3)
-- [ ] **T26** Frontend — StepGrid + serialisasi steps (E5-4)
-- [ ] **T27** Preview audio per SectionPart (E5-5, FR-SEQ-05)
+- [x] **T21** Model & migrasi `SoundSlot` (E0-2, E5-1) — selesai di batch skema Phase 2
+- [x] **T22** Endpoint SoundSlot + proteksi key (E5-1, E5-2)
+- [x] **T23** Default SoundSlot + auto-attach Sample Template (E5-1, FR-SLOT-09)
+- [x] **T24** `PUT /section-parts/:id` + validator `steps` dinamis (E5-4)
+- [x] **T25** Frontend — SoundSlotManager + SamplePicker (E5-1, E5-3)
+- [x] **T26** Frontend — StepGrid + serialisasi steps (E5-4)
+- [x] **T27** Preview audio per SectionPart (E5-5, FR-SEQ-05)
 
 ### Checkpoint: Sequencer
-- [ ] Pattern multi-bunyi tersimpan & tervalidasi; preview terdengar
+- [x] Pattern multi-bunyi tersimpan & tervalidasi; preview terdengar
+- [x] e2e 9 skenario: default slot, steps valid/invalid, duplikat key 400, proteksi hapus/ubah key (409/400), Guest 404
 
 ## Phase 6: Template System (E6)
 
