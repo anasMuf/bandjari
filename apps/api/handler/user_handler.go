@@ -3,6 +3,7 @@ package handler
 import (
 	"api/dto"
 	"api/service"
+	"errors"
 	"net/http"
 	"os"
 	"time"
@@ -24,7 +25,7 @@ func NewUserHandler(userService service.UserService) *UserHandler {
 // GetUser godoc
 // @Summary      Get user profile
 // @Description  Get current logged in user profile based on JWT token
-// @Tags         users
+// @Tags         auth
 // @Accept       json
 // @Produce      json
 // @Security     ApiKeyAuth
@@ -46,14 +47,15 @@ func (h *UserHandler) GetUser(c echo.Context) error {
 
 // CreateUser godoc
 // @Summary      Register new user
-// @Description  Create a new user with the provided details
-// @Tags         users
+// @Description  Create a new user account (name, email, password)
+// @Tags         auth
 // @Accept       json
 // @Produce      json
 // @Param        request  body      dto.CreateUserRequest  true  "User registration details"
 // @Success      201      {object}  dto.SuccessResponse
 // @Failure      400      {object}  dto.ErrorResponse
-// @Router       /users/register [post]
+// @Failure      409      {object}  dto.ErrorResponse
+// @Router       /auth/register [post]
 func (h *UserHandler) CreateUser(c echo.Context) error {
 	var req dto.CreateUserRequest
 	if err := c.Bind(&req); err != nil {
@@ -64,6 +66,9 @@ func (h *UserHandler) CreateUser(c echo.Context) error {
 	}
 	user, err := h.userService.CreateUser(req)
 	if err != nil {
+		if errors.Is(err, service.ErrEmailTaken) {
+			return echo.NewHTTPError(http.StatusConflict, "Email sudah terdaftar")
+		}
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 	return c.JSON(http.StatusCreated, dto.SuccessResponse{
@@ -75,14 +80,14 @@ func (h *UserHandler) CreateUser(c echo.Context) error {
 // LoginUser godoc
 // @Summary      Login user
 // @Description  Authenticate user and return JWT token
-// @Tags         users
+// @Tags         auth
 // @Accept       json
 // @Produce      json
 // @Param        request  body      dto.LoginUserRequest  true  "User login credentials"
 // @Success      200      {object}  dto.LoginUserResponse
 // @Failure      400      {object}  dto.ErrorResponse
 // @Failure      401      {object}  dto.ErrorResponse
-// @Router       /users/login [post]
+// @Router       /auth/login [post]
 func (h *UserHandler) LoginUser(c echo.Context) error {
 	var req dto.LoginUserRequest
 	if err := c.Bind(&req); err != nil {
@@ -93,7 +98,7 @@ func (h *UserHandler) LoginUser(c echo.Context) error {
 	}
 	user, err := h.userService.LoginUser(req.Email, req.Password)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid email or password")
+		return echo.NewHTTPError(http.StatusUnauthorized, "Email atau password salah")
 	}
 
 	jwtSecret := os.Getenv("JWT_SECRET")

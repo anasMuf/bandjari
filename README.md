@@ -31,6 +31,7 @@ monorepo_gots_starterkit/
 | Language       | Go 1.25                                                            |
 | Framework      | [Echo v4](https://echo.labstack.com/)                              |
 | ORM            | [GORM](https://gorm.io/) + PostgreSQL                             |
+| Object Storage | S3-compatible ([MinIO](https://min.io/) dev / Cloudflare R2 prod) via AWS SDK Go v2 |
 | Authentication | JWT (`golang-jwt/jwt`) + custom middleware                         |
 | Validation     | [go-playground/validator](https://github.com/go-playground/validator) |
 | API Docs       | [Swagger](https://github.com/swaggo/swag) (auto-generated)        |
@@ -93,23 +94,40 @@ JWT_SECRET=supersecretkey
 DB_HOST=localhost
 DB_USER=postgres
 DB_PASSWORD=postgres
-DB_NAME=myapp_db
+DB_NAME=bandjari
 DB_PORT=5432
 SSL_MODE=disable
 
+# Object Storage (MinIO lokal / Cloudflare R2 untuk produksi)
+STORAGE_ENDPOINT=http://localhost:9000
+STORAGE_REGION=us-east-1
+STORAGE_BUCKET=bandjari-samples
+STORAGE_ACCESS_KEY_ID=minioadmin
+STORAGE_SECRET_ACCESS_KEY=minioadmin
+STORAGE_USE_PATH_STYLE=true
+
 # Frontend (Platform) Configuration
-VITE_API_URL=http://localhost:8080/api
+VITE_API_URL=http://localhost:8080/api/v1
 ```
 
-### 3. Setup Database
+### 3. Setup Database & Object Storage
 
 Buat database PostgreSQL:
 
 ```bash
-createdb myapp_db
+createdb bandjari
 ```
 
 > Tabel akan otomatis di-migrate oleh GORM saat API pertama kali dijalankan (Auto-Migrate).
+
+Jalankan MinIO (object storage lokal untuk file audio sample):
+
+```bash
+docker compose up -d minio minio-init
+```
+
+- Console MinIO: http://localhost:9001 (user/pass: `minioadmin`)
+- Bucket `bandjari-samples` dibuat otomatis oleh service `minio-init`
 
 ### 4. Run Development
 
@@ -220,9 +238,9 @@ apps/platform/src/
 
 | Method | Endpoint               | Auth | Deskripsi                    |
 |--------|------------------------|------|------------------------------|
-| POST   | `/api/users/register`  | ❌   | Register user baru           |
-| POST   | `/api/users/login`     | ❌   | Login & dapatkan JWT token   |
-| GET    | `/api/users`           | ✅   | Get current user profile     |
+| POST   | `/api/v1/auth/register`| ❌   | Register user baru           |
+| POST   | `/api/v1/auth/login`   | ❌   | Login & dapatkan JWT token   |
+| GET    | `/api/v1/users`        | ✅   | Get current user profile     |
 
 ### Swagger Documentation
 
@@ -289,10 +307,16 @@ Output akan di-generate ke:
 | `DB_HOST`        | API      | PostgreSQL host                    | `localhost`           |
 | `DB_USER`        | API      | PostgreSQL user                    | `postgres`            |
 | `DB_PASSWORD`    | API      | PostgreSQL password                | —                     |
-| `DB_NAME`        | API      | PostgreSQL database name           | `myapp_db`            |
+| `DB_NAME`        | API      | PostgreSQL database name           | `bandjari`            |
 | `DB_PORT`        | API      | PostgreSQL port                    | `5432`                |
 | `SSL_MODE`       | API      | PostgreSQL SSL mode                | `disable`             |
-| `VITE_API_URL`   | Platform | Base URL API untuk frontend        | `http://localhost:8080/api` |
+| `VITE_API_URL`   | Platform | Base URL API untuk frontend        | `http://localhost:8080/api/v1` |
+| `STORAGE_ENDPOINT`      | API      | Endpoint object storage S3-compatible | `http://localhost:9000` |
+| `STORAGE_REGION`        | API      | Region object storage              | `us-east-1`            |
+| `STORAGE_BUCKET`        | API      | Nama bucket file audio             | `bandjari-samples`     |
+| `STORAGE_ACCESS_KEY_ID` | API      | Access key object storage          | `minioadmin`           |
+| `STORAGE_SECRET_ACCESS_KEY` | API  | Secret key object storage          | `minioadmin`           |
+| `STORAGE_USE_PATH_STYLE`| API      | Path-style addressing (MinIO)      | `true`                 |
 
 > File `.env` diletakkan di **root project** dan dibaca oleh kedua apps.
 

@@ -27,6 +27,10 @@ func parseErrorCode(message string, status int) string {
 		return "BAD_REQUEST"
 	case http.StatusConflict:
 		return "CONFLICT"
+	case http.StatusRequestEntityTooLarge:
+		return "FILE_TOO_LARGE"
+	case http.StatusUnsupportedMediaType:
+		return "UNSUPPORTED_MEDIA_TYPE"
 	default:
 		return "INTERNAL_ERROR"
 	}

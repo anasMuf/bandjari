@@ -8,11 +8,10 @@ import (
 
 type UserRepository interface {
 	FindByEmail(email string) (*model.User, error)
-	FindByUsername(username string) (*model.User, error)
+	FindByID(id uint) (*model.User, error)
 	Create(req *model.User) error
-	UpdateDeposit(userID uint, amount float64) error
-	UpdateMinDeposit(userID uint, amount float64) error
 }
+
 type userRepository struct {
 	db *gorm.DB
 }
@@ -29,20 +28,12 @@ func (r *userRepository) FindByEmail(email string) (*model.User, error) {
 	return &user, err
 }
 
-func (r *userRepository) FindByUsername(username string) (*model.User, error) {
+func (r *userRepository) FindByID(id uint) (*model.User, error) {
 	var user model.User
-	err := r.db.Where("username = ?", username).First(&user).Error
+	err := r.db.First(&user, id).Error
 	return &user, err
 }
 
 func (r *userRepository) Create(req *model.User) error {
 	return r.db.Create(req).Error
-}
-
-func (r *userRepository) UpdateDeposit(userID uint, amount float64) error {
-	return r.db.Model(&model.User{}).Where("id = ?", userID).Update("deposit", gorm.Expr("deposit + ?", amount)).Error
-}
-
-func (r *userRepository) UpdateMinDeposit(userID uint, amount float64) error {
-	return r.db.Model(&model.User{}).Where("id = ?", userID).Update("deposit", amount).Error
 }

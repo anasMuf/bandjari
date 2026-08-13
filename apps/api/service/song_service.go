@@ -1,0 +1,178 @@
+package service
+
+import (
+	"api/dto"
+	"api/model"
+	"api/repository"
+	"fmt"
+
+	"gorm.io/gorm"
+)
+
+type SongService interface {
+	Create(userID uint, req dto.CreateSongRequest) (*dto.SongResponse, error)
+	List(userID uint) ([]dto.SongResponse, error)
+	GetByID(songID uint, currentUserID *uint) (*dto.SongResponse, error)
+	Update(userID uint, songID uint, req dto.UpdateSongRequest) (*dto.SongResponse, error)
+	Delete(userID uint, songID uint) error
+	Duplicate(userID uint, songID uint) (*dto.SongResponse, error)
+}
+
+type songService struct {
+	songRepo repository.SongRepository
+}
+
+func NewSongService(songRepo repository.SongRepository) SongService {
+	return &songService{songRepo: songRepo}
+}
+
+func toSongResponse(song *model.Song) *dto.SongResponse {
+	res := &dto.SongResponse{
+		ID:               song.ID,
+		UserID:           song.UserID,
+		IsSystemTemplate: song.IsSystemTemplate,
+		Name:             song.Name,
+		Bpm:              song.Bpm,
+	}
+	for i := range song.Sections {
+		res.Sections = append(res.Sections, *toSectionResponse(&song.Sections[i]))
+	}
+	return res
+}
+
+func (s *songService) Create(userID uint, req dto.CreateSongRequest) (*dto.SongResponse, error) {
+	song := &model.Song{
+		UserID:           &userID,
+		IsSystemTemplate: false,
+		Name:             req.Name,
+		Bpm:              req.Bpm,
+	}
+	if err := s.songRepo.Create(song); err != nil {
+		return nil, err
+	}
+	return toSongResponse(song), nil
+}
+
+func (s *songService) List(userID uint) ([]dto.SongResponse, error) {
+	songs, err := s.songRepo.ListByUserID(userID)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]dto.SongResponse, 0, len(songs))
+	for i := range songs {
+		res = append(res, *toSongResponse(&songs[i]))
+	}
+	return res, nil
+}
+
+// GetByID menerapkan matriks akses TDD Bagian 6.8:
+// - Song Template System → boleh diakses siapapun (Guest maupun User)
+// - Song milik User → hanya pemiliknya; Guest dapat 404 (tanpa membocorkan keberadaan)
+func (s *songService) GetByID(songID uint, currentUserID *uint) (*dto.SongResponse, error) {
+	song, err := s.songRepo.FindByIDWithSections(songID)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+
+	if song.IsSystemTemplate {
+		return toSongResponse(song), nil // FR-AUTH-04
+	}
+	if currentUserID == nil {
+		return nil, ErrNotFound // Guest coba akses Song milik User → 404 (FR-AUTH-05)
+	}
+	if song.UserID == nil || *song.UserID != *currentUserID {
+		return nil, ErrForbidden // bukan pemilik → 403 (FR-AUTH-02)
+	}
+	return toSongResponse(song), nil
+}
+
+func (s *songService) Update(userID uint, songID uint, req dto.UpdateSongRequest) (*dto.SongResponse, error) {
+	song, err := s.songRepo.FindByID(songID)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	if song.IsSystemTemplate || song.UserID == nil || *song.UserID != userID {
+		return nil, ErrForbidden // FR-SONG-08 + FR-AUTH-02
+	}
+	if req.Name != nil {
+		song.Name = *req.Name
+	}
+	if req.Bpm != nil {
+		song.Bpm = *req.Bpm
+	}
+	if err := s.songRepo.Save(song); err != nil {
+		return nil, err
+	}
+	return toSongResponse(song), nil
+}
+
+func (s *songService) Delete(userID uint, songID uint) error {
+	song, err := s.songRepo.FindByID(songID)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return ErrNotFound
+		}
+		return err
+	}
+	if song.IsSystemTemplate || song.UserID == nil || *song.UserID != userID {
+		return ErrForbidden // FR-SONG-08 + FR-AUTH-02
+	}
+	return s.songRepo.Delete(songID)
+}
+
+// Duplicate menyalin Song beserta Section/SectionPart/SoundSlot (deep copy).
+// Berlaku untuk Song milik User (pemilik saja) maupun Song Template System
+// (user login manapun) — hasil selalu milik user, is_system_template = false.
+func (s *songService) Duplicate(userID uint, songID uint) (*dto.SongResponse, error) {
+	song, err := s.songRepo.FindByIDWithSections(songID)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	if !song.IsSystemTemplate && (song.UserID == nil || *song.UserID != userID) {
+		return nil, ErrForbidden
+	}
+
+	copied := &model.Song{
+		UserID:           &userID,
+		IsSystemTemplate: false,
+		Name:             fmt.Sprintf("%s (Salinan)", song.Name),
+		Bpm:              song.Bpm,
+	}
+	for _, sec := range song.Sections {
+		newSec := model.Section{
+			Name:        sec.Name,
+			OrderIndex:  sec.OrderIndex,
+			BpmOverride: sec.BpmOverride,
+		}
+		for _, part := range sec.Parts {
+			newPart := model.SectionPart{
+				Part:  part.Part,
+				Steps: part.Steps,
+			}
+			for _, slot := range part.SoundSlots {
+				newPart.SoundSlots = append(newPart.SoundSlots, model.SoundSlot{
+					Label:      slot.Label,
+					Key:        slot.Key,
+					SampleID:   slot.SampleID, // referensi Sample dipertahankan (FR-SAMP-04)
+					OrderIndex: slot.OrderIndex,
+				})
+			}
+			newSec.Parts = append(newSec.Parts, newPart)
+		}
+		copied.Sections = append(copied.Sections, newSec)
+	}
+
+	if err := s.songRepo.Create(copied); err != nil {
+		return nil, err
+	}
+	return toSongResponse(copied), nil
+}

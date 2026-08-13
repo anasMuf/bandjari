@@ -9,6 +9,12 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+var (
+	ErrUserNotFound       = errors.New("user not found")
+	ErrEmailTaken         = errors.New("email already exists")
+	ErrInvalidCredentials = errors.New("invalid email or password")
+)
+
 type UserService interface {
 	GetUserByEmail(email string) (*dto.UserResponse, error)
 	CreateUser(req dto.CreateUserRequest) (*dto.UserResponse, error)
@@ -25,77 +31,53 @@ func NewUserService(userRepository repository.UserRepository) UserService {
 	}
 }
 
+func toUserResponse(user *model.User) *dto.UserResponse {
+	return &dto.UserResponse{
+		ID:    user.ID,
+		Name:  user.Name,
+		Email: user.Email,
+	}
+}
+
 func (s *userService) GetUserByEmail(email string) (*dto.UserResponse, error) {
 	user, err := s.userRepository.FindByEmail(email)
 	if err != nil {
-		return nil, errors.New("user not found")
+		return nil, ErrUserNotFound
 	}
-	return &dto.UserResponse{
-		ID:       user.ID,
-		FullName: user.FullName,
-		Username: user.Username,
-		Email:    user.Email,
-		Phone:    user.Phone,
-		Address:  user.Address,
-		Role:     user.Role,
-		Deposit:  user.Deposit,
-	}, nil
+	return toUserResponse(user), nil
 }
 
 func (s *userService) CreateUser(req dto.CreateUserRequest) (*dto.UserResponse, error) {
 	_, err := s.userRepository.FindByEmail(req.Email)
 	if err == nil {
-		return nil, errors.New("email already exists")
+		return nil, ErrEmailTaken
 	}
-	_, err = s.userRepository.FindByUsername(req.Username)
-	if err == nil {
-		return nil, errors.New("username not found")
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
 	}
-	hash, _ := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 
 	user := &model.User{
-		FullName: req.FullName,
-		Username: req.Username,
-		Email:    req.Email,
-		Password: string(hash),
-		Phone:    req.Phone,
-		Address:  req.Address,
-		Role:     "customer", // Default role
-		Deposit:  0,          // Default deposit
+		Name:         req.Name,
+		Email:        req.Email,
+		PasswordHash: string(hash),
 	}
 	if err := s.userRepository.Create(user); err != nil {
 		return nil, err
 	}
-	return &dto.UserResponse{
-		ID:       user.ID,
-		FullName: user.FullName,
-		Username: user.Username,
-		Email:    user.Email,
-		Phone:    user.Phone,
-		Address:  user.Address,
-		Role:     user.Role,
-		Deposit:  user.Deposit,
-	}, nil
+	return toUserResponse(user), nil
 }
 
 func (s *userService) LoginUser(email, password string) (*dto.UserResponse, error) {
 	user, err := s.userRepository.FindByEmail(email)
 	if err != nil {
-		return nil, errors.New("user not found")
+		return nil, ErrInvalidCredentials
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
-		return nil, errors.New("invalid password")
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
+		return nil, ErrInvalidCredentials
 	}
 
-	return &dto.UserResponse{
-		ID:       user.ID,
-		FullName: user.FullName,
-		Username: user.Username,
-		Email:    user.Email,
-		Phone:    user.Phone,
-		Address:  user.Address,
-		Role:     user.Role,
-		Deposit:  user.Deposit,
-	}, nil
+	return toUserResponse(user), nil
 }
