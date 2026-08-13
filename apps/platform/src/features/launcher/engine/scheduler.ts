@@ -45,7 +45,8 @@ export class Scheduler {
   /**
    * Mulai memutar section baru dari langkah 0 — bunyi lama dipotong (choke).
    * `startAt` opsional: bila disediakan (transisi quantized), langkah pertama
-   * dijadwalkan tepat di timestamp itu, bukan "sekarang + buffer".
+   * dijadwalkan tepat di timestamp itu dan bunyi lama dipotong TEPAT di titik
+   * itu juga — tanpa jeda senyap sebelum batas siklus.
    */
   start(parts: ScheduledPart[], bpm: number, startAt?: number): void {
     this.parts = parts;
@@ -53,7 +54,9 @@ export class Scheduler {
     this.stepIndex = 0;
     this.nextNoteTime = startAt ?? this.ctx.currentTime + 0.05;
     this.playing = true;
-    this.chokeAll();
+    // startAt = batas siklus: potong bunyi lama pas di titik itu; start biasa
+    // (tanpa startAt): potong seketika.
+    this.chokeAll(startAt);
   }
 
   /** Panggil tiap tick dari clock worker. */
@@ -88,12 +91,17 @@ export class Scheduler {
     this.chokeAll();
   }
 
-  /** Potong semua sumber audio aktif (dipakai saat stop / ganti section). */
-  private chokeAll(): void {
+  /**
+   * Potong sumber audio aktif. `when` opsional: bila diberikan, pemotongan
+   * dijadwalkan tepat di timestamp itu (dipakai transisi quantized agar bunyi
+   * lama berbunyi penuh sampai batas siklus, tanpa jeda).
+   */
+  private chokeAll(when?: number): void {
     for (const sources of this.activeSources.values()) {
       for (const source of sources) {
         try {
-          source.stop();
+          if (when !== undefined) source.stop(when);
+          else source.stop();
         } catch {
           // Sumber sudah berhenti sendiri — abaikan.
         }

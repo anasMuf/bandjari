@@ -55,22 +55,26 @@ let switchAt = null;
 const startAt = Date.now();
 while (Date.now() - startAt < 5000) {
   const now = Date.now();
-  const txt = await page.locator('span.sr-only').first().textContent().catch(() => null);
-  if (txt && txt !== lastStep) {
-    if (txt.includes('1 dari')) boundaries.push(now);
-    lastStep = txt;
+  // Satu round-trip per iterasi (bukan dua) agar sampling cukup rapat & stabil.
+  const snap = await page.evaluate(() => {
+    const sr = document.querySelector('button[aria-label^="Mainkan section"] span.sr-only');
+    const statusEl = Array.from(document.querySelectorAll('div[aria-live="polite"]')).find((d) =>
+      (d.textContent ?? '').includes('Sedang Main'),
+    );
+    return { step: sr?.textContent ?? null, status: statusEl?.textContent ?? '' };
+  });
+  if (snap.step && snap.step !== lastStep) {
+    if (snap.step.includes('1 dari')) boundaries.push(now);
+    lastStep = snap.step;
   }
   if (triggerAt === null && now - startAt > 1500) {
     triggerAt = now;
     await page.click('button[aria-label^="Mainkan section"] >> nth=1');
   }
-  if (switchAt === null && triggerAt !== null) {
-    const status = await page.locator('div[aria-live="polite"]').first().textContent().catch(() => '');
-    if (status && status.includes('Sedang Main') && status.includes('B —')) {
-      switchAt = now;
-    }
+  if (switchAt === null && triggerAt !== null && snap.status.includes('B —')) {
+    switchAt = now;
   }
-  await page.waitForTimeout(8);
+  await page.waitForTimeout(5);
 }
 if (boundaries.length < 2) throw new Error(`siklus terdeteksi ${boundaries.length}, kurang data. console: ${errors.join(' | ').slice(0, 200)}`);
 if (switchAt === null) throw new Error('transisi ke B tidak terdeteksi');
