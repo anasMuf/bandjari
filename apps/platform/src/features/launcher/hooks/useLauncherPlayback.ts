@@ -3,7 +3,7 @@ import { getSamplesIdPlaybackUrl } from '../../../api/endpoints/samples/samples'
 import { AudioBufferCache } from '../engine/audio-buffer-cache';
 import { Scheduler } from '../engine/scheduler';
 import { SectionPlayer } from '../engine/section-player';
-import type { ScheduledPart } from '../engine/scheduling-math';
+import { excludeMutedParts, type ScheduledPart } from '../engine/scheduling-math';
 
 export interface LauncherSlot {
   key: string;
@@ -27,8 +27,8 @@ export interface LauncherSection {
 
 /**
  * Orkestrasi playback Launcher Mode: prefetch & decode seluruh sample saat
- * lagu dibuka, clock worker → scheduler lookahead, dan quantized trigger antar
- * Section. Engine 100% client-side (TDD AD-6, Bagian 9).
+ * lagu dibuka, clock worker → scheduler lookahead, quantized trigger antar
+ * Section, dan Mute per Part (FR-PLAY-10). Engine 100% client-side (TDD AD-6).
  */
 export function useLauncherPlayback(songBpm: number) {
   const [activeSectionId, setActiveSectionId] = useState<number | null>(null);
@@ -36,12 +36,15 @@ export function useLauncherPlayback(songBpm: number) {
   const [stepIndex, setStepIndex] = useState(0);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mutedParts, setMutedParts] = useState<Set<string>>(new Set());
 
   const ctxRef = useRef<AudioContext | null>(null);
   const playerRef = useRef<SectionPlayer | null>(null);
   const schedulerRef = useRef<Scheduler | null>(null);
   const workerRef = useRef<Worker | null>(null);
   const buffersBySection = useRef<Map<number, ScheduledPart[]>>(new Map());
+  const activeSectionRef = useRef<LauncherSection | null>(null);
+  const mutedRef = useRef<Set<string>>(mutedParts);
 
   const syncState = useCallback(() => {
     const player = playerRef.current;
@@ -54,6 +57,12 @@ export function useLauncherPlayback(songBpm: number) {
     );
     const step = schedulerRef.current?.currentStep ?? 0;
     setStepIndex((prev) => (step === prev ? prev : step));
+  }, []);
+
+  /** Susun ScheduledPart suatu Section dengan menerapkan filter Mute (FR-PLAY-10). */
+  const buildParts = useCallback((section: LauncherSection, muted: Set<string>) => {
+    const base = buffersBySection.current.get(section.id) ?? [];
+    return excludeMutedParts(base, muted);
   }, []);
 
   /** Prefetch + decode seluruh sample yang direferensikan song (FR-PLAY-02). */
@@ -93,7 +102,7 @@ export function useLauncherPlayback(songBpm: number) {
                   if (buffer) buffers.set(slot.key, buffer);
                 }
               }
-              return { steps: part.steps ?? '', buffers };
+              return { part: part.part, steps: part.steps ?? '', buffers };
             });
             return [section.id, parts];
           }),
@@ -124,25 +133,47 @@ export function useLauncherPlayback(songBpm: number) {
     [syncState],
   );
 
-  /** Trigger pad Section (quantized bila section lain sedang aktif). */
+  /** Trigger pad Section (quantized bila section lain sedang aktif — FR-PLAY-04). */
   const trigger = useCallback(
     (section: LauncherSection) => {
       const player = playerRef.current;
       const ctx = ctxRef.current;
       if (!player || !ctx) return;
-      const parts = buffersBySection.current.get(section.id) ?? [];
+      activeSectionRef.current = section;
+      const parts = buildParts(section, mutedRef.current);
       const bpm = section.bpm_override ?? songBpm;
       void ctx.resume(); // AudioContext boleh dibuat suspended — resume pada gesture
       player.trigger(section.id, { parts, bpm });
       syncState();
     },
-    [songBpm, syncState],
+    [songBpm, buildParts, syncState],
   );
 
   const stop = useCallback(() => {
     playerRef.current?.stop();
+    activeSectionRef.current = null;
     syncState();
   }, [syncState]);
+
+  /** Mute/unmute satu Part; bila Section aktif, terapkan ulang seketika. */
+  const toggleMute = useCallback(
+    (partKey: string) => {
+      const next = new Set(mutedRef.current);
+      if (next.has(partKey)) next.delete(partKey);
+      else next.add(partKey);
+      mutedRef.current = next;
+      setMutedParts(next);
+
+      const player = playerRef.current;
+      const active = activeSectionRef.current;
+      if (player && active && player.activeSectionId === active.id) {
+        const parts = buildParts(active, next);
+        player.trigger(active.id, { parts, bpm: active.bpm_override ?? songBpm });
+      }
+      syncState();
+    },
+    [songBpm, buildParts, syncState],
+  );
 
   // Bersihkan worker & context saat unmount.
   useEffect(() => {
@@ -156,5 +187,17 @@ export function useLauncherPlayback(songBpm: number) {
 
   const isPlaying = activeSectionId != null;
 
-  return { activeSectionId, pendingSectionId, stepIndex, isPlaying, ready, error, prepare, trigger, stop };
+  return {
+    activeSectionId,
+    pendingSectionId,
+    stepIndex,
+    isPlaying,
+    ready,
+    error,
+    mutedParts,
+    prepare,
+    trigger,
+    stop,
+    toggleMute,
+  };
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   cycleLength,
+  excludeMutedParts,
   stepDurationSeconds,
   stepKeysAt,
   type ScheduledPart,
@@ -40,5 +41,16 @@ describe('scheduling-math', () => {
   it('stepKeysAt menangani steps kosong', () => {
     const parts = [part('', [])];
     expect(stepKeysAt(parts, 0)).toEqual([{ key: '', buffer: undefined }]);
+  });
+
+  it('excludeMutedParts membuang Part yang di-mute (FR-PLAY-10)', () => {
+    const parts = [
+      { ...part('TD', ['T', 'D']), part: 'rebana1' },
+      { ...part('DD', ['D']), part: 'bass' },
+      part('TT', ['T']), // tanpa identitas part → tidak bisa di-mute
+    ];
+    expect(excludeMutedParts(parts, new Set(['bass']))).toHaveLength(2);
+    expect(excludeMutedParts(parts, new Set(['rebana1', 'bass']))).toHaveLength(1);
+    expect(excludeMutedParts(parts, new Set())).toHaveLength(3);
   });
 });

@@ -1,6 +1,8 @@
 // Fungsi murni scheduling — dipisah agar dapat di-test tanpa AudioContext.
 
 export interface ScheduledPart {
+  /** Identitas Part (rebana1..bass) — dipakai filter Mute per Part (FR-PLAY-10). */
+  part?: string;
   /** Rumus pukulan (string key). */
   steps: string;
   /** Buffer audio per key SoundSlot. Key tanpa buffer = senyap (AC-5). */
@@ -27,4 +29,9 @@ export function stepKeysAt(parts: ScheduledPart[], index: number): Array<{ key: 
     const key = part.steps[index % part.steps.length];
     return { key, buffer: part.buffers.get(key) };
   });
+}
+
+/** Buang Part yang sedang di-mute (FR-PLAY-10) — tidak mengubah Part lainnya. */
+export function excludeMutedParts(parts: ScheduledPart[], muted: Set<string>): ScheduledPart[] {
+  return parts.filter((p) => !p.part || !muted.has(p.part));
 }
