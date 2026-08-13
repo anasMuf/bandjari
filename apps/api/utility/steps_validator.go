@@ -24,10 +24,11 @@ func ValidateSoundSlotKey(key string) error {
 const restStep = "."
 
 // ValidateSteps memeriksa bahwa setiap langkah dalam `steps` — dipisah koma —
-// merujuk TEPAT ke salah satu `key` SoundSlot terdaftar pada SectionPart
-// terkait (FR-SEQ-02), atau merupakan langkah istirahat ".". Mendukung key
-// 1–2 karakter; himpunan key valid dinamis per SectionPart, sehingga tidak
-// bisa berupa regex statis (TDD Bagian 7).
+// merujuk ke satu atau lebih `key` SoundSlot terdaftar pada SectionPart
+// terkait (FR-SEQ-02), atau merupakan langkah istirahat ".". Satu kolom boleh
+// memuat beberapa bunyi sekaligus dengan pemisah "+" (mis. "T+D") — ini
+// memungkinkan dua baris grid aktif di kolom yang sama. Mendukung key 1–2
+// karakter; himpunan key valid dinamis per SectionPart (TDD Bagian 7).
 func ValidateSteps(steps string, keys []string) error {
 	if steps == "" {
 		return nil
@@ -38,13 +39,18 @@ func ValidateSteps(steps string, keys []string) error {
 	}
 	for _, token := range strings.Split(steps, ",") {
 		if token == "" {
-			return fmt.Errorf("langkah kosong dalam steps tidak valid — tiap langkah harus satu key (mis. \"T,D\") atau istirahat \".\"")
+			return fmt.Errorf("langkah kosong dalam steps tidak valid — tiap langkah harus key/istirahat (mis. \"T,D\")")
 		}
 		if token == restStep {
 			continue // langkah istirahat — senyap, tidak butuh sample (AC-5)
 		}
-		if !valid[token] {
-			return fmt.Errorf("key %q dalam steps tidak merujuk ke key SoundSlot manapun pada SectionPart ini", token)
+		for _, sub := range strings.Split(token, "+") {
+			if sub == "" {
+				return fmt.Errorf("sub-key kosong dalam langkah %q tidak valid", token)
+			}
+			if !valid[sub] {
+				return fmt.Errorf("key %q dalam steps tidak merujuk ke key SoundSlot manapun pada SectionPart ini", sub)
+			}
 		}
 	}
 	return nil

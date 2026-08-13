@@ -52,15 +52,23 @@ describe('scheduling-math', () => {
     ]);
   });
 
+  it('stepKeysAt menghasilkan beberapa entri untuk multi-bunyi sekolom (T+D)', () => {
+    const parts = [part('T+D,KD', ['T', 'D', 'KD'])];
+    expect(stepKeysAt(parts, 0)).toEqual([
+      { part: undefined, key: 'T', buffer: expect.anything() },
+      { part: undefined, key: 'D', buffer: expect.anything() },
+    ]);
+  });
+
   it('stepKeysAt memperlakukan langkah istirahat sebagai senyap', () => {
     const parts = [part('.,T', ['T'])];
-    expect(stepKeysAt(parts, 0)).toEqual([{ part: undefined, key: '', buffer: undefined }]);
+    expect(stepKeysAt(parts, 0)).toEqual([]);
     expect(stepKeysAt(parts, 1)).toEqual([{ part: undefined, key: 'T', buffer: expect.anything() }]);
   });
 
   it('stepKeysAt menangani steps kosong', () => {
     const parts = [part('', [])];
-    expect(stepKeysAt(parts, 0)).toEqual([{ part: undefined, key: '', buffer: undefined }]);
+    expect(stepKeysAt(parts, 0)).toEqual([]);
   });
 
   it('excludeMutedParts membuang Part yang di-mute (FR-PLAY-10)', () => {

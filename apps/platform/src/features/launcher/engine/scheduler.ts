@@ -24,8 +24,8 @@ export class Scheduler {
   private stepIndex = 0;
   private nextNoteTime = 0;
   private playing = false;
-  /** Sumber audio yang sedang berbunyi, per identitas Part. */
-  private activeSources = new Map<string, AudioBufferSourceNode>();
+  /** Sumber audio yang sedang berbunyi, per identitas Part (bisa lebih dari satu saat multi-bunyi sekolom). */
+  private activeSources = new Map<string, AudioBufferSourceNode[]>();
 
   /** Dipanggil tepat saat satu siklus Section selesai (untuk quantized trigger). */
   onCycleComplete: (() => void) | null = null;
@@ -81,30 +81,37 @@ export class Scheduler {
 
   /** Potong semua sumber audio aktif (dipakai saat stop / ganti section). */
   private chokeAll(): void {
-    for (const source of this.activeSources.values()) {
-      try {
-        source.stop();
-      } catch {
-        // Sumber sudah berhenti sendiri — abaikan.
+    for (const sources of this.activeSources.values()) {
+      for (const source of sources) {
+        try {
+          source.stop();
+        } catch {
+          // Sumber sudah berhenti sendiri — abaikan.
+        }
       }
     }
     this.activeSources.clear();
   }
 
   private scheduleStep(index: number, when: number): void {
+    // Choke per Part cukup sekali per step — bunyi baru part ini memotong SEMUA
+    // bunyi lama part yang sama tepat di titik bunyi baru dimulai.
+    const choked = new Set<string>();
     for (const { part, buffer } of stepKeysAt(this.parts, index)) {
       if (!buffer) continue; // step senyap — SoundSlot tanpa sample (FR-PLAY-09, AC-5)
-      if (part) {
-        // Choke monofonik: bunyi baru part ini memotong bunyi sebelumnya
-        // tepat di titik bunyi baru dimulai.
+      if (part && !choked.has(part)) {
         const previous = this.activeSources.get(part);
         if (previous) {
-          try {
-            previous.stop(when);
-          } catch {
-            // Sumber sudah berhenti — abaikan.
+          for (const source of previous) {
+            try {
+              source.stop(when);
+            } catch {
+              // Sumber sudah berhenti — abaikan.
+            }
           }
         }
+        this.activeSources.set(part, []);
+        choked.add(part);
       }
       const source = this.ctx.createBufferSource();
       source.buffer = buffer;
@@ -112,11 +119,15 @@ export class Scheduler {
       source.start(when);
       if (part) {
         source.onended = () => {
-          if (this.activeSources.get(part) === source) {
-            this.activeSources.delete(part);
+          const sources = this.activeSources.get(part);
+          if (sources) {
+            const i = sources.indexOf(source);
+            if (i >= 0) sources.splice(i, 1);
           }
         };
-        this.activeSources.set(part, source);
+        const sources = this.activeSources.get(part) ?? [];
+        sources.push(source);
+        this.activeSources.set(part, sources);
       }
     }
   }

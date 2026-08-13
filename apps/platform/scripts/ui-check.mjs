@@ -182,6 +182,28 @@ await step('grid steps: isi 4 kotak, matikan kotak ke-3 — kotak lain tidak ber
   if (on4 !== 'true') throw new Error('kotak ke-4 ikut mati/bergeser');
 });
 
+await step('grid steps: dua baris aktif di kolom yang sama (multi-bunyi sekolom)', async () => {
+  // Tambah bunyi kedua (Dung/D1) di Rebana 1
+  await page.click('button:has-text("+ Tambah Bunyi untuk Rebana 1")');
+  await page.fill('#new-slot-label', 'Dung');
+  await page.fill('#new-slot-key', 'D1');
+  await page.click('form button:has-text("+ Tambah Bunyi")');
+  await page.waitForSelector('tbody button[aria-label^="Langkah 4, Dung (D1)"]', { timeout: 15000 });
+
+  const row1col4 = page.locator('tbody button[aria-label^="Langkah 4, Tak (T1)"]');
+  const row2col4 = page.locator('tbody button[aria-label^="Langkah 4, Dung (D1)"]');
+  if ((await row1col4.getAttribute('aria-pressed')) !== 'true') {
+    throw new Error('kolom 4 baris 1 seharusnya masih aktif');
+  }
+  await row2col4.click();
+  if ((await row2col4.getAttribute('aria-pressed')) !== 'true') {
+    throw new Error('kolom 4 baris 2 gagal terisi');
+  }
+  if ((await row1col4.getAttribute('aria-pressed')) !== 'true') {
+    throw new Error('kolom 4 baris 1 hilang saat baris 2 diisi — kolom belum independen');
+  }
+});
+
 await step('grid steps: ±8 step & simpan perubahan', async () => {
   const cells = page.locator('tbody button[aria-label^="Langkah "]');
   const before = await cells.count();

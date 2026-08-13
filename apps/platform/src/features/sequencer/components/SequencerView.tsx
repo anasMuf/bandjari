@@ -11,7 +11,7 @@ import { LoginPromptInline } from '../../auth/components/LoginPromptInline';
 import { SequencerGrid, previewSampleAudio, type GridSlot } from './SequencerGrid';
 import { SoundSlotManager, type SoundSlotData } from './SoundSlotManager';
 import { useSectionPreview } from '../hooks/useSectionPreview';
-import { padSteps, trimSteps, decodeSteps, encodeSteps, setStepExtending, clearCell, stepCount } from '../../../lib/steps';
+import { padSteps, trimSteps, decodeSteps, encodeSteps, setStepExtending, toggleKeyInCell, stepCount } from '../../../lib/steps';
 import { PART_LABELS, PART_ORDER } from '../utils/parts';
 
 interface PartData {
@@ -48,6 +48,10 @@ export function SequencerView({ songId, sectionId, sectionName, songBpm, bpmOver
   const [editPromptZone, setEditPromptZone] = useState<'slots' | 'grid' | null>(null);
   const [focusCreateSignal, setFocusCreateSignal] = useState(0);
   const managerRef = useRef<HTMLDivElement>(null);
+  // Refs agar preview membaca isian grid & slot TERKINI setiap tick (real-time),
+  // bukan snapshot saat tombol Play ditekan.
+  const stepsByPartRef = useRef(stepsByPart);
+  stepsByPartRef.current = stepsByPart;
 
   // Normalisasi defensif: sound_slots mungkin null dari respons lama — pastikan array.
   const parts = (((partsQuery.data?.data as DtoSuccessResponse | undefined)?.data ?? []) as PartData[]).map(
@@ -123,12 +127,12 @@ export function SequencerView({ songId, sectionId, sectionName, songBpm, bpmOver
     if (!part) return;
     const current = stepsOf(part);
     const cells = decodeSteps(current);
-    if (colIndex < cells.length && cells[colIndex] === slotKey) {
-      // Matikan kotak itu saja → jadi langkah istirahat. Tidak ada pergeseran,
-      // posisi kotak lain tidak berubah.
+    if (colIndex < cells.length) {
+      // Toggle kotak itu SAJA — key baris lain yang aktif di kolom yang sama
+      // tidak terganggu (multi-bunyi sekolom, "T+D").
       setStepsByPart((prev) => ({
         ...prev,
-        [partId]: encodeSteps(clearCell(cells, colIndex)),
+        [partId]: encodeSteps(toggleKeyInCell(cells, colIndex, slotKey)),
       }));
     } else {
       // Nyalakan kotak itu saja — celah di kirinya jadi istirahat.
@@ -189,13 +193,16 @@ export function SequencerView({ songId, sectionId, sectionName, songBpm, bpmOver
       preview.stop();
       return;
     }
+    // Getter dipanggil ulang tiap tick → edit kotak saat preview berjalan
+    // langsung terdengar (real-time).
     preview
       .play(
-        orderedParts.map((part) => ({
-          id: part.id,
-          steps: stepsOf(part),
-          slots: part.sound_slots.map((slot) => ({ key: slot.key, sample_id: slot.sample_id })),
-        })),
+        () =>
+          orderedParts.map((part) => ({
+            id: part.id,
+            steps: stepsByPartRef.current[part.id] ?? part.steps ?? '',
+            slots: part.sound_slots.map((slot) => ({ key: slot.key, sample_id: slot.sample_id })),
+          })),
         effectiveBpm,
       )
       .catch((error: unknown) => {

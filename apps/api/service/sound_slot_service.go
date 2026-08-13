@@ -106,15 +106,18 @@ func (s *soundSlotService) validateSampleAccess(userID uint, sampleID uint) erro
 }
 
 // keyUsedInSteps mengecek apakah key masih dipakai di dalam steps SectionPart.
-// Format steps: key dipisah koma (mis. "T,D,KD") — cocokkan token utuh,
-// bukan per karakter, agar key 2 karakter tidak tertukar dengan key 1 karakter.
+// Format steps: kolom dipisah koma, satu kolom bisa memuat beberapa key dengan
+// pemisah "+" (mis. "T,D,KD+D") — cocokkan token utuh, bukan per karakter,
+// agar key 2 karakter tidak tertukar dengan key 1 karakter.
 func keyUsedInSteps(steps *string, key string) bool {
 	if steps == nil || *steps == "" {
 		return false
 	}
 	for _, token := range strings.Split(*steps, ",") {
-		if token == key {
-			return true
+		for _, sub := range strings.Split(token, "+") {
+			if sub == key {
+				return true
+			}
 		}
 	}
 	return false

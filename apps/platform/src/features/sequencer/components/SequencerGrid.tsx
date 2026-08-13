@@ -158,7 +158,7 @@ export function SequencerGrid({
                       </td>
                       {Array.from({ length: maxLen }, (_, colIndex) => {
                         const beyond = colIndex >= cells.length;
-                        const active = !beyond && cells[colIndex] === slot.key;
+                        const active = !beyond && (cells[colIndex]?.includes(slot.key) ?? false);
                         const isBeat = colIndex % 4 === 0;
                         const isPlayhead = playheadIndex != null && colIndex === playheadIndex;
                         return (

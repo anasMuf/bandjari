@@ -29,13 +29,24 @@ export function cycleLength(parts: ScheduledPart[]): number {
   return parts.reduce((max, p) => Math.max(max, stepCount(p.steps)), 0);
 }
 
-/** Key tiap part pada indeks langkah global (tiap part loop sesuai panjangnya — AC-2). */
-export function stepKeysAt(parts: ScheduledPart[], index: number): Array<{ part?: string; key: string; buffer: AudioBuffer | undefined }> {
-  return parts.map((part) => {
-    const key = keyAt(part.steps, index);
-    if (key === undefined) return { part: part.part, key: '', buffer: undefined };
-    return { part: part.part, key, buffer: part.buffers.get(key) };
-  });
+/**
+ * Daftar bunyi aktif pada indeks langkah global (tiap part loop sesuai
+ * panjangnya — AC-2). Satu kolom bisa menghasilkan beberapa entri (multi-bunyi
+ * sekolom, "T+D"). Entri tanpa buffer = senyap (AC-5).
+ */
+export function stepKeysAt(
+  parts: ScheduledPart[],
+  index: number,
+): Array<{ part?: string; key: string; buffer: AudioBuffer | undefined }> {
+  const entries: Array<{ part?: string; key: string; buffer: AudioBuffer | undefined }> = [];
+  for (const part of parts) {
+    const keys = keyAt(part.steps, index);
+    if (keys === undefined) continue; // langkah istirahat / steps kosong
+    for (const key of keys) {
+      entries.push({ part: part.part, key, buffer: part.buffers.get(key) });
+    }
+  }
+  return entries;
 }
 
 /** Buang Part yang sedang di-mute (FR-PLAY-10) — tidak mengubah Part lainnya. */
