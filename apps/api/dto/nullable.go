@@ -48,10 +48,23 @@ func (n *NullableString) UnmarshalJSON(data []byte) error {
 		n.Value = nil
 		return nil
 	}
+
+	// Bentuk 1: string langsung (mis. dari curl)
 	var v string
-	if err := json.Unmarshal(data, &v); err != nil {
-		return errors.New("field harus string atau null")
+	if err := json.Unmarshal(data, &v); err == nil {
+		n.Value = &v
+		return nil
 	}
-	n.Value = &v
-	return nil
+
+	// Bentuk 2: objek dari klien ter-generate Orval — {"set":true,"value":"TDTD"}
+	var obj struct {
+		Set   bool    `json:"set"`
+		Value *string `json:"value"`
+	}
+	if err := json.Unmarshal(data, &obj); err == nil {
+		n.Set = obj.Set
+		n.Value = obj.Value
+		return nil
+	}
+	return errors.New("field harus string, null, atau objek {set, value}")
 }
