@@ -47,6 +47,10 @@ export function SequencerView({ songId, sectionId, sectionName, songBpm, bpmOver
   const [selectedPartId, setSelectedPartId] = useState<number | null>(null);
   const [editPromptZone, setEditPromptZone] = useState<'slots' | 'grid' | null>(null);
   const [focusCreateSignal, setFocusCreateSignal] = useState(0);
+  // Mute per Part (hanya memengaruhi preview Sequencer) — real-time via ref.
+  const [mutedParts, setMutedParts] = useState<Set<string>>(new Set());
+  const mutedPartsRef = useRef(mutedParts);
+  mutedPartsRef.current = mutedParts;
   const managerRef = useRef<HTMLDivElement>(null);
   // Refs agar preview membaca isian grid & slot TERKINI setiap tick (real-time),
   // bukan snapshot saat tombol Play ditekan.
@@ -197,16 +201,18 @@ export function SequencerView({ songId, sectionId, sectionName, songBpm, bpmOver
       preview.stop();
       return;
     }
-    // Getter dipanggil ulang tiap tick → edit kotak saat preview berjalan
-    // langsung terdengar (real-time).
+    // Getter dipanggil ulang tiap tick → edit kotak & mute part saat preview
+    // berjalan langsung terdengar (real-time).
     preview
       .play(
         () =>
-          orderedParts.map((part) => ({
-            id: part.id,
-            steps: stepsByPartRef.current[part.id] ?? part.steps ?? '',
-            slots: part.sound_slots.map((slot) => ({ key: slot.key, sample_id: slot.sample_id })),
-          })),
+          orderedParts
+            .filter((part) => !mutedPartsRef.current.has(part.part))
+            .map((part) => ({
+              id: part.id,
+              steps: stepsByPartRef.current[part.id] ?? part.steps ?? '',
+              slots: part.sound_slots.map((slot) => ({ key: slot.key, sample_id: slot.sample_id })),
+            })),
         effectiveBpm,
       )
       .catch((error: unknown) => {
@@ -354,6 +360,15 @@ export function SequencerView({ songId, sectionId, sectionName, songBpm, bpmOver
         readOnly={readOnly}
         onEditAttempt={() => setEditPromptZone('grid')}
         playheadIndex={preview.isPlaying ? preview.stepIndex : null}
+        mutedParts={mutedParts}
+        onToggleMute={(partKey) =>
+          setMutedParts((prev) => {
+            const next = new Set(prev);
+            if (next.has(partKey)) next.delete(partKey);
+            else next.add(partKey);
+            return next;
+          })
+        }
       />
 
       {/* Aksi bawah */}

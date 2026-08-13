@@ -30,6 +30,9 @@ interface SequencerGridProps {
   onEditAttempt?: () => void;
   /** Kolom yang sedang disorot playhead saat Play Preview aktif. */
   playheadIndex?: number | null;
+  /** Part yang sedang di-mute (senyap saat preview). */
+  mutedParts: Set<string>;
+  onToggleMute: (partKey: string) => void;
 }
 
 /**
@@ -47,6 +50,8 @@ export function SequencerGrid({
   readOnly = false,
   onEditAttempt,
   playheadIndex = null,
+  mutedParts,
+  onToggleMute,
 }: SequencerGridProps) {
   const ordered = PART_ORDER.map((p) => parts.find((part) => part.part === p)).filter(
     (p): p is GridPart => Boolean(p),
@@ -99,18 +104,41 @@ export function SequencerGrid({
             const partLabel = PART_LABELS[part.part] ?? part.part;
             const steps = stepsOf(part);
             const cells = decodeSteps(steps);
+            const isMuted = mutedParts.has(part.part);
             return (
               <Fragment key={part.id}>
                 {/* Subheader Part */}
-                <tr className="bg-stone-50">
+                <tr className={isMuted ? 'bg-stone-50 opacity-60' : 'bg-stone-50'}>
                   <td
                     colSpan={maxLen + 1}
                     className="border-y border-stone-200 px-3 py-1.5"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="font-semibold text-stone-800">{partLabel}</span>
+                      <span className="flex items-center gap-2">
+                        <span className="font-semibold text-stone-800">{partLabel}</span>
+                        {isMuted && (
+                          <span className="text-[10px] font-bold uppercase text-stone-400">
+                            (senyap)
+                          </span>
+                        )}
+                      </span>
                       <span className="flex items-center gap-3">
                         <span className="text-stone-500">{cells.length} step</span>
+                        <button
+                          type="button"
+                          aria-pressed={isMuted}
+                          aria-label={`Mute ${partLabel}`}
+                          title={isMuted ? `Bunyikan ${partLabel}` : `Mute ${partLabel}`}
+                          onClick={() => onToggleMute(part.part)}
+                          className={[
+                            'rounded px-1.5 py-0.5 text-xs font-semibold transition-colors cursor-pointer',
+                            isMuted
+                              ? 'bg-stone-200 text-stone-500 hover:bg-stone-300'
+                              : 'bg-brand-50 text-brand-800 hover:bg-brand-100',
+                          ].join(' ')}
+                        >
+                          {isMuted ? '🔇 Mute' : '🔊 Bunyi'}
+                        </button>
                         {!readOnly && (
                           <button
                             type="button"
@@ -129,7 +157,7 @@ export function SequencerGrid({
                   const sampleName = slot.sample?.name ?? null;
                   const isTemplate = slot.sample?.is_system_template === true;
                   return (
-                    <tr key={slot.id}>
+                    <tr key={slot.id} className={isMuted ? 'opacity-60' : ''}>
                       <td className="sticky left-0 z-10 border-b border-stone-100 bg-white px-3 py-1.5">
                         <div className="flex items-center gap-2">
                           <button
@@ -196,7 +224,7 @@ export function SequencerGrid({
                 })}
 
                 {/* Baris + Tambah Bunyi per Part */}
-                <tr>
+                <tr className={isMuted ? 'opacity-60' : ''}>
                   <td colSpan={maxLen + 1} className="border-t border-stone-100 px-3 py-1.5">
                     <button
                       type="button"

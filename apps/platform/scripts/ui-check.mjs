@@ -154,6 +154,16 @@ await step('chip section → Sequencer Mode (grid terpadu 5 Part, mulai kosong)'
 });
 await shot('08-sequencer');
 
+await step('mute per Part di grid sequencer (toggle + label senyap)', async () => {
+  const btn = page.locator('button[aria-label="Mute Rebana 1"]');
+  await btn.click();
+  if ((await btn.getAttribute('aria-pressed')) !== 'true') throw new Error('mute tidak aktif');
+  const silentLabel = await page.locator('text=(senyap)').count();
+  if (silentLabel === 0) throw new Error('label (senyap) tidak muncul');
+  await btn.click();
+  if ((await btn.getAttribute('aria-pressed')) !== 'false') throw new Error('mute tidak kembali');
+});
+
 await step('preview grid kosong: indikator playhead tetap berjalan menyusuri kolom', async () => {
   await page.click('button:has-text("▶ Play Preview")');
   const seen = new Set();
