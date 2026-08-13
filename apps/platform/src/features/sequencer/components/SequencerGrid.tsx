@@ -1,7 +1,7 @@
 import { Fragment } from 'react';
 import { getSamplesIdPlaybackUrl } from '../../../api/endpoints/samples/samples';
 import { Badge } from '../../../components/atoms/Badge';
-import { decodeSteps, stepCount } from '../../../lib/steps';
+import { decodeSteps, MIN_GRID_COLUMNS, stepCount } from '../../../lib/steps';
 import { PART_LABELS, PART_ORDER } from '../utils/parts';
 
 export interface GridSlot {
@@ -32,9 +32,6 @@ interface SequencerGridProps {
   playheadIndex?: number | null;
 }
 
-/** Kolom minimum yang selalu ditampilkan (Section baru masih kosong). */
-const MIN_COLUMNS = 8;
-
 /**
  * Grid sequencer terpadu (layar 3 wireframe): semua 5 Part dalam satu tabel.
  * Baris = SoundSlot (jumlah dinamis per Part), kolom = posisi step; kolom
@@ -61,7 +58,7 @@ export function SequencerGrid({
   }
 
   const maxLen = Math.max(
-    MIN_COLUMNS,
+    MIN_GRID_COLUMNS,
     ...ordered.map((part) => stepCount(stepsByPart[part.id] ?? part.steps)),
   );
 

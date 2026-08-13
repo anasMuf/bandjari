@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getSamplesIdPlaybackUrl } from '../../../api/endpoints/samples/samples';
-import { keyAt, stepCount } from '../../../lib/steps';
+import { keyAt, normalizeStepsToGrid, stepCount } from '../../../lib/steps';
 
 export interface SectionPreviewPart {
   id: number;
@@ -87,7 +87,12 @@ export function useSectionPreview() {
         const stepMs = 60000 / bpm / 4;
 
         const tick = () => {
-          const parts = getParts().filter((p) => stepCount(p.steps) > 0);
+          // Normalisasi ke lebar grid minimal agar siklus mengikuti jumlah kolom
+          // yang tampil (bukan jumlah kotak terisi) — 1 kotak = 1 pukulan per
+          // siklus 8 langkah, bukan bunyi diulang tiap langkah.
+          const parts = getParts()
+            .map((p) => ({ ...p, steps: normalizeStepsToGrid(p.steps) }))
+            .filter((p) => stepCount(p.steps) > 0);
           const totalLen = parts.reduce((max, p) => Math.max(max, stepCount(p.steps)), 0);
 
           for (const part of parts) {

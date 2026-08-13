@@ -9,6 +9,9 @@ export type StepCell = string[] | null;
 
 export const REST_STEP = '.';
 
+/** Lebar minimal grid sequencer (kolom yang selalu tampil). */
+export const MIN_GRID_COLUMNS = 8;
+
 /** Pecah string steps menjadi sel-sel grid ("." → sel kosong, "T+D" → [T, D]). */
 export function decodeSteps(steps: string): StepCell[] {
   if (!steps) return [];
@@ -83,6 +86,18 @@ export function setStepExtending(steps: string, colIndex: number, key: string): 
 /** Jumlah langkah (termasuk istirahat) — token dipisah koma. */
 export function stepCount(steps: string): number {
   return decodeSteps(steps).length;
+}
+
+/**
+ * Normalisasi panjang pola ke lebar grid minimal: pola berisi (1..7 langkah)
+ * digenapi menjadi MIN_GRID_COLUMNS dengan langkah istirahat — sehingga siklus
+ * playback mengikuti lebar grid yang tampil, bukan jumlah kotak terisi.
+ * Pola kosong dibiarkan kosong; pola ≥ MIN_GRID_COLUMNS tidak berubah.
+ */
+export function normalizeStepsToGrid(steps: string): string {
+  const count = stepCount(steps);
+  if (count === 0 || count >= MIN_GRID_COLUMNS) return steps;
+  return padSteps(steps, MIN_GRID_COLUMNS - count);
 }
 
 /** Daftar key aktif pada indeks langkah global — loop sesuai panjang (AC-2). Istirahat → undefined. */

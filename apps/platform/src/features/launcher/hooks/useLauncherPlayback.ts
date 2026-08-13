@@ -4,6 +4,7 @@ import { AudioBufferCache } from '../engine/audio-buffer-cache';
 import { Scheduler } from '../engine/scheduler';
 import { SectionPlayer } from '../engine/section-player';
 import { excludeMutedParts, type ScheduledPart } from '../engine/scheduling-math';
+import { normalizeStepsToGrid } from '../../../lib/steps';
 
 export interface LauncherSlot {
   key: string;
@@ -91,7 +92,8 @@ export function useLauncherPlayback(songBpm: number) {
           }),
         );
 
-        // Susun ScheduledPart per section
+        // Susun ScheduledPart per section — steps ternormalisasi ke lebar grid
+        // minimal agar data lama (pola < 8 langkah) tidak loop terlalu cepat.
         buffersBySection.current = new Map(
           sections.map((section) => {
             const parts: ScheduledPart[] = section.parts.map((part) => {
@@ -102,7 +104,7 @@ export function useLauncherPlayback(songBpm: number) {
                   if (buffer) buffers.set(slot.key, buffer);
                 }
               }
-              return { part: part.part, steps: part.steps ?? '', buffers };
+              return { part: part.part, steps: normalizeStepsToGrid(part.steps ?? ''), buffers };
             });
             return [section.id, parts];
           }),

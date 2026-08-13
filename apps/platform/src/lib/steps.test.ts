@@ -4,6 +4,7 @@ import {
   decodeSteps,
   encodeSteps,
   keyAt,
+  normalizeStepsToGrid,
   padSteps,
   setCell,
   setStepExtending,
@@ -72,6 +73,14 @@ describe('steps (format koma + multi-bunyi sekolom + istirahat)', () => {
     expect(stepCount('T,.,.')).toBe(3);
     expect(stepCount('T+D,KD')).toBe(2);
     expect(stepCount('')).toBe(0);
+  });
+
+  it('normalizeStepsToGrid menggenapi pola pendek ke lebar grid minimal (8) dengan istirahat', () => {
+    expect(normalizeStepsToGrid('T')).toBe('T,.,.,.,.,.,.,.');
+    expect(normalizeStepsToGrid('T,.,D')).toBe('T,.,D,.,.,.,.,.');
+    expect(normalizeStepsToGrid('T,D,T,D,T,D,T,D')).toBe('T,D,T,D,T,D,T,D'); // sudah 8 — tak berubah
+    expect(normalizeStepsToGrid('')).toBe(''); // kosong dibiarkan kosong
+    expect(normalizeStepsToGrid('T,D,T,D,T,D,T,D,T')).toBe('T,D,T,D,T,D,T,D,T'); // >8 — tak berubah
   });
 
   it('keyAt loop sesuai panjang steps; istirahat → undefined; multi-bunyi → array', () => {

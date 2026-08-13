@@ -162,6 +162,29 @@ await step('tambah SoundSlot pertama (Tak/T1, key 2 karakter) di Rebana 1', asyn
   await page.waitForSelector('tbody button[aria-label^="Langkah "]', { timeout: 15000 });
 });
 
+await step('preview: satu kotak berputar sesuai lebar grid (bukan loop 1 langkah)', async () => {
+  // Isi kotak 1 saja, lalu putar preview — playhead harus menjelajah seluruh
+  // lebar grid (8 kolom), bukan berputar di 1 langkah.
+  await page.locator('tbody button[aria-label^="Langkah 1, Tak (T1)"]').click();
+  await page.click('button:has-text("▶ Play Preview")');
+  const seen = new Set();
+  const start = Date.now();
+  while (Date.now() - start < 1500) {
+    const idx = await page.evaluate(() => {
+      const cells = Array.from(document.querySelectorAll('tbody button[aria-label^="Langkah "]'));
+      return cells.findIndex((c) => c.className.includes('bg-brand-100'));
+    });
+    if (idx >= 0) seen.add(idx);
+    await page.waitForTimeout(50);
+  }
+  await page.click('button:has-text("■ Stop Preview")');
+  if (seen.size < 2) {
+    throw new Error(`playhead hanya di kolom ${[...seen]} — siklus tidak mengikuti lebar grid`);
+  }
+  // kembalikan kotak 1 ke kosong agar langkah uji berikutnya mulai bersih
+  await page.locator('tbody button[aria-label^="Langkah 1, Tak (T1)"]').click();
+});
+
 await step('grid steps: isi 4 kotak, matikan kotak ke-3 — kotak lain tidak bergeser', async () => {
   const cells = page.locator('tbody button[aria-label^="Langkah "]');
   const before = await cells.count();

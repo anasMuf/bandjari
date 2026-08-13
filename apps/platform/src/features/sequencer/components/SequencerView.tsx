@@ -11,7 +11,7 @@ import { LoginPromptInline } from '../../auth/components/LoginPromptInline';
 import { SequencerGrid, previewSampleAudio, type GridSlot } from './SequencerGrid';
 import { SoundSlotManager, type SoundSlotData } from './SoundSlotManager';
 import { useSectionPreview } from '../hooks/useSectionPreview';
-import { padSteps, trimSteps, decodeSteps, encodeSteps, setStepExtending, toggleKeyInCell, stepCount } from '../../../lib/steps';
+import { padSteps, trimSteps, decodeSteps, encodeSteps, setStepExtending, toggleKeyInCell, stepCount, normalizeStepsToGrid, MIN_GRID_COLUMNS } from '../../../lib/steps';
 import { PART_LABELS, PART_ORDER } from '../utils/parts';
 
 interface PartData {
@@ -168,12 +168,16 @@ export function SequencerView({ songId, sectionId, sectionName, songBpm, bpmOver
   const handleSave = () => {
     if (dirtyParts.length === 0) return;
     Promise.all(
-      dirtyParts.map((part) =>
-        saveStepsMutation.mutateAsync({
+      dirtyParts.map((part) => {
+        // Simpan dalam bentuk ternormalisasi: pola pendek digenapi ke lebar
+        // grid (8 kolom) dengan istirahat agar siklus playback di Launcher
+        // mengikuti lebar grid, bukan jumlah kotak terisi.
+        const value = normalizeStepsToGrid(stepsOf(part));
+        return saveStepsMutation.mutateAsync({
           id: part.id,
-          data: { steps: { set: true, value: stepsOf(part) } },
-        }),
-      ),
+          data: { steps: { set: true, value } },
+        });
+      }),
     )
       .then(() => {
         addToast({ variant: 'success', title: 'Steps tersimpan', message: 'Pola pukulan diperbarui.' });
@@ -298,8 +302,8 @@ export function SequencerView({ songId, sectionId, sectionName, songBpm, bpmOver
               </span>
             )}
             {' · '}
-            {Math.max(...orderedParts.map((p) => stepCount(stepsOf(p))), 0)} step ditampilkan (1 step = 1/16 ketukan;
-            panjang bebas)
+            {Math.max(MIN_GRID_COLUMNS, ...orderedParts.map((p) => stepCount(stepsOf(p))))} step ditampilkan
+            (1 step = 1/16 ketukan; panjang bebas)
           </span>
         </div>
         <div className="flex items-center gap-2">
