@@ -45,8 +45,8 @@ export function SampleLibraryView() {
   const deleteMutation = useDeleteSamplesId();
 
   const [uploadOpen, setUploadOpen] = useState(false);
-  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
-  const [uploadPart, setUploadPart] = useState<string>(PARTS[0]);
+  // Satu baris per file: nama prefill dari nama file (tetap bisa diedit) + Part per file.
+  const [pending, setPending] = useState<Array<{ file: File; name: string; part: string }>>([]);
   const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
   const [renaming, setRenaming] = useState<SampleItem | null>(null);
   const [renameValue, setRenameValue] = useState('');
@@ -73,24 +73,25 @@ export function SampleLibraryView() {
     templatesQuery.refetch();
   };
 
-  // Bulk upload: nama tiap sample diekstrak dari nama file (tanpa ekstensi),
-  // Part dipilih sekali untuk seluruh batch. File diunggah berurutan; file
-  // yang gagal (bukan .wav / >5MB) dilaporkan tanpa menghentikan sisanya.
+  // Bulk upload: nama tiap sample di-prefill dari nama file (tetap bisa diedit),
+  // Part dipilih per file. File diunggah berurutan; file yang gagal (bukan .wav
+  // / >5MB) dilaporkan tanpa menghentikan sisanya.
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (uploadFiles.length === 0) return;
-    setUploadProgress({ done: 0, total: uploadFiles.length });
+    if (pending.length === 0) return;
+    setUploadProgress({ done: 0, total: pending.length });
     let ok = 0;
     const failed: string[] = [];
-    for (const file of uploadFiles) {
+    for (const item of pending) {
+      const name = item.name.trim() || sampleNameFromFileName(item.file.name);
       try {
         await uploadMutation.mutateAsync({
-          data: { file, name: sampleNameFromFileName(file.name), part: uploadPart },
+          data: { file: item.file, name, part: item.part },
         });
         ok++;
       } catch (error) {
         failed.push(
-          `${file.name}: ${error instanceof ApiError ? error.message : 'gagal diunggah'}`,
+          `${item.file.name}: ${error instanceof ApiError ? error.message : 'gagal diunggah'}`,
         );
       }
       setUploadProgress((prev) => (prev ? { ...prev, done: prev.done + 1 } : prev));
@@ -101,12 +102,12 @@ export function SampleLibraryView() {
     } else {
       addToast({
         variant: 'error',
-        title: `${failed.length} dari ${uploadFiles.length} file gagal`,
+        title: `${failed.length} dari ${pending.length} file gagal`,
         message: `${ok} berhasil. ${failed.join('; ')}`,
       });
     }
     setUploadProgress(null);
-    setUploadFiles([]);
+    setPending([]);
     refreshAll();
   };
 
@@ -204,48 +205,83 @@ export function SampleLibraryView() {
       {uploadOpen && (
         <form onSubmit={handleUpload} className="mt-4 rounded-lg bg-white p-4 ring-1 ring-stone-900/5">
           <h2 className="text-sm font-semibold text-stone-900">Upload Sample Baru (bulk)</h2>
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label htmlFor="upload-file" className="block text-sm/6 font-medium text-stone-900">
-                File (.wav, maks 5MB tiap file — bisa pilih banyak)
-              </label>
-              <input
-                id="upload-file"
-                type="file"
-                multiple
-                accept=".wav,audio/wav,audio/x-wav"
-                onChange={(e) => setUploadFiles(Array.from(e.target.files ?? []))}
-                className="mt-2 block w-full text-sm text-stone-700 file:mr-3 file:rounded-md file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-brand-800 hover:file:bg-brand-100"
-              />
-            </div>
-            <div>
-              <label htmlFor="upload-part" className="block text-sm/6 font-medium text-stone-900">
-                Part (berlaku untuk seluruh batch)
-              </label>
-              <select
-                id="upload-part"
-                value={uploadPart}
-                onChange={(e) => setUploadPart(e.target.value)}
-                className="mt-2 block w-full rounded-md border-0 bg-white py-2 pl-3 pr-8 text-sm text-stone-900 ring-1 ring-stone-300 ring-inset focus:ring-2 focus:ring-brand-700"
-              >
-                {PARTS.map((p) => (
-                  <option key={p} value={p}>
-                    {partLabel(p)}
-                  </option>
-                ))}
-              </select>
-            </div>
+
+          <div className="mt-4">
+            <label htmlFor="upload-file" className="block text-sm/6 font-medium text-stone-900">
+              File (.wav, maks 5MB tiap file — bisa pilih banyak)
+            </label>
+            <input
+              id="upload-file"
+              type="file"
+              multiple
+              accept=".wav,audio/wav,audio/x-wav"
+              onChange={(e) =>
+                setPending(
+                  Array.from(e.target.files ?? []).map((file) => ({
+                    file,
+                    name: sampleNameFromFileName(file.name),
+                    part: PARTS[0],
+                  })),
+                )
+              }
+              className="mt-2 block w-full text-sm text-stone-700 file:mr-3 file:rounded-md file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-brand-800 hover:file:bg-brand-100"
+            />
           </div>
 
-          {uploadFiles.length > 0 && (
-            <div className="mt-3 rounded-md bg-stone-50 p-3">
+          {pending.length > 0 && (
+            <div className="mt-4">
               <p className="text-xs font-semibold text-stone-700">
-                {uploadFiles.length} file dipilih — nama sample otomatis dari nama file:
+                {pending.length} file dipilih — nama & Part bisa disesuaikan per file sebelum unggah:
               </p>
-              <ul className="mt-1 max-h-32 space-y-0.5 overflow-y-auto text-xs text-stone-600">
-                {uploadFiles.map((file) => (
-                  <li key={`${file.name}-${file.size}`}>
-                    {file.name} → <span className="font-medium text-stone-800">{sampleNameFromFileName(file.name)}</span>
+              <ul className="mt-2 divide-y divide-stone-100 rounded-md ring-1 ring-stone-200 ring-inset">
+                {pending.map((item, index) => (
+                  <li key={`${item.file.name}-${item.file.size}`} className="flex flex-wrap items-end gap-3 px-3 py-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs text-stone-400" title={item.file.name}>
+                        {item.file.name}
+                      </p>
+                      <label
+                        htmlFor={`upload-name-${index}`}
+                        className="mt-1 block text-xs font-medium text-stone-600"
+                      >
+                        Nama sample
+                      </label>
+                      <input
+                        id={`upload-name-${index}`}
+                        value={item.name}
+                        onChange={(e) =>
+                          setPending((prev) =>
+                            prev.map((p, i) => (i === index ? { ...p, name: e.target.value } : p)),
+                          )
+                        }
+                        maxLength={255}
+                        className="mt-1 block w-full rounded-md bg-white px-3 py-1.5 text-sm text-stone-900 outline-1 -outline-offset-1 outline-stone-300 placeholder:text-stone-400 focus:outline-2 focus:-outline-offset-2 focus:outline-brand-700"
+                      />
+                    </div>
+                    <div className="w-36 shrink-0">
+                      <label
+                        htmlFor={`upload-part-${index}`}
+                        className="block text-xs font-medium text-stone-600"
+                      >
+                        Part
+                      </label>
+                      <select
+                        id={`upload-part-${index}`}
+                        value={item.part}
+                        onChange={(e) =>
+                          setPending((prev) =>
+                            prev.map((p, i) => (i === index ? { ...p, part: e.target.value } : p)),
+                          )
+                        }
+                        className="mt-1 block w-full rounded-md border-0 bg-white py-1.5 pl-3 pr-8 text-sm text-stone-900 ring-1 ring-stone-300 ring-inset focus:ring-2 focus:ring-brand-700"
+                      >
+                        {PARTS.map((p) => (
+                          <option key={p} value={p}>
+                            {partLabel(p)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -259,18 +295,18 @@ export function SampleLibraryView() {
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <Button
               type="submit"
-              disabled={uploadFiles.length === 0 || uploadProgress !== null}
+              disabled={pending.length === 0 || uploadProgress !== null}
             >
               {uploadProgress
                 ? `Mengunggah ${uploadProgress.done}/${uploadProgress.total}…`
-                : `Unggah ${uploadFiles.length > 0 ? `${uploadFiles.length} File` : ''}`}
+                : `Unggah ${pending.length > 0 ? `${pending.length} File` : ''}`}
             </Button>
             <Button
               type="button"
               variant="ghost"
               onClick={() => {
                 setUploadOpen(false);
-                setUploadFiles([]);
+                setPending([]);
               }}
               disabled={uploadProgress !== null}
             >
