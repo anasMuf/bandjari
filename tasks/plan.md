@@ -702,42 +702,42 @@ Redesign total seluruh halaman frontend agar **struktur & konten tiap layar meng
 ## Task List — Redesign
 
 ### Slice 0: Design tokens & komponen bersama
-- [ ] RD-0.1 Token tema di `styles.css` (brand teal, radius, dsb) + ganti variant Button/FormField/ConfirmDialog/Toast
-- [ ] RD-0.2 Komponen bersama baru: `Badge` (SYSTEM/★), `SectionHeader`, `EmptyState`, `PageHeader`; app shell/nav konsisten
+- [x] RD-0.1 Token tema di `styles.css` (brand teal, radius, dsb) + ganti variant Button/FormField/ConfirmDialog/Toast
+- [x] RD-0.2 Komponen bersama baru: `Badge` (SYSTEM/★), `SectionHeader`, `EmptyState`, `PageHeader`; app shell/nav konsisten
 
 ### Slice 1: Landing (Guest) — layar 0
-- [ ] RD-1.1 Kartu Song Template: badge SYSTEM, meta "BPM · N Section", tombol ▶ Main langsung ke Launcher
-- [ ] RD-1.2 Kotak CTA "Mau susun lagu sendiri?" + hero
+- [x] RD-1.1 Kartu Song Template: badge SYSTEM, meta "BPM · N Section", tombol ▶ Main langsung ke Launcher
+- [x] RD-1.2 Kotak CTA "Mau susun lagu sendiri?" + hero
 
 ### Slice 2: Daftar Lagu — layar 1
-- [ ] RD-2.1 Backend: `section_count` di SongResponse (List & ListTemplates)
-- [ ] RD-2.2 Form buat lagu → "Simpan & Lanjut ke Section →" (navigasi ke detail)
-- [ ] RD-2.3 Item lagu: meta BPM · N Section, aksi Duplikasi/Hapus; state kosong ♪
+- [x] RD-2.1 Backend: `section_count` di SongResponse (List & ListTemplates)
+- [x] RD-2.2 Form buat lagu → "Simpan & Lanjut ke Section →" (navigasi ke detail)
+- [x] RD-2.3 Item lagu: meta BPM · N Section, aksi Duplikasi/Hapus; state kosong ♪
 
 ### Slice 3: Detail Song / Section — layar 2
-- [ ] RD-3.1 Banner read-only Guest (lagu template)
-- [ ] RD-3.2 Section strip: pegangan #N + BPM badge ★ + chip + Tambah Section
-- [ ] RD-3.3 Panel "Section Terpilih": Buka di Sequencer, Duplikasi, Hapus, kotak BPM override
-- [ ] RD-3.4 Panel "Ringkasan Song" (jumlah section, override, kelengkapan sample) + ▶ Buka Launcher
+- [x] RD-3.1 Banner read-only Guest (lagu template)
+- [x] RD-3.2 Section strip: pegangan #N + BPM badge ★ + chip + Tambah Section
+- [x] RD-3.3 Panel "Section Terpilih": Buka di Sequencer, Duplikasi, Hapus, kotak BPM override
+- [x] RD-3.4 Panel "Ringkasan Song" (jumlah section, override, kelengkapan sample) + ▶ Buka Launcher
 
 ### Slice 4: Sequencer — layar 3
-- [ ] RD-4.1 Grid terpadu 5 Part (subheader per Part, baris SoundSlot, badge SYS, preview ▶ per baris)
-- [ ] RD-4.2 Toolbar: Play Preview (indikator playhead), kontrol ±8 step, info BPM/panjang
-- [ ] RD-4.3 Panel kelola SoundSlot per Part (tabel Label/Key/Sample + 2 optgroup + proteksi)
-- [ ] RD-4.4 Aksi: Simpan Perubahan, Preview Section (semua Part), kembali
+- [x] RD-4.1 Grid terpadu 5 Part (subheader per Part, baris SoundSlot, badge SYS, preview ▶ per baris)
+- [x] RD-4.2 Toolbar: Play Preview (indikator playhead), kontrol ±8 step, info BPM/panjang
+- [x] RD-4.3 Panel kelola SoundSlot per Part (tabel Label/Key/Sample + 2 optgroup + proteksi)
+- [x] RD-4.4 Aksi: Simpan Perubahan, Preview Section (semua Part), kembali
 
 ### Slice 5: Sample Library — layar 4
-- [ ] RD-5.1 Backend: `usage_count` di SampleResponse (List & ListTemplates)
-- [ ] RD-5.2 Seksi "Sample Bawaan (SYSTEM)" read-only + seksi "Sample Saya"
-- [ ] RD-5.3 Kartu sample: tag Part, "Dipakai di N SoundSlot", preview/rename/hapus; state error 409
+- [x] RD-5.1 Backend: `usage_count` di SampleResponse (List & ListTemplates)
+- [x] RD-5.2 Seksi "Sample Bawaan (SYSTEM)" read-only + seksi "Sample Saya"
+- [x] RD-5.3 Kartu sample: tag Part, "Dipakai di N SoundSlot", preview/rename/hapus; state error 409
 
 ### Slice 6: Launcher — layar 5
-- [ ] RD-6.1 Pad: status per pad (sedang main/menunggu/siap), step-dots, ★, pad placeholder + Section
-- [ ] RD-6.2 Transport: status lengkap + Mute per Part + ■ Stop
+- [x] RD-6.1 Pad: status per pad (sedang main/menunggu/siap), step-dots, ★, pad placeholder + Section
+- [x] RD-6.2 Transport: status lengkap + Mute per Part + ■ Stop
 
 ### Slice 7: Verifikasi
-- [ ] RD-7.1 Playwright: alur lengkap + alur Guest (landing → template → sequencer read-only → launcher)
-- [ ] RD-7.2 Screenshot tiap layar + bersih console error
+- [x] RD-7.1 Playwright: alur lengkap + alur Guest (landing → template → sequencer read-only → launcher)
+- [x] RD-7.2 Screenshot tiap layar + bersih console error
 
 ## Risks and Mitigations (Redesign)
 

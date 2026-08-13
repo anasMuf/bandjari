@@ -81,7 +81,7 @@ Checklist eksekusi turunan dari `tasks/plan.md`. Centang saat task selesai + ver
 - [x] **T32** AudioBuffer cache + prefetch (E7-1)
 - [x] **T33** LauncherGrid + quantized trigger + indikator (E7-2)
 - [x] **T34** Hard cut BPM + Stop + silent step (E7-3, E7-4)
-- [ ] **T35** (Could) Mute per Part (E7-5) — backlog Fase 1.1
+- [x] **T35** (Could) Mute per Part (E7-5) — selesai di redesign Slice 6 (RD-6)
 
 ### Checkpoint: Launcher (Final)
 - [x] Alur lengkap: Song → Section → pattern → sample → playback live (data nested terverifikasi via API; engine + quantized trigger ter-cover unit test)
@@ -93,3 +93,19 @@ Checklist eksekusi turunan dari `tasks/plan.md`. Centang saat task selesai + ver
 - [x] Open Questions di `tasks/plan.md` dijawab (terutama #1 konten seeding & #3 skema users)
 - [x] Plan direview & disetujui
 - [x] DB dev di-reset bila Task 1 mengubah skema `users`
+
+## Redesign UI — Fase 1.5 (sesuai Wireframe)
+
+- [x] **RD-0** Design tokens brand teal + komponen bersama (Badge, PageHeader, SectionHeader, EmptyState, TopBar)
+- [x] **RD-1** Landing: kartu Song Template + badge SYSTEM + ▶ Main, CTA login (layar 0)
+- [x] **RD-2** Daftar Lagu: section_count backend, form "Simpan & Lanjut ke Section →", meta BPM·N Section·diubah (layar 1)
+- [x] **RD-3** Detail Song: banner Guest, strip chip #N + BPM ★, panel Section Terpilih + Ringkasan Song (layar 2)
+- [x] **RD-4** Sequencer: grid terpadu 5 Part, playhead, ±8 step, panel SoundSlot 2 optgroup (layar 3)
+- [x] **RD-5** Sample Library: usage_count backend, dua seksi Bawaan/Saya, error 409 inline (layar 4)
+- [x] **RD-6** Launcher: status pad + step-dots + transport + Mute per Part FR-PLAY-10 (layar 5)
+- [x] **RD-7** Verifikasi: Playwright alur lengkap + Guest (14 langkah, 0 console error, 0 respons 4xx) + screenshot 10 layar
+
+### Checkpoint: Redesign
+- [x] `go test ./...` hijau + swagger/orval regen bersih
+- [x] `pnpm build` + `pnpm test` (20 tes) hijau
+- [x] E2E dev: beranda → template → sequencer read-only → launcher (Guest) + alur lengkap user → sample library
