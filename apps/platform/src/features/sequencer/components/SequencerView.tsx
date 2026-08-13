@@ -113,8 +113,6 @@ export function SequencerView({ songId, sectionId, sectionName }: SequencerViewP
   const dirtyParts = orderedParts.filter((part) => stepsOf(part) !== (part.steps ?? ''));
   const allPartsEmpty = orderedParts.every((part) => part.sound_slots.length === 0);
 
-  const defaultKeyOf = (part: PartData): string => part.sound_slots[0]?.key ?? 'T';
-
   const handleToggleCell = (partId: number, slotKey: string, colIndex: number) => {
     const part = orderedParts.find((p) => p.id === partId);
     if (!part) return;
@@ -123,10 +121,8 @@ export function SequencerView({ songId, sectionId, sectionName }: SequencerViewP
     if (colIndex < cells.length && cells[colIndex] === slotKey) {
       setStepsByPart((prev) => ({ ...prev, [partId]: encodeSteps(removeColumn(cells, colIndex)) }));
     } else {
-      setStepsByPart((prev) => ({
-        ...prev,
-        [partId]: setStepExtending(current, colIndex, slotKey, defaultKeyOf(part)),
-      }));
+      // Klik satu kotak hanya mengisi kotak itu — celah di kirinya jadi istirahat.
+      setStepsByPart((prev) => ({ ...prev, [partId]: setStepExtending(current, colIndex, slotKey) }));
     }
   };
 
@@ -149,7 +145,7 @@ export function SequencerView({ songId, sectionId, sectionName }: SequencerViewP
       const next = { ...prev };
       for (const part of withSlots) {
         const current = stepsOf(part);
-        next[part.id] = delta > 0 ? padSteps(current, delta, defaultKeyOf(part)) : trimSteps(current, -delta);
+        next[part.id] = delta > 0 ? padSteps(current, delta) : trimSteps(current, -delta);
       }
       return next;
     });
@@ -265,9 +261,10 @@ export function SequencerView({ songId, sectionId, sectionName }: SequencerViewP
 
       <p className="mt-4 rounded-md border border-stone-200 bg-white p-3 text-xs leading-relaxed text-stone-600">
         <span className="font-semibold text-stone-800">Cara pakai:</span> klik kotak pada baris & kolom step untuk
-        mengaktifkan/menonaktifkan bunyi. Jumlah baris tiap Part dinamis — tiap Part punya sejumlah SoundSlot
-        (jenis bunyi, mis. Tak/Dung/Duk) yang bisa ditambah bebas. Slot sample boleh kosong dulu — playback tetap
-        jalan, part tsb senyap. Tombol ▶ di kiri tiap baris memutar preview bunyi tsb sendirian (FR-SEQ-05).
+        mengaktifkan/menonaktifkan bunyi — <span className="font-semibold">klik satu kotak hanya mengisi kotak itu</span>,
+        kotak di kirinya tetap kosong (langkah istirahat, senyap). Jumlah baris tiap Part dinamis — tiap Part punya
+        sejumlah SoundSlot (jenis bunyi, mis. Tak/Dung/Duk) yang bisa ditambah bebas. Slot sample boleh kosong dulu —
+        playback tetap jalan, part tsb senyap. Tombol ▶ di kiri tiap baris memutar preview bunyi tsb sendirian (FR-SEQ-05).
       </p>
 
       {/* Toolbar */}

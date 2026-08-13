@@ -12,6 +12,7 @@ func TestValidateSteps(t *testing.T) {
 		{"valid", "T,D,T,D", []string{"T", "D"}, false},
 		{"valid with third key", "T,D,K,D,T", []string{"T", "D", "K"}, false},
 		{"valid key 2 karakter", "T,KD,T", []string{"T", "KD"}, false},
+		{"valid langkah istirahat", "T,.,D,.,T", []string{"T", "D"}, false},
 		{"invalid unknown key", "T,X,T,D", []string{"T", "D"}, true},
 		{"invalid key parsial 2 karakter", "K,KD", []string{"KD"}, true}, // "K" bukan "KD"
 		{"invalid langkah kosong", "T,,D", []string{"T", "D"}, true},

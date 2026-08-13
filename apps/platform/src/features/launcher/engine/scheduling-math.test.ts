@@ -44,6 +44,12 @@ describe('scheduling-math', () => {
     expect(stepKeysAt(parts, 1)).toEqual([{ key: 'KD', buffer: expect.anything() }]);
   });
 
+  it('stepKeysAt memperlakukan langkah istirahat sebagai senyap', () => {
+    const parts = [part('.,T', ['T'])];
+    expect(stepKeysAt(parts, 0)).toEqual([{ key: '', buffer: undefined }]);
+    expect(stepKeysAt(parts, 1)).toEqual([{ key: 'T', buffer: expect.anything() }]);
+  });
+
   it('stepKeysAt menangani steps kosong', () => {
     const parts = [part('', [])];
     expect(stepKeysAt(parts, 0)).toEqual([{ key: '', buffer: undefined }]);

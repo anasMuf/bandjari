@@ -19,10 +19,15 @@ func ValidateSoundSlotKey(key string) error {
 	return nil
 }
 
+// restStep adalah token langkah istirahat (senyap) dalam format steps. Tanda
+// ini tidak bisa menjadi key karena key dibatasi alfanumerik 1–2 karakter.
+const restStep = "."
+
 // ValidateSteps memeriksa bahwa setiap langkah dalam `steps` — dipisah koma —
 // merujuk TEPAT ke salah satu `key` SoundSlot terdaftar pada SectionPart
-// terkait (FR-SEQ-02). Mendukung key 1–2 karakter; himpunan key valid dinamis
-// per SectionPart, sehingga tidak bisa berupa regex statis (TDD Bagian 7).
+// terkait (FR-SEQ-02), atau merupakan langkah istirahat ".". Mendukung key
+// 1–2 karakter; himpunan key valid dinamis per SectionPart, sehingga tidak
+// bisa berupa regex statis (TDD Bagian 7).
 func ValidateSteps(steps string, keys []string) error {
 	if steps == "" {
 		return nil
@@ -33,7 +38,10 @@ func ValidateSteps(steps string, keys []string) error {
 	}
 	for _, token := range strings.Split(steps, ",") {
 		if token == "" {
-			return fmt.Errorf("langkah kosong dalam steps tidak valid — tiap langkah harus satu key (mis. \"T,D\")")
+			return fmt.Errorf("langkah kosong dalam steps tidak valid — tiap langkah harus satu key (mis. \"T,D\") atau istirahat \".\"")
+		}
+		if token == restStep {
+			continue // langkah istirahat — senyap, tidak butuh sample (AC-5)
 		}
 		if !valid[token] {
 			return fmt.Errorf("key %q dalam steps tidak merujuk ke key SoundSlot manapun pada SectionPart ini", token)

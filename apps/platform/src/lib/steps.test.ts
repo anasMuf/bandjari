@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  appendColumn,
   decodeSteps,
   encodeSteps,
   keyAt,
@@ -12,16 +11,18 @@ import {
   trimSteps,
 } from './steps';
 
-describe('steps (format koma)', () => {
-  it('decode memecah string menjadi token per koma', () => {
+describe('steps (format koma + langkah istirahat)', () => {
+  it('decode memecah string menjadi token per koma; "." menjadi sel kosong', () => {
     expect(decodeSteps('T,D,T,D')).toEqual(['T', 'D', 'T', 'D']);
     expect(decodeSteps('T,KD')).toEqual(['T', 'KD']);
+    expect(decodeSteps('T,.,D')).toEqual(['T', null, 'D']);
     expect(decodeSteps('')).toEqual([]);
   });
 
-  it('encode menggabungkan token dengan koma (round-trip)', () => {
+  it('encode menggabungkan token; sel kosong menjadi "." (round-trip)', () => {
     expect(encodeSteps(decodeSteps('T,D,KD'))).toBe('T,D,KD');
-    expect(encodeSteps(['T', 'KD', 'D'])).toBe('T,KD,D');
+    expect(encodeSteps(['T', null, 'D'])).toBe('T,.,D');
+    expect(encodeSteps(decodeSteps('T,.,KD'))).toBe('T,.,KD');
   });
 
   it('setCell mengganti isi satu kolom tanpa mengubah kolom lain', () => {
@@ -35,37 +36,35 @@ describe('steps (format koma)', () => {
     expect(encodeSteps(removeColumn(cells, 2))).toBe('T,D,D');
   });
 
-  it('appendColumn menambah posisi di akhir dengan key default', () => {
-    expect(encodeSteps(appendColumn(decodeSteps('T,D'), 'KD'))).toBe('T,D,KD');
-    expect(encodeSteps(appendColumn([], 'D'))).toBe('D');
-  });
-
-  it('padSteps menambah N langkah berisi key default di akhir', () => {
-    expect(padSteps('T,D', 8, 'T')).toBe('T,D,T,T,T,T,T,T,T,T');
-    expect(padSteps('', 8, 'KD')).toBe('KD,KD,KD,KD,KD,KD,KD,KD');
-    expect(padSteps('T,D', 0, 'T')).toBe('T,D');
+  it('padSteps menambah N langkah istirahat di akhir', () => {
+    expect(padSteps('T,D', 8)).toBe('T,D,.,.,.,.,.,.,.,.');
+    expect(padSteps('', 3)).toBe('.,.,.');
+    expect(padSteps('T,D', 0)).toBe('T,D');
   });
 
   it('trimSteps memotong hingga N langkah dari akhir', () => {
-    expect(trimSteps('T,D,T,D,T,D,T,D,T,D', 8)).toBe('T,D');
+    expect(trimSteps('T,D,.,.,.,.,.,.,.,.', 8)).toBe('T,D');
     expect(trimSteps('T,D', 8)).toBe('');
     expect(trimSteps('T,D', 0)).toBe('T,D');
   });
 
-  it('setStepExtending mengisi celah di luar panjang dengan defaultKey', () => {
-    expect(setStepExtending('T,D', 4, 'K', 'T')).toBe('T,D,T,T,K');
-    expect(setStepExtending('T,D', 1, 'K', 'T')).toBe('T,K');
+  it('setStepExtending hanya mengisi kotak yang diklik — celah jadi istirahat', () => {
+    expect(setStepExtending('T,D', 4, 'K')).toBe('T,D,.,.,K');
+    expect(setStepExtending('', 3, 'T')).toBe('.,.,.,T');
+    expect(setStepExtending('T,D', 1, 'K')).toBe('T,K');
   });
 
-  it('stepCount menghitung jumlah langkah (bukan karakter)', () => {
+  it('stepCount menghitung jumlah langkah termasuk istirahat', () => {
     expect(stepCount('T,D,KD')).toBe(3);
+    expect(stepCount('T,.,.')).toBe(3);
     expect(stepCount('')).toBe(0);
   });
 
-  it('keyAt loop sesuai panjang steps dan mendukung key 2 karakter', () => {
+  it('keyAt loop sesuai panjang steps; istirahat → undefined', () => {
     expect(keyAt('T,D,KD', 0)).toBe('T');
     expect(keyAt('T,D,KD', 2)).toBe('KD');
     expect(keyAt('T,D,KD', 3)).toBe('T'); // loop
+    expect(keyAt('T,.,D', 1)).toBeUndefined(); // istirahat
     expect(keyAt('', 0)).toBeUndefined();
   });
 });
