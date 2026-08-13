@@ -31,3 +31,26 @@ export function removeColumn(cells: StepCell[], colIndex: number): StepCell[] {
 export function appendColumn(cells: StepCell[], defaultKey: string): StepCell[] {
   return [...cells, defaultKey];
 }
+
+/** Tambahkan `count` langkah di akhir berisi key default (kontrol +8 step). */
+export function padSteps(steps: string, count: number, defaultKey: string): string {
+  if (count <= 0) return steps;
+  return steps + defaultKey.repeat(count);
+}
+
+/** Kurangi hingga `count` langkah dari akhir (kontrol −8 step), minimal kosong. */
+export function trimSteps(steps: string, count: number): string {
+  if (count <= 0) return steps;
+  return steps.slice(0, Math.max(0, steps.length - count));
+}
+
+/**
+ * Set sel pada kolom colIndex; bila kolom di luar panjang steps saat ini,
+ * isi celah antaranya dengan defaultKey (perilaku klik "melampaui panjang"
+ * pada grid terpadu antar Part).
+ */
+export function setStepExtending(steps: string, colIndex: number, key: string, defaultKey: string): string {
+  const cells = decodeSteps(steps);
+  while (cells.length < colIndex) cells.push(defaultKey);
+  return encodeSteps(setCell(cells, colIndex, key));
+}

@@ -15,7 +15,7 @@ interface EmptyStateProps {
 export function EmptyState({ icon, title, description, children }: EmptyStateProps) {
   return (
     <div
-      role="status"
+      aria-live="polite"
       className="mt-6 rounded-lg border-2 border-dashed border-stone-200 p-10 text-center"
     >
       {icon && (

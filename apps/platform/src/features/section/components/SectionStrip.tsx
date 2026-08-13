@@ -128,6 +128,7 @@ export function SectionStrip({
           const active = sec.id === selectedId;
           const override = sec.bpm_override !== null;
           return (
+            // biome-ignore lint/a11y/useSemanticElements: chip berisi tombol ▲/▼ bersarang — elemen <button> di dalamnya tidak valid
             <div
               key={sec.id}
               draggable={!readOnly}
@@ -202,7 +203,6 @@ export function SectionStrip({
         {adding ? (
           <form onSubmit={handleCreate} className="flex items-center gap-2">
             <input
-              autoFocus
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="mis. Awalan"

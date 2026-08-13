@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { useGetSongsId } from '../../../api/endpoints/songs/songs';
 import { useGetSectionsIdParts, usePutSectionPartsId } from '../../../api/endpoints/section-parts/section-parts';
@@ -8,25 +8,19 @@ import { useToast } from '../../../components/molecules/Toast';
 import { ApiError } from '../../../api/mutator/custom-instance';
 import { useAuth } from '../../auth/AuthContext';
 import { LoginPromptInline } from '../../auth/components/LoginPromptInline';
-import { StepGrid } from '../components/StepGrid';
-import { SoundSlotManager, type SoundSlotData } from '../components/SoundSlotManager';
-import { usePartPreview } from '../hooks/usePartPreview';
+import { SequencerGrid, previewSampleAudio, type GridSlot } from './SequencerGrid';
+import { SoundSlotManager, type SoundSlotData } from './SoundSlotManager';
+import { useSectionPreview } from '../hooks/useSectionPreview';
+import { padSteps, trimSteps, decodeSteps, removeColumn, encodeSteps, setStepExtending } from '../utils/steps-codec';
+import { PART_LABELS, PART_ORDER } from '../utils/parts';
 
 interface PartData {
   id: number;
   section_id: number;
   part: string;
   steps: string | null;
-  sound_slots: SoundSlotData[];
+  sound_slots: Array<SoundSlotData & { sample?: { id: number; name: string; is_system_template: boolean } | null }>;
 }
-
-const PART_LABELS: Record<string, string> = {
-  rebana1: 'Rebana 1',
-  rebana2: 'Rebana 2',
-  rebana3: 'Rebana 3',
-  rebana4: 'Rebana 4',
-  bass: 'Bass',
-};
 
 interface SequencerViewProps {
   songId: number;
@@ -34,42 +28,50 @@ interface SequencerViewProps {
   sectionName: string;
 }
 
+/** Jumlah langkah yang ditambah/dikurangi lewat kontrol ±8 step (FR-SEQ-03). */
+const STEP_BATCH = 8;
+
 export function SequencerView({ songId, sectionId, sectionName }: SequencerViewProps) {
   const { addToast } = useToast();
   const { isAuthenticated } = useAuth();
   const partsQuery = useGetSectionsIdParts(sectionId);
   const songQuery = useGetSongsId(songId);
   const saveStepsMutation = usePutSectionPartsId();
-  const preview = usePartPreview();
+  const preview = useSectionPreview();
 
+  const [stepsByPart, setStepsByPart] = useState<Record<number, string>>({});
   const [selectedPartId, setSelectedPartId] = useState<number | null>(null);
-  const [steps, setSteps] = useState('');
   const [editPromptZone, setEditPromptZone] = useState<'slots' | 'grid' | null>(null);
+  const [focusCreateSignal, setFocusCreateSignal] = useState(0);
+  const managerRef = useRef<HTMLDivElement>(null);
 
   const parts = ((partsQuery.data?.data as DtoSuccessResponse | undefined)?.data ?? []) as PartData[];
-  const sortedParts = [...parts].sort((a, b) => PART_LABELS[a.part]?.localeCompare(PART_LABELS[b.part] ?? '') ?? 0);
-  const selectedPart = sortedParts.find((p) => p.id === selectedPartId) ?? sortedParts[0];
+  const orderedParts = useMemo(
+    () =>
+      PART_ORDER.map((p) => parts.find((part) => part.part === p)).filter(
+        (part): part is PartData => Boolean(part),
+      ),
+    [parts],
+  );
+  const selectedPart = orderedParts.find((p) => p.id === selectedPartId) ?? orderedParts[0];
+
+  // State edit per Part — komponen di-remount per section (key=sectionId di route),
+  // sehingga stepsByPart selalu mulai kosong lalu jatuh ke nilai dari server.
+  const stepsOf = (part: PartData) => stepsByPart[part.id] ?? part.steps ?? '';
 
   useEffect(() => {
-    if (!selectedPartId && sortedParts.length > 0) {
-      setSelectedPartId(sortedParts[0].id);
+    if (!selectedPartId && orderedParts.length > 0) {
+      setSelectedPartId(orderedParts[0].id);
     }
-  }, [sortedParts, selectedPartId]);
-
-  useEffect(() => {
-    if (selectedPart) {
-      setSteps(selectedPart.steps ?? '');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps — hanya reset saat pindah part (id), bukan tiap render
-  }, [selectedPart?.id]);
+  }, [orderedParts, selectedPartId]);
 
   if (partsQuery.isLoading || songQuery.isLoading) {
-    return <p className="text-sm text-gray-500">Memuat sequencer...</p>;
+    return <p className="text-sm text-stone-500">Memuat sequencer...</p>;
   }
 
   if (partsQuery.isError) {
     return (
-      <div role="status" className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
+      <div aria-live="polite" className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
         <p className="text-sm font-medium text-red-800">
           Section tidak ditemukan atau tidak dapat diakses.
         </p>
@@ -80,7 +82,7 @@ export function SequencerView({ songId, sectionId, sectionName }: SequencerViewP
             </p>
             <Link
               to="/login"
-              className="mt-3 inline-flex items-center justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+              className="mt-3 inline-flex items-center justify-center rounded-md bg-brand-700 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-600"
             >
               Masuk
             </Link>
@@ -90,15 +92,14 @@ export function SequencerView({ songId, sectionId, sectionName }: SequencerViewP
     );
   }
 
-  if (!selectedPart) {
+  if (!selectedPart || orderedParts.length === 0) {
     return (
-      <p role="status" className="text-sm text-gray-500">
+      <p aria-live="polite" className="text-sm text-stone-500">
         Section ini belum memiliki bagian instrumen.
       </p>
     );
   }
 
-  const isDirty = steps !== (selectedPart.steps ?? '');
   const songResp = songQuery.data?.data;
   const songData =
     songResp && 'data' in songResp ? (songResp.data as { bpm?: number; is_system_template?: boolean }) : undefined;
@@ -106,23 +107,61 @@ export function SequencerView({ songId, sectionId, sectionName }: SequencerViewP
   // Song Template System read-only bagi siapapun (FR-SONG-08); Guest read-only semua (FR-AUTH-06).
   const readOnly = !isAuthenticated || songData?.is_system_template === true;
 
-  const handleSaveSteps = () => {
-    saveStepsMutation.mutate(
-      { id: selectedPart.id, data: { steps: { set: true, value: steps } } },
-      {
-        onSuccess: () => {
-          addToast({ variant: 'success', title: 'Steps tersimpan', message: 'Pola pukulan diperbarui.' });
-          partsQuery.refetch();
-        },
-        onError: (error) => {
-          addToast({
-            variant: 'error',
-            title: 'Gagal menyimpan steps',
-            message: error instanceof ApiError ? error.message : 'Terjadi kesalahan tak terduga.',
-          });
-        },
-      },
-    );
+  const dirtyParts = orderedParts.filter((part) => stepsOf(part) !== (part.steps ?? ''));
+
+  const defaultKeyOf = (part: PartData): string => part.sound_slots[0]?.key ?? 'T';
+
+  const handleToggleCell = (partId: number, slotKey: string, colIndex: number) => {
+    const part = orderedParts.find((p) => p.id === partId);
+    if (!part) return;
+    const current = stepsOf(part);
+    const cells = decodeSteps(current);
+    if (colIndex < cells.length && cells[colIndex] === slotKey) {
+      setStepsByPart((prev) => ({ ...prev, [partId]: encodeSteps(removeColumn(cells, colIndex)) }));
+    } else {
+      setStepsByPart((prev) => ({
+        ...prev,
+        [partId]: setStepExtending(current, colIndex, slotKey, defaultKeyOf(part)),
+      }));
+    }
+  };
+
+  const handleBatchSteps = (delta: number) => {
+    if (readOnly) {
+      setEditPromptZone('grid');
+      return;
+    }
+    setStepsByPart((prev) => {
+      const next = { ...prev };
+      for (const part of orderedParts) {
+        const current = stepsOf(part);
+        next[part.id] = delta > 0 ? padSteps(current, delta, defaultKeyOf(part)) : trimSteps(current, -delta);
+      }
+      return next;
+    });
+  };
+
+  const handleSave = () => {
+    if (dirtyParts.length === 0) return;
+    Promise.all(
+      dirtyParts.map((part) =>
+        saveStepsMutation.mutateAsync({
+          id: part.id,
+          data: { steps: { set: true, value: stepsOf(part) } },
+        }),
+      ),
+    )
+      .then(() => {
+        addToast({ variant: 'success', title: 'Steps tersimpan', message: 'Pola pukulan diperbarui.' });
+        partsQuery.refetch();
+      })
+      .catch((error: unknown) => {
+        addToast({
+          variant: 'error',
+          title: 'Gagal menyimpan steps',
+          message: error instanceof ApiError ? error.message : 'Terjadi kesalahan tak terduga.',
+        });
+      });
   };
 
   const handleTogglePreview = () => {
@@ -131,7 +170,14 @@ export function SequencerView({ songId, sectionId, sectionName }: SequencerViewP
       return;
     }
     preview
-      .play(selectedPart.sound_slots ?? [], steps || '', effectiveBpm)
+      .play(
+        orderedParts.map((part) => ({
+          id: part.id,
+          steps: stepsOf(part),
+          slots: part.sound_slots.map((slot) => ({ key: slot.key, sample_id: slot.sample_id })),
+        })),
+        effectiveBpm,
+      )
       .catch((error: unknown) => {
         addToast({
           variant: 'error',
@@ -141,112 +187,167 @@ export function SequencerView({ songId, sectionId, sectionName }: SequencerViewP
       });
   };
 
+  const handlePreviewSlot = (slot: GridSlot) => {
+    if (slot.sample_id == null) {
+      addToast({ variant: 'info', title: 'Belum ada sample', message: 'Pasang sample dulu untuk mendengar bunyi ini.' });
+      return;
+    }
+    previewSampleAudio(slot.sample_id).catch(() => {
+      addToast({ variant: 'error', title: 'Gagal memutar', message: 'Audio tidak dapat diputar.' });
+    });
+  };
+
+  const selectPartForManager = (partId: number) => {
+    setSelectedPartId(partId);
+    managerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   return (
     <div>
+      {/* Breadcrumb + judul */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          {readOnly ? (
-            <Link
-              to="/templates/$songId"
-              params={{ songId: String(songId) }}
-              className="text-sm text-gray-500 hover:text-gray-700"
-            >
-              ← Detail lagu
-            </Link>
-          ) : (
-            <Link
-              to="/songs/$songId"
-              params={{ songId: String(songId) }}
-              className="text-sm text-gray-500 hover:text-gray-700"
-            >
-              ← Kelola lagu
-            </Link>
-          )}
-          <h2 className="mt-1 text-2xl font-bold tracking-tight text-gray-900">{sectionName}</h2>
-          <p className="mt-1 text-sm text-gray-500">Sequencer Mode · {effectiveBpm} BPM</p>
+          <Link
+            to={readOnly ? '/templates/$songId' : '/songs/$songId'}
+            params={{ songId: String(songId) }}
+            className="text-sm text-stone-500 hover:text-stone-700"
+          >
+            {readOnly ? '← Kembali ke lagu' : '← Kembali ke Section'}
+          </Link>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-stone-900">
+            Sequencer — Section: {sectionName}
+          </h1>
+          <p className="mt-1 text-sm text-stone-500">
+            Isi pola pukulan per Part — klik kotak step, panjang bebas, preview audio tersedia.
+          </p>
         </div>
         <div className="flex items-center gap-2">
-          <Link
-            to="/songs/$songId/play"
-            params={{ songId: String(songId) }}
-            className="inline-flex items-center justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-gray-300 ring-inset transition-colors hover:bg-gray-50"
-          >
-            Buka Launcher
-          </Link>
-          {isDirty && !readOnly && (
+          {dirtyParts.length > 0 && !readOnly && (
             <span className="text-xs font-medium text-amber-600">Perubahan belum disimpan</span>
           )}
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={handleTogglePreview}
-            aria-label={preview.isPlaying ? 'Hentikan preview' : 'Putar preview part ini'}
-          >
-            {preview.isPlaying ? '■ Hentikan' : '▶ Preview'}
-          </Button>
-          {!readOnly && (
-            <Button type="button" onClick={handleSaveSteps} disabled={!isDirty || saveStepsMutation.isPending}>
-              Simpan Steps
-            </Button>
+          {readOnly && (
+            <Link
+              to="/songs/$songId/play"
+              params={{ songId: String(songId) }}
+              className="inline-flex items-center justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-stone-900 ring-1 ring-stone-300 ring-inset transition-colors hover:bg-stone-50"
+            >
+              Buka Launcher
+            </Link>
           )}
         </div>
       </div>
 
       {readOnly && (
-        <p className="mt-3 rounded-md bg-gray-100 px-3 py-2 text-xs text-gray-600">
-          Mode lihat-saja{!isAuthenticated ? ' — Anda menjelajah sebagai pengunjung' : ''}. Kontrol edit
-          dinonaktifkan; duplikasi lagu ini ke "Lagu Saya" untuk memodifikasinya.
-        </p>
+        <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          <span className="font-semibold">🔒 Mode Lihat Saja{!isAuthenticated ? ' (Guest)' : ''}</span> — Kamu bisa
+          melihat susunan pola pukulan, tapi tidak bisa mengedit.
+          {!isAuthenticated && (
+            <Link to="/login" className="ml-2 font-semibold text-brand-700 underline-offset-2 hover:underline">
+              Login untuk Edit
+            </Link>
+          )}
+        </div>
       )}
 
-      <div role="tablist" aria-label="Bagian instrumen" className="mt-6 flex flex-wrap gap-1">
-        {sortedParts.map((part) => {
-          const stepsCount = (part.steps ?? '').length;
-          return (
-            <button
-              key={part.id}
-              type="button"
-              role="tab"
-              aria-selected={part.id === selectedPart.id}
-              onClick={() => setSelectedPartId(part.id)}
-              className={[
-                'rounded-md px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer',
-                part.id === selectedPart.id
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-white text-gray-600 ring-1 ring-gray-200 ring-inset hover:bg-gray-50',
-              ].join(' ')}
-            >
-              {PART_LABELS[part.part] ?? part.part}
-              {stepsCount > 0 && (
-                <span className={part.id === selectedPart.id ? 'ml-1 text-xs text-gray-300' : 'ml-1 text-xs text-gray-400'}>
-                  {stepsCount} step
-                </span>
-              )}
-            </button>
-          );
-        })}
+      <p className="mt-4 rounded-md border border-stone-200 bg-white p-3 text-xs leading-relaxed text-stone-600">
+        <span className="font-semibold text-stone-800">Cara pakai:</span> klik kotak pada baris & kolom step untuk
+        mengaktifkan/menonaktifkan bunyi. Jumlah baris tiap Part dinamis — tiap Part punya sejumlah SoundSlot
+        (jenis bunyi, mis. Tak/Dung/Duk) yang bisa ditambah bebas. Slot sample boleh kosong dulu — playback tetap
+        jalan, part tsb senyap. Tombol ▶ di kiri tiap baris memutar preview bunyi tsb sendirian (FR-SEQ-05).
+      </p>
+
+      {/* Toolbar */}
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-white p-3 ring-1 ring-stone-900/5">
+        <div className="flex flex-wrap items-center gap-3">
+          <Button type="button" variant="secondary" size="sm" onClick={handleTogglePreview}>
+            {preview.isPlaying ? '■ Stop Preview' : '▶ Play Preview'}
+          </Button>
+          <span className="text-xs text-stone-500">
+            BPM {effectiveBpm} · {Math.max(...orderedParts.map((p) => stepsOf(p).length), 0)}{' '}
+            step ditampilkan (panjang steps bebas, tanpa batas)
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button type="button" size="sm" variant="secondary" onClick={() => handleBatchSteps(STEP_BATCH)}>
+            + 8 Step
+          </Button>
+          <Button type="button" size="sm" variant="ghost" onClick={() => handleBatchSteps(-STEP_BATCH)}>
+            − 8 Step
+          </Button>
+        </div>
       </div>
 
-      {editPromptZone === 'slots' && (
-        <LoginPromptInline action="mengubah jenis bunyi" onDismiss={() => setEditPromptZone(null)} />
-      )}
-      <SoundSlotManager
-        partId={selectedPart.id}
-        slots={selectedPart.sound_slots ?? []}
-        onChanged={() => partsQuery.refetch()}
-        readOnly={readOnly}
-        onEditAttempt={() => setEditPromptZone('slots')}
-      />
       {editPromptZone === 'grid' && (
         <LoginPromptInline action="mengubah pola pukulan" onDismiss={() => setEditPromptZone(null)} />
       )}
-      <StepGrid
-        slots={selectedPart.sound_slots ?? []}
-        steps={steps}
-        onChange={setSteps}
+
+      {/* Grid terpadu semua Part */}
+      <SequencerGrid
+        parts={orderedParts.map((part) => ({
+          id: part.id,
+          part: part.part,
+          steps: part.steps ?? '',
+          slots: part.sound_slots.map((slot) => ({
+            id: slot.id,
+            label: slot.label,
+            key: slot.key,
+            sample_id: slot.sample_id,
+            sample: slot.sample ?? null,
+          })),
+        }))}
+        stepsByPart={stepsByPart}
+        onToggleCell={handleToggleCell}
+        onPreviewSlot={handlePreviewSlot}
+        onManagePart={selectPartForManager}
+        onAddSlot={(partId) => {
+          setSelectedPartId(partId);
+          setFocusCreateSignal((n) => n + 1);
+          managerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }}
         readOnly={readOnly}
         onEditAttempt={() => setEditPromptZone('grid')}
+        playheadIndex={preview.isPlaying ? preview.stepIndex : null}
       />
+
+      {/* Aksi bawah */}
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        {!readOnly && (
+          <Button type="button" onClick={handleSave} disabled={dirtyParts.length === 0 || saveStepsMutation.isPending}>
+            Simpan Perubahan
+          </Button>
+        )}
+        <Button type="button" variant="secondary" onClick={handleTogglePreview}>
+          ▶ Preview Section Ini (Semua Part)
+        </Button>
+        <Link
+          to={readOnly ? '/templates/$songId' : '/songs/$songId'}
+          params={{ songId: String(songId) }}
+          className="inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-semibold text-stone-700 transition-colors hover:bg-stone-100"
+        >
+          ← Kembali ke Section
+        </Link>
+      </div>
+
+      {/* Panel kelola SoundSlot untuk Part terpilih */}
+      <div ref={managerRef} className="scroll-mt-6">
+        {editPromptZone === 'slots' && (
+          <LoginPromptInline action="mengubah jenis bunyi" onDismiss={() => setEditPromptZone(null)} />
+        )}
+        <SoundSlotManager
+          key={selectedPart.id}
+          partId={selectedPart.id}
+          slots={selectedPart.sound_slots ?? []}
+          onChanged={() => partsQuery.refetch()}
+          readOnly={readOnly}
+          onEditAttempt={() => setEditPromptZone('slots')}
+          focusCreateSignal={focusCreateSignal}
+        />
+      </div>
+
+      <p className="mt-2 text-xs text-stone-400">
+        Kelola Bunyi di atas berlaku untuk {PART_LABELS[selectedPart.part] ?? selectedPart.part} — pilih Part lain
+        lewat tombol “Kelola bunyi” pada subheader grid.
+      </p>
     </div>
   );
 }
