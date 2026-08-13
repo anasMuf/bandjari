@@ -45,6 +45,29 @@ func (h *SampleHandler) ListSamples(c echo.Context) error {
 	return c.JSON(http.StatusOK, dto.SuccessResponse{Message: "Sample retrieved successfully", Data: samples})
 }
 
+// ListTemplates godoc
+// @Summary      List sample templates
+// @Description  Daftar Sample Template System (read-only, filter opsional ?part=) — dapat diakses Guest
+// @Tags         samples
+// @Accept       json
+// @Produce      json
+// @Param        part  query     string  false  "Filter part (rebana1-4, bass)"
+// @Success      200   {object}  dto.SuccessResponse
+// @Failure      400   {object}  dto.ErrorResponse
+// @Router       /samples/templates [get]
+func (h *SampleHandler) ListTemplates(c echo.Context) error {
+	var part *model.Part
+	if raw := c.QueryParam("part"); raw != "" {
+		p := model.Part(raw)
+		part = &p
+	}
+	samples, err := h.sampleService.ListTemplates(part)
+	if err != nil {
+		return mapServiceError(err)
+	}
+	return c.JSON(http.StatusOK, dto.SuccessResponse{Message: "Sample templates retrieved successfully", Data: samples})
+}
+
 // UploadSample godoc
 // @Summary      Upload sample
 // @Description  Upload file audio .wav (maks 5MB) sebagai Sample milik user

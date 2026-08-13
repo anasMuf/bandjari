@@ -11,6 +11,7 @@ type SongRepository interface {
 	FindByID(id uint) (*model.Song, error)
 	FindByIDWithSections(id uint) (*model.Song, error)
 	ListByUserID(userID uint) ([]model.Song, error)
+	ListTemplates() ([]model.Song, error)
 	Save(song *model.Song) error
 	Delete(id uint) error
 }
@@ -42,6 +43,13 @@ func (r *songRepository) FindByIDWithSections(id uint) (*model.Song, error) {
 func (r *songRepository) ListByUserID(userID uint) ([]model.Song, error) {
 	var songs []model.Song
 	err := r.db.Where("user_id = ? AND is_system_template = false", userID).Order("created_at DESC").Find(&songs).Error
+	return songs, err
+}
+
+// ListTemplates mengembalikan seluruh Song Template System (FR-SONG-07/09).
+func (r *songRepository) ListTemplates() ([]model.Song, error) {
+	var songs []model.Song
+	err := r.db.Where("is_system_template = true").Order("created_at DESC").Find(&songs).Error
 	return songs, err
 }
 

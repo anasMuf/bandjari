@@ -12,6 +12,7 @@ import (
 type SongService interface {
 	Create(userID uint, req dto.CreateSongRequest) (*dto.SongResponse, error)
 	List(userID uint) ([]dto.SongResponse, error)
+	ListTemplates() ([]dto.SongResponse, error)
 	GetByID(songID uint, currentUserID *uint) (*dto.SongResponse, error)
 	Update(userID uint, songID uint, req dto.UpdateSongRequest) (*dto.SongResponse, error)
 	Delete(userID uint, songID uint) error
@@ -55,6 +56,20 @@ func (s *songService) Create(userID uint, req dto.CreateSongRequest) (*dto.SongR
 
 func (s *songService) List(userID uint) ([]dto.SongResponse, error) {
 	songs, err := s.songRepo.ListByUserID(userID)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]dto.SongResponse, 0, len(songs))
+	for i := range songs {
+		res = append(res, *toSongResponse(&songs[i]))
+	}
+	return res, nil
+}
+
+// ListTemplates mengembalikan Song Template System — dapat diakses Guest
+// maupun User login (FR-SONG-07/09, FR-AUTH-04).
+func (s *songService) ListTemplates() ([]dto.SongResponse, error) {
+	songs, err := s.songRepo.ListTemplates()
 	if err != nil {
 		return nil, err
 	}

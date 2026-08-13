@@ -11,6 +11,8 @@ type SampleRepository interface {
 	Create(sample *model.Sample) error
 	FindByID(id uint) (*model.Sample, error)
 	ListByUserID(userID uint, part *model.Part) ([]model.Sample, error)
+	ListTemplates(part *model.Part) ([]model.Sample, error)
+	FindTemplateByNameAndPart(name string, part model.Part) (*model.Sample, error)
 	FindTemplateByPartAndLabel(part model.Part, label string) (*model.Sample, error)
 	CountReferencedBySoundSlots(sampleID uint) (int64, error)
 	Save(sample *model.Sample) error
@@ -52,6 +54,24 @@ func (r *sampleRepository) FindTemplateByPartAndLabel(part model.Part, label str
 	var sample model.Sample
 	err := r.db.Where("is_system_template = true AND part = ? AND LOWER(name) LIKE ?",
 		part, "%"+strings.ToLower(label)+"%").First(&sample).Error
+	return &sample, err
+}
+
+// ListTemplates mengembalikan Sample Template System (opsional filter part) — FR-SAMP-11/14.
+func (r *sampleRepository) ListTemplates(part *model.Part) ([]model.Sample, error) {
+	q := r.db.Where("is_system_template = true")
+	if part != nil {
+		q = q.Where("part = ?", *part)
+	}
+	var samples []model.Sample
+	err := q.Order("part ASC, name ASC").Find(&samples).Error
+	return samples, err
+}
+
+// FindTemplateByNameAndPart dipakai seeder untuk idempotensi.
+func (r *sampleRepository) FindTemplateByNameAndPart(name string, part model.Part) (*model.Sample, error) {
+	var sample model.Sample
+	err := r.db.Where("is_system_template = true AND name = ? AND part = ?", name, part).First(&sample).Error
 	return &sample, err
 }
 

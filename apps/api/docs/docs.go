@@ -237,6 +237,43 @@ const docTemplate = `{
                 }
             }
         },
+        "/samples/templates": {
+            "get": {
+                "description": "Daftar Sample Template System (read-only, filter opsional ?part=) — dapat diakses Guest",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "samples"
+                ],
+                "summary": "List sample templates",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter part (rebana1-4, bass)",
+                        "name": "part",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/samples/{id}": {
             "put": {
                 "security": [
@@ -920,6 +957,29 @@ const docTemplate = `{
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/songs/templates": {
+            "get": {
+                "description": "Daftar Song Template System — dapat diakses Guest maupun User login",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "songs"
+                ],
+                "summary": "List song templates",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SuccessResponse"
                         }
                     }
                 }

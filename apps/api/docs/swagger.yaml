@@ -428,6 +428,31 @@ paths:
       summary: Get sample playback URL
       tags:
       - samples
+  /samples/templates:
+    get:
+      consumes:
+      - application/json
+      description: Daftar Sample Template System (read-only, filter opsional ?part=)
+        — dapat diakses Guest
+      parameters:
+      - description: Filter part (rebana1-4, bass)
+        in: query
+        name: part
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: List sample templates
+      tags:
+      - samples
   /section-parts/{id}:
     put:
       consumes:
@@ -956,6 +981,21 @@ paths:
       summary: Create section
       tags:
       - sections
+  /songs/templates:
+    get:
+      consumes:
+      - application/json
+      description: Daftar Song Template System — dapat diakses Guest maupun User login
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+      summary: List song templates
+      tags:
+      - songs
   /sound-slots/{id}:
     delete:
       consumes:

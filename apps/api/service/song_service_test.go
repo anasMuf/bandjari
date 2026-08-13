@@ -51,6 +51,16 @@ func (f *fakeSongRepo) ListByUserID(userID uint) ([]model.Song, error) {
 	return res, nil
 }
 
+func (f *fakeSongRepo) ListTemplates() ([]model.Song, error) {
+	var res []model.Song
+	for _, s := range f.songs {
+		if s.IsSystemTemplate {
+			res = append(res, *s)
+		}
+	}
+	return res, nil
+}
+
 func (f *fakeSongRepo) Save(song *model.Song) error {
 	f.songs[song.ID] = song
 	return nil

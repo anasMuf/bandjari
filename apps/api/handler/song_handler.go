@@ -45,6 +45,22 @@ func (h *SongHandler) ListSongs(c echo.Context) error {
 	return c.JSON(http.StatusOK, dto.SuccessResponse{Message: "Song retrieved successfully", Data: songs})
 }
 
+// ListTemplates godoc
+// @Summary      List song templates
+// @Description  Daftar Song Template System — dapat diakses Guest maupun User login
+// @Tags         songs
+// @Accept       json
+// @Produce      json
+// @Success      200  {object}  dto.SuccessResponse
+// @Router       /songs/templates [get]
+func (h *SongHandler) ListTemplates(c echo.Context) error {
+	songs, err := h.songService.ListTemplates()
+	if err != nil {
+		return mapServiceError(err)
+	}
+	return c.JSON(http.StatusOK, dto.SuccessResponse{Message: "Song templates retrieved successfully", Data: songs})
+}
+
 // CreateSong godoc
 // @Summary      Create song
 // @Description  Buat Song baru (nama, BPM) milik user yang login

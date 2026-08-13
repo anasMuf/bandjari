@@ -52,23 +52,43 @@ func (f *fakeSampleRepo) ListByUserID(userID uint, part *model.Part) ([]model.Sa
 
 // FindTemplateByPartAndLabel mencari template pertama yang namanya mengandung label (case-insensitive).
 func (f *fakeSampleRepo) FindTemplateByPartAndLabel(part model.Part, label string) (*model.Sample, error) {
-	lower := func(s string) string {
-		var b []byte
-		for i := 0; i < len(s); i++ {
-			c := s[i]
-			if c >= 'A' && c <= 'Z' {
-				c += 32
-			}
-			b = append(b, c)
-		}
-		return string(b)
-	}
 	for _, s := range f.samples {
-		if s.IsSystemTemplate && s.Part == part && containsFold(s.Name, label, lower) {
+		if s.IsSystemTemplate && s.Part == part && containsFold(s.Name, label, lowerASCII) {
 			return s, nil
 		}
 	}
 	return nil, gorm.ErrRecordNotFound
+}
+
+func (f *fakeSampleRepo) FindTemplateByNameAndPart(name string, part model.Part) (*model.Sample, error) {
+	for _, s := range f.samples {
+		if s.IsSystemTemplate && s.Name == name && s.Part == part {
+			return s, nil
+		}
+	}
+	return nil, gorm.ErrRecordNotFound
+}
+
+func (f *fakeSampleRepo) ListTemplates(part *model.Part) ([]model.Sample, error) {
+	var res []model.Sample
+	for _, s := range f.samples {
+		if s.IsSystemTemplate && (part == nil || s.Part == *part) {
+			res = append(res, *s)
+		}
+	}
+	return res, nil
+}
+
+func lowerASCII(s string) string {
+	var b []byte
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c >= 'A' && c <= 'Z' {
+			c += 32
+		}
+		b = append(b, c)
+	}
+	return string(b)
 }
 
 func containsFold(haystack, needle string, lower func(string) string) bool {

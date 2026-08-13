@@ -103,6 +103,7 @@ func main() {
 	auth.GET("/users", userHandler.GetUser)
 
 	// Song — GET /:id memakai auth opsional (akses Guest untuk Song Template System, TDD 6.8)
+	api.GET("/songs/templates", songHandler.ListTemplates, middleware.OptionalAuth)
 	api.GET("/songs/:id", songHandler.GetSong, middleware.OptionalAuth)
 
 	songs := api.Group("/songs")
@@ -128,6 +129,7 @@ func main() {
 	api.DELETE("/sound-slots/:id", soundSlotHandler.DeleteSoundSlot, middleware.JWTAuth)
 
 	// Sample — playback URL auth opsional (Guest boleh putar Sample Template System)
+	api.GET("/samples/templates", sampleHandler.ListTemplates, middleware.OptionalAuth)
 	api.GET("/samples/:id/playback-url", sampleHandler.GetPlaybackURL, middleware.OptionalAuth)
 	samples := api.Group("/samples")
 	samples.Use(middleware.JWTAuth)

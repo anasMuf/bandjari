@@ -20,6 +20,7 @@ const sampleSignedURLTTL = 60 * time.Minute
 type SampleService interface {
 	Upload(userID uint, part model.Part, name string, data []byte) (*dto.SampleResponse, error)
 	List(userID uint, part *model.Part) ([]dto.SampleResponse, error)
+	ListTemplates(part *model.Part) ([]dto.SampleResponse, error)
 	Rename(userID uint, sampleID uint, name string) (*dto.SampleResponse, error)
 	Delete(userID uint, sampleID uint) error
 	PlaybackURL(currentUserID *uint, sampleID uint) (string, error)
@@ -83,6 +84,23 @@ func (s *sampleService) List(userID uint, part *model.Part) ([]dto.SampleRespons
 		return nil, ErrBadRequest
 	}
 	samples, err := s.sampleRepo.ListByUserID(userID, part)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]dto.SampleResponse, 0, len(samples))
+	for i := range samples {
+		res = append(res, *toSampleResponse(&samples[i]))
+	}
+	return res, nil
+}
+
+// ListTemplates mengembalikan Sample Template System — read-only, dapat diakses
+// siapapun (FR-SAMP-11/13/14).
+func (s *sampleService) ListTemplates(part *model.Part) ([]dto.SampleResponse, error) {
+	if part != nil && !model.IsValidPart(*part) {
+		return nil, ErrBadRequest
+	}
+	samples, err := s.sampleRepo.ListTemplates(part)
 	if err != nil {
 		return nil, err
 	}
