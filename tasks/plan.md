@@ -679,3 +679,71 @@ Mengimplementasikan seluruh Epic E0–E7 dari `docs/core/breakdown.md` (turunan 
 - `docs/core/brd.md`, `docs/core/prd.md`, `docs/core/tdd.md`, `docs/core/breakdown.md`, `docs/core/wireframe.html`
 - GOTS Monorepo Starter Kit: https://github.com/anasMuf/monorepo_gots_starterkit
 - Kytaime Throwdown (referensi playback engine): https://github.com/haszari/kytaime
+
+---
+
+# Redesign UI — Fase 1.5 (Total Redesign sesuai Wireframe)
+
+## Overview
+
+Redesign total seluruh halaman frontend agar **struktur & konten tiap layar mengikuti `docs/core/wireframe.html`** (7 layar), tetap memenuhi PRD (FR/AC) & TDD. Wireframe sendiri menegaskan fokusnya adalah validasi **struktur & alur** (`Tujuan dokumen: validasi struktur & alur, bukan visual final`) — sehingga kita adopsi strukturnya 1:1, lalu terapkan visual production-quality (bukan estetika wireframe abu-abu Courier).
+
+## Architecture Decisions (Redesign)
+
+| # | Keputusan | Alasan |
+|---|---|---|
+| RD-1 | **Design tokens baru di Tailwind v4** (`@theme` di `styles.css`): aksen `brand` teal-800/700 (menggantikan indigo starter yang generik), netral stone, radius `rounded-lg` kartu / `rounded-md` kontrol, tanpa gradien | Sesuai panduan frontend-ui-engineering (hindari "AI aesthetic" indigo/ungu); teal-hijau dalam merepresentasikan nuansa seni Islami rebana |
+| RD-2 | **Struktur layar 1:1 wireframe** — termasuk panel "Section Terpilih" + "Ringkasan Song" di halaman detail, grid sequencer terpadu (semua 5 Part dalam satu tabel), dua seksi Sample Library, dan bar transport Launcher | Wireframe adalah kontrak struktur & alur |
+| RD-3 | **Backend diperluas minimal**: `section_count` pada daftar Song (meta "N Section") dan `usage_count` pada daftar Sample ("Dipakai di N SoundSlot") via query agregat | Konten wireframe membutuhkan data ini; tanpa mengubah kontrak API yang ada (hanya menambah field respons) |
+| RD-4 | **Sequencer jadi grid terpadu multi-Part** (bukan tab per Part): baris = SoundSlot dikelompokkan per Part dengan subheader Part; interaksi tetap klik-per-sel; preview per baris (▶) memutar sample tunggal | Sesuai wireframe layar 3; tetap memenuhi FR-SEQ-01/02, AC-7 |
+| RD-5 | **Indikator playback Launcher per pad** (step-dots) + bar transport dengan status "akan pindah ke X di akhir siklus" | FR-PLAY-07/08 + simulasi quantized trigger di wireframe |
+| RD-6 | **Mute per Part (FR-PLAY-10, Could)** diimplementasikan sebagai dropdown sederhana di transport Launcher | Wireframe menampilkan tombolnya; biaya rendah (filter part di engine) — keputusan: include |
+
+## Task List — Redesign
+
+### Slice 0: Design tokens & komponen bersama
+- [ ] RD-0.1 Token tema di `styles.css` (brand teal, radius, dsb) + ganti variant Button/FormField/ConfirmDialog/Toast
+- [ ] RD-0.2 Komponen bersama baru: `Badge` (SYSTEM/★), `SectionHeader`, `EmptyState`, `PageHeader`; app shell/nav konsisten
+
+### Slice 1: Landing (Guest) — layar 0
+- [ ] RD-1.1 Kartu Song Template: badge SYSTEM, meta "BPM · N Section", tombol ▶ Main langsung ke Launcher
+- [ ] RD-1.2 Kotak CTA "Mau susun lagu sendiri?" + hero
+
+### Slice 2: Daftar Lagu — layar 1
+- [ ] RD-2.1 Backend: `section_count` di SongResponse (List & ListTemplates)
+- [ ] RD-2.2 Form buat lagu → "Simpan & Lanjut ke Section →" (navigasi ke detail)
+- [ ] RD-2.3 Item lagu: meta BPM · N Section, aksi Duplikasi/Hapus; state kosong ♪
+
+### Slice 3: Detail Song / Section — layar 2
+- [ ] RD-3.1 Banner read-only Guest (lagu template)
+- [ ] RD-3.2 Section strip: pegangan #N + BPM badge ★ + chip + Tambah Section
+- [ ] RD-3.3 Panel "Section Terpilih": Buka di Sequencer, Duplikasi, Hapus, kotak BPM override
+- [ ] RD-3.4 Panel "Ringkasan Song" (jumlah section, override, kelengkapan sample) + ▶ Buka Launcher
+
+### Slice 4: Sequencer — layar 3
+- [ ] RD-4.1 Grid terpadu 5 Part (subheader per Part, baris SoundSlot, badge SYS, preview ▶ per baris)
+- [ ] RD-4.2 Toolbar: Play Preview (indikator playhead), kontrol ±8 step, info BPM/panjang
+- [ ] RD-4.3 Panel kelola SoundSlot per Part (tabel Label/Key/Sample + 2 optgroup + proteksi)
+- [ ] RD-4.4 Aksi: Simpan Perubahan, Preview Section (semua Part), kembali
+
+### Slice 5: Sample Library — layar 4
+- [ ] RD-5.1 Backend: `usage_count` di SampleResponse (List & ListTemplates)
+- [ ] RD-5.2 Seksi "Sample Bawaan (SYSTEM)" read-only + seksi "Sample Saya"
+- [ ] RD-5.3 Kartu sample: tag Part, "Dipakai di N SoundSlot", preview/rename/hapus; state error 409
+
+### Slice 6: Launcher — layar 5
+- [ ] RD-6.1 Pad: status per pad (sedang main/menunggu/siap), step-dots, ★, pad placeholder + Section
+- [ ] RD-6.2 Transport: status lengkap + Mute per Part + ■ Stop
+
+### Slice 7: Verifikasi
+- [ ] RD-7.1 Playwright: alur lengkap + alur Guest (landing → template → sequencer read-only → launcher)
+- [ ] RD-7.2 Screenshot tiap layar + bersih console error
+
+## Risks and Mitigations (Redesign)
+
+| Risk | Impact | Mitigation |
+|---|---|---|
+| Grid sequencer terpadu (5 Part) lebih kompleks dari tab per Part | Med | Pisahkan komponen `SequencerGrid` murni presentasional; state edit tetap per SectionPart |
+| Perubahan backend respons (section_count/usage_count) mempengaruhi kontrak Orval | Low | Hanya field tambahan; regen swagger + orval langsung |
+| Visual baru mengubah seluruh file → regresi aksesibilitas | Med | Pertahankan ARIA yang ada (role=grid/tab, aria-pressed, label); cek di Slice 7 |
+| Mute per Part menambah kompleksitas engine | Low | Filter `ScheduledPart` pada trigger/switch; unit test kecil |
