@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from '@tanstack/react-router';
 import {
   usePostSongsSongIdSections,
   usePutSectionsId,
@@ -163,7 +164,14 @@ export function SectionStrip({ songId, songBpm, sections, onChanged }: SectionSt
               dragged?.id === sec.id ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200 bg-white'
             } cursor-grab`}
           >
-            <span className="font-medium text-gray-900">{sec.name}</span>
+            <Link
+              to="/songs/$songId/sections/$sectionId"
+              params={{ songId: String(songId), sectionId: String(sec.id) }}
+              className="font-medium text-gray-900 hover:text-indigo-600 hover:underline"
+              title="Buka Sequencer Mode"
+            >
+              {sec.name}
+            </Link>
             <span className="text-xs text-gray-500">
               {sec.bpm_override !== null ? (
                 <span className="font-semibold text-indigo-600">★{sec.bpm_override}</span>
