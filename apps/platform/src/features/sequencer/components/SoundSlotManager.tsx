@@ -23,6 +23,9 @@ interface SoundSlotManagerProps {
   partId: number;
   slots: SoundSlotData[];
   onChanged: () => void;
+  /** Mode lihat-saja: aksi edit memicu onEditAttempt (AC-12), bukan perubahan. */
+  readOnly?: boolean;
+  onEditAttempt?: () => void;
 }
 
 const emptyForm = { label: '', key: '' };
@@ -32,7 +35,7 @@ const emptyForm = { label: '', key: '' };
  * label/key, pasang sample, hapus — dengan pesan error yang mengarahkan user
  * membersihkan steps saat key masih dipakai (FR-SLOT-05/06).
  */
-export function SoundSlotManager({ partId, slots, onChanged }: SoundSlotManagerProps) {
+export function SoundSlotManager({ partId, slots, onChanged, readOnly = false, onEditAttempt }: SoundSlotManagerProps) {
   const { addToast } = useToast();
   const createMutation = usePostSectionPartsIdSoundSlots();
   const updateMutation = usePutSoundSlotsId();
@@ -42,6 +45,14 @@ export function SoundSlotManager({ partId, slots, onChanged }: SoundSlotManagerP
   const [editing, setEditing] = useState<SoundSlotData | null>(null);
   const [editForm, setEditForm] = useState(emptyForm);
   const [deleting, setDeleting] = useState<SoundSlotData | null>(null);
+
+  const guardEdit = (): boolean => {
+    if (readOnly) {
+      onEditAttempt?.();
+      return false;
+    }
+    return true;
+  };
 
   const showError = (error: unknown, title: string) => {
     addToast({
@@ -53,6 +64,7 @@ export function SoundSlotManager({ partId, slots, onChanged }: SoundSlotManagerP
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!guardEdit()) return;
     createMutation.mutate(
       { id: partId, data: { label: form.label.trim(), key: form.key } },
       {
@@ -83,6 +95,7 @@ export function SoundSlotManager({ partId, slots, onChanged }: SoundSlotManagerP
   };
 
   const handleSampleChange = (slot: SoundSlotData, sampleId: number | null) => {
+    if (!guardEdit()) return;
     updateMutation.mutate(
       { id: slot.id, data: { sample_id: { set: true, value: sampleId ?? undefined } } },
       {
@@ -178,13 +191,14 @@ export function SoundSlotManager({ partId, slots, onChanged }: SoundSlotManagerP
                   size="sm"
                   variant="secondary"
                   onClick={() => {
+                    if (!guardEdit()) return;
                     setEditing(slot);
                     setEditForm({ label: slot.label, key: slot.key });
                   }}
                 >
                   Ubah label/key
                 </Button>
-                <Button type="button" size="sm" variant="danger" onClick={() => setDeleting(slot)}>
+                <Button type="button" size="sm" variant="danger" onClick={() => guardEdit() && setDeleting(slot)}>
                   Hapus
                 </Button>
               </div>
@@ -226,6 +240,12 @@ export function SoundSlotManager({ partId, slots, onChanged }: SoundSlotManagerP
           + Tambah Bunyi
         </Button>
       </form>
+
+      {readOnly && (
+        <p className="mt-2 text-xs text-gray-400">
+          Mode lihat-saja — masuk untuk mengubah jenis bunyi.
+        </p>
+      )}
 
       <ConfirmDialog
         open={!!deleting}

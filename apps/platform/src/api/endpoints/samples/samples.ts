@@ -29,6 +29,7 @@ import type {
   DtoRenameSampleRequest,
   DtoSuccessResponse,
   GetSamplesParams,
+  GetSamplesTemplatesParams,
   PostSamplesBody
 } from '../../model';
 
@@ -286,7 +287,134 @@ export const usePostSamples = <TError = DtoErrorResponse,
       > => {
       return useMutation(getPostSamplesMutationOptions(options), queryClient);
     }
-    export type putSamplesIdResponse200 = {
+    export type getSamplesTemplatesResponse200 = {
+  data: DtoSuccessResponse
+  status: 200
+}
+
+export type getSamplesTemplatesResponse400 = {
+  data: DtoErrorResponse
+  status: 400
+}
+
+export type getSamplesTemplatesResponseSuccess = (getSamplesTemplatesResponse200) & {
+  headers: Headers;
+};
+export type getSamplesTemplatesResponseError = (getSamplesTemplatesResponse400) & {
+  headers: Headers;
+};
+
+export type getSamplesTemplatesResponse = (getSamplesTemplatesResponseSuccess | getSamplesTemplatesResponseError)
+
+export const getGetSamplesTemplatesUrl = (params?: GetSamplesTemplatesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/samples/templates?${stringifiedParams}` : `/samples/templates`
+}
+
+/**
+ * Daftar Sample Template System (read-only, filter opsional ?part=) — dapat diakses Guest
+ * @summary List sample templates
+ */
+export const getSamplesTemplates = async (params?: GetSamplesTemplatesParams, options?: RequestInit): Promise<getSamplesTemplatesResponse> => {
+
+  return customInstance<getSamplesTemplatesResponse>(getGetSamplesTemplatesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSamplesTemplatesQueryKey = (params?: GetSamplesTemplatesParams,) => {
+    return [
+    `/samples/templates`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetSamplesTemplatesQueryOptions = <TData = Awaited<ReturnType<typeof getSamplesTemplates>>, TError = DtoErrorResponse>(params?: GetSamplesTemplatesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSamplesTemplates>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSamplesTemplatesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSamplesTemplates>>> = ({ signal }) => getSamplesTemplates(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSamplesTemplates>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetSamplesTemplatesQueryResult = NonNullable<Awaited<ReturnType<typeof getSamplesTemplates>>>
+export type GetSamplesTemplatesQueryError = DtoErrorResponse
+
+
+export function useGetSamplesTemplates<TData = Awaited<ReturnType<typeof getSamplesTemplates>>, TError = DtoErrorResponse>(
+ params: undefined |  GetSamplesTemplatesParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSamplesTemplates>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSamplesTemplates>>,
+          TError,
+          Awaited<ReturnType<typeof getSamplesTemplates>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSamplesTemplates<TData = Awaited<ReturnType<typeof getSamplesTemplates>>, TError = DtoErrorResponse>(
+ params?: GetSamplesTemplatesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSamplesTemplates>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSamplesTemplates>>,
+          TError,
+          Awaited<ReturnType<typeof getSamplesTemplates>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSamplesTemplates<TData = Awaited<ReturnType<typeof getSamplesTemplates>>, TError = DtoErrorResponse>(
+ params?: GetSamplesTemplatesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSamplesTemplates>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List sample templates
+ */
+
+export function useGetSamplesTemplates<TData = Awaited<ReturnType<typeof getSamplesTemplates>>, TError = DtoErrorResponse>(
+ params?: GetSamplesTemplatesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSamplesTemplates>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetSamplesTemplatesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export type putSamplesIdResponse200 = {
   data: DtoSuccessResponse
   status: 200
 }

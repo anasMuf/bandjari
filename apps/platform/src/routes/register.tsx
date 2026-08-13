@@ -11,7 +11,7 @@ function Register() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate({ to: '/' })
+      navigate({ to: '/dashboard' })
     }
   }, [isAuthenticated, navigate])
 

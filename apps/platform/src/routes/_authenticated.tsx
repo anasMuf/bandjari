@@ -49,6 +49,13 @@ function AuthenticatedLayout() {
           <h1 className="text-lg font-semibold text-gray-900">BandJari</h1>
           <div className="flex items-center gap-4">
             <Link
+              to="/"
+              className="text-sm text-gray-600 hover:text-gray-900"
+              activeProps={{ className: 'text-indigo-600 font-semibold' }}
+            >
+              Lagu Bawaan
+            </Link>
+            <Link
               to="/songs"
               className="text-sm text-gray-600 hover:text-gray-900"
               activeProps={{ className: 'text-indigo-600 font-semibold' }}

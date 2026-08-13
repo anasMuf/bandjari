@@ -12,7 +12,9 @@ interface StepGridProps {
   slots: SoundSlotData[];
   steps: string;
   onChange: (steps: string) => void;
-  disabled?: boolean;
+  /** Mode lihat-saja: klik tidak mengubah, melainkan memicu onEditAttempt (AC-12). */
+  readOnly?: boolean;
+  onEditAttempt?: () => void;
 }
 
 // Akses per baris (bukan satu-satunya indikator — huruf key tetap tampil).
@@ -29,14 +31,17 @@ const rowTones = [
  * Klik kotak kosong → isi dengan key baris tsb; klik kotak aktif → hapus
  * langkah tsb (steps memendek). Tombol "+ Langkah" menambah posisi di akhir.
  */
-export function StepGrid({ slots, steps, onChange, disabled = false }: StepGridProps) {
+export function StepGrid({ slots, steps, onChange, readOnly = false, onEditAttempt }: StepGridProps) {
   const cells = decodeSteps(steps);
   const defaultKey = slots[0]?.key ?? '';
 
   const commit = (next: StepCell[]) => onChange(encodeSteps(next));
 
   const handleCellClick = (slotKey: string, colIndex: number) => {
-    if (disabled) return;
+    if (readOnly) {
+      onEditAttempt?.();
+      return;
+    }
     if (cells[colIndex] === slotKey) {
       commit(removeColumn(cells, colIndex));
     } else {
@@ -45,7 +50,11 @@ export function StepGrid({ slots, steps, onChange, disabled = false }: StepGridP
   };
 
   const handleAppend = () => {
-    if (disabled || !defaultKey) return;
+    if (readOnly) {
+      onEditAttempt?.();
+      return;
+    }
+    if (!defaultKey) return;
     commit(appendColumn(cells, defaultKey));
   };
 
@@ -83,9 +92,8 @@ export function StepGrid({ slots, steps, onChange, disabled = false }: StepGridP
             <button
               type="button"
               onClick={handleAppend}
-              disabled={disabled}
               title="Tambah langkah di akhir"
-              className="ml-1 h-8 w-8 shrink-0 rounded border border-dashed border-gray-300 text-sm text-gray-500 hover:border-gray-400 hover:text-gray-700 disabled:opacity-40 cursor-pointer"
+              className="ml-1 h-8 w-8 shrink-0 rounded border border-dashed border-gray-300 text-sm text-gray-500 hover:border-gray-400 hover:text-gray-700 cursor-pointer"
             >
               +
             </button>
@@ -105,14 +113,13 @@ export function StepGrid({ slots, steps, onChange, disabled = false }: StepGridP
                       type="button"
                       aria-pressed={active}
                       aria-label={`Langkah ${colIndex + 1}, ${slot.label} (${slot.key})`}
-                      disabled={disabled}
                       onClick={() => handleCellClick(slot.key, colIndex)}
                       className={[
                         'h-8 w-9 rounded border text-xs font-mono transition-colors cursor-pointer',
                         active
                           ? `${rowTones[rowIndex % rowTones.length]} border-transparent`
                           : 'border-gray-200 bg-white text-gray-300 hover:border-gray-400 hover:text-gray-500',
-                        disabled ? 'cursor-not-allowed opacity-60' : '',
+                        readOnly ? 'opacity-70' : '',
                       ].join(' ')}
                     >
                       {slot.key}

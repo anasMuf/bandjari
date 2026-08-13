@@ -24,4 +24,5 @@ export * from './dtoUpdateSongRequest';
 export * from './dtoUpdateSoundSlotRequest';
 export * from './dtoUpdateStepsRequest';
 export * from './getSamplesParams';
+export * from './getSamplesTemplatesParams';
 export * from './postSamplesBody';

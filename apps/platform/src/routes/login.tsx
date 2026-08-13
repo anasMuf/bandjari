@@ -11,7 +11,7 @@ function Login() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate({ to: '/' })
+      navigate({ to: '/dashboard' })
     }
   }, [isAuthenticated, navigate])
 
@@ -24,7 +24,7 @@ function Login() {
       </div>
 
       <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
-        <LoginForm onSuccess={() => navigate({ to: '/' })} />
+        <LoginForm onSuccess={() => navigate({ to: '/dashboard' })} />
 
         <p className="mt-10 text-center text-sm/6 text-gray-500">
           Don't have an account?{' '}

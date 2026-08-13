@@ -253,7 +253,120 @@ export const usePostSongs = <TError = DtoErrorResponse,
       > => {
       return useMutation(getPostSongsMutationOptions(options), queryClient);
     }
-    export type getSongsIdResponse200 = {
+    export type getSongsTemplatesResponse200 = {
+  data: DtoSuccessResponse
+  status: 200
+}
+
+export type getSongsTemplatesResponseSuccess = (getSongsTemplatesResponse200) & {
+  headers: Headers;
+};
+;
+
+export type getSongsTemplatesResponse = (getSongsTemplatesResponseSuccess)
+
+export const getGetSongsTemplatesUrl = () => {
+
+
+
+
+  return `/songs/templates`
+}
+
+/**
+ * Daftar Song Template System — dapat diakses Guest maupun User login
+ * @summary List song templates
+ */
+export const getSongsTemplates = async ( options?: RequestInit): Promise<getSongsTemplatesResponse> => {
+
+  return customInstance<getSongsTemplatesResponse>(getGetSongsTemplatesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSongsTemplatesQueryKey = () => {
+    return [
+    `/songs/templates`
+    ] as const;
+    }
+
+
+export const getGetSongsTemplatesQueryOptions = <TData = Awaited<ReturnType<typeof getSongsTemplates>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSongsTemplates>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSongsTemplatesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSongsTemplates>>> = ({ signal }) => getSongsTemplates({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSongsTemplates>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetSongsTemplatesQueryResult = NonNullable<Awaited<ReturnType<typeof getSongsTemplates>>>
+export type GetSongsTemplatesQueryError = unknown
+
+
+export function useGetSongsTemplates<TData = Awaited<ReturnType<typeof getSongsTemplates>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSongsTemplates>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSongsTemplates>>,
+          TError,
+          Awaited<ReturnType<typeof getSongsTemplates>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSongsTemplates<TData = Awaited<ReturnType<typeof getSongsTemplates>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSongsTemplates>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSongsTemplates>>,
+          TError,
+          Awaited<ReturnType<typeof getSongsTemplates>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSongsTemplates<TData = Awaited<ReturnType<typeof getSongsTemplates>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSongsTemplates>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List song templates
+ */
+
+export function useGetSongsTemplates<TData = Awaited<ReturnType<typeof getSongsTemplates>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSongsTemplates>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetSongsTemplatesQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export type getSongsIdResponse200 = {
   data: DtoSuccessResponse
   status: 200
 }
