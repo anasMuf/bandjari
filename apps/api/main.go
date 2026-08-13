@@ -38,6 +38,9 @@ import (
 
 func main() {
 	config.LoadEnv()
+	if os.Getenv("JWT_SECRET") == "" {
+		println("WARNING: JWT_SECRET kosong — token lama akan tidak valid saat secret berubah. Isi JWT_SECRET di .env dan restart API.")
+	}
 	db := config.DBInit()
 
 	if err := db.AutoMigrate(
