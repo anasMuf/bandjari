@@ -26,12 +26,16 @@ interface SequencerViewProps {
   songId: number;
   sectionId: number;
   sectionName: string;
+  /** BPM dasar Song (untuk preview & tampilan info). */
+  songBpm: number;
+  /** BPM override Section bila ada — dipakai sebagai tempo efektif (AC-9). */
+  bpmOverride: number | null;
 }
 
 /** Jumlah langkah yang ditambah/dikurangi lewat kontrol ±8 step (FR-SEQ-03). */
 const STEP_BATCH = 8;
 
-export function SequencerView({ songId, sectionId, sectionName }: SequencerViewProps) {
+export function SequencerView({ songId, sectionId, sectionName, songBpm, bpmOverride }: SequencerViewProps) {
   const { addToast } = useToast();
   const { isAuthenticated } = useAuth();
   const partsQuery = useGetSectionsIdParts(sectionId);
@@ -106,7 +110,8 @@ export function SequencerView({ songId, sectionId, sectionName }: SequencerViewP
   const songResp = songQuery.data?.data;
   const songData =
     songResp && 'data' in songResp ? (songResp.data as { bpm?: number; is_system_template?: boolean }) : undefined;
-  const effectiveBpm = songData?.bpm ?? 90;
+  // Tempo efektif = BPM override Section (AC-9) atau BPM dasar Song.
+  const effectiveBpm = bpmOverride ?? songBpm;
   // Song Template System read-only bagi siapapun (FR-SONG-08); Guest read-only semua (FR-AUTH-06).
   const readOnly = !isAuthenticated || songData?.is_system_template === true;
 
@@ -279,8 +284,15 @@ export function SequencerView({ songId, sectionId, sectionName }: SequencerViewP
             {preview.isPlaying ? '■ Stop Preview' : '▶ Play Preview'}
           </Button>
           <span className="text-xs text-stone-500">
-            BPM {effectiveBpm} · {Math.max(...orderedParts.map((p) => stepCount(stepsOf(p))), 0)}{' '}
-            step ditampilkan (panjang steps bebas, tanpa batas)
+            BPM {effectiveBpm}
+            {bpmOverride !== null && (
+              <span className="ml-1 font-semibold text-amber-700" title="BPM override section ini — berbeda dari BPM dasar Song">
+                ★ (override, dasar {songBpm})
+              </span>
+            )}
+            {' · '}
+            {Math.max(...orderedParts.map((p) => stepCount(stepsOf(p))), 0)} step ditampilkan (panjang steps bebas,
+            tanpa batas)
           </span>
         </div>
         <div className="flex items-center gap-2">

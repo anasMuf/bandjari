@@ -20,9 +20,27 @@ function SectionSequencerPage() {
   const data = songQuery.data?.data;
   const song =
     data && 'data' in data
-      ? (data.data as { name: string; is_system_template?: boolean; sections?: SectionItem[] })
+      ? (data.data as {
+          name: string;
+          bpm?: number;
+          is_system_template?: boolean;
+          sections?: SectionItem[];
+        })
       : undefined;
-  const sectionName = song?.sections?.find((s) => s.id === sid)?.name ?? 'Section';
+  const section = song?.sections?.find((s) => s.id === sid);
+  const sectionName = section?.name ?? 'Section';
+  // BPM efektif section: override (FR-SEC-08/09) atau ikut BPM dasar Song (AC-9).
+  const songBpm = song?.bpm ?? 90;
+  const bpmOverride = section?.bpm_override ?? null;
 
-  return <SequencerView key={sid} songId={id} sectionId={sid} sectionName={sectionName} />;
+  return (
+    <SequencerView
+      key={sid}
+      songId={id}
+      sectionId={sid}
+      sectionName={sectionName}
+      songBpm={songBpm}
+      bpmOverride={bpmOverride}
+    />
+  );
 }
