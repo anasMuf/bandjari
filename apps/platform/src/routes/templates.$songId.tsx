@@ -3,6 +3,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { useGetSongsId, usePostSongsIdDuplicate } from '../api/endpoints/songs/songs'
 import { useAuth } from '../features/auth/AuthContext'
 import { LoginPromptInline } from '../features/auth/components/LoginPromptInline'
+import { SongDetailView } from '../features/song/components/SongDetailView'
 import { Button } from '../components/atoms/Button'
 import { useToast } from '../components/molecules/Toast'
 import { ApiError } from '../api/mutator/custom-instance'
@@ -21,8 +22,9 @@ interface SongDetail {
 }
 
 /**
- * Halaman viewer publik untuk satu Song — dipakai Guest melihat Song Template
- * System (AC-11). Section terbuka sebagai chip menuju Sequencer read-only.
+ * Halaman viewer publik untuk Song Template System (AC-11, layar 2 wireframe):
+ * banner Mode Lihat Saja untuk Guest, strip section read-only, dan duplikasi
+ * ke "Lagu Saya" bagi pengguna login.
  */
 function PublicSongViewPage() {
   const { songId } = Route.useParams()
@@ -34,19 +36,25 @@ function PublicSongViewPage() {
   const [showPrompt, setShowPrompt] = useState(false)
 
   if (songQuery.isLoading) {
-    return <p className="p-6 text-sm text-gray-500">Memuat lagu...</p>;
+    return (
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <p className="text-sm text-stone-500">Memuat lagu...</p>
+      </main>
+    );
   }
 
   if (songQuery.isError) {
     return (
-      <div className="mx-auto max-w-2xl p-6">
-        <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
-          <p className="text-sm font-medium text-red-800">Lagu tidak ditemukan atau tidak dapat diakses.</p>
-          <Link to="/" className="mt-2 inline-block text-sm font-semibold text-indigo-600 hover:text-indigo-500">
-            Kembali ke beranda
-          </Link>
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-2xl">
+          <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
+            <p className="text-sm font-medium text-red-800">Lagu tidak ditemukan atau tidak dapat diakses.</p>
+            <Link to="/" className="mt-2 inline-block text-sm font-semibold text-brand-700 hover:text-brand-600">
+              Kembali ke beranda
+            </Link>
+          </div>
         </div>
-      </div>
+      </main>
     );
   }
 
@@ -81,64 +89,47 @@ function PublicSongViewPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <Link to="/" className="text-sm text-gray-500 hover:text-gray-700">
-          ← Beranda
-        </Link>
+    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      {showPrompt && !isAuthenticated && (
+        <div className="mb-4 max-w-md">
+          <LoginPromptInline action="menduplikasi lagu" onDismiss={() => setShowPrompt(false)} />
+        </div>
+      )}
 
-        <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight text-gray-900">{song.name}</h2>
-            <p className="mt-1 text-sm text-gray-500">
-              {song.is_system_template ? 'Lagu Bawaan · ' : ''}BPM dasar: {song.bpm}
+      <SongDetailView
+        song={song}
+        back={
+          <Link to="/" className="text-sm text-stone-500 hover:text-stone-700">
+            ← Beranda
+          </Link>
+        }
+        banner={
+          <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm">
+            <p className="flex flex-wrap items-center gap-2">
+              <span className="font-semibold text-amber-800">🔒 Mode Lihat Saja</span>
+              <span className="text-amber-800">
+                — Kamu sedang melihat Song Template System{' '}
+                <span className="font-semibold">{song.name}</span>. Kontrol edit dinonaktifkan.
+              </span>
+              {isAuthenticated ? (
+                <Button type="button" size="sm" onClick={handleDuplicate} disabled={duplicateMutation.isPending}>
+                  Duplikasi ke Song Saya
+                </Button>
+              ) : (
+                <Link
+                  to="/login"
+                  className="inline-flex items-center justify-center rounded-md bg-brand-700 px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-brand-600"
+                >
+                  Login untuk Edit
+                </Link>
+              )}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Link
-              to="/songs/$songId/play"
-              params={{ songId: String(id) }}
-              className="inline-flex items-center justify-center rounded-md bg-gray-900 px-3 py-2 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-gray-700"
-            >
-              ▶ Mainkan
-            </Link>
-            <Button type="button" onClick={handleDuplicate} disabled={duplicateMutation.isPending}>
-              Duplikasi ke Song Saya
-            </Button>
-          </div>
-        </div>
-
-        {showPrompt && !isAuthenticated && (
-          <div className="mt-3 max-w-md">
-            <LoginPromptInline action="menduplikasi lagu" onDismiss={() => setShowPrompt(false)} />
-          </div>
-        )}
-
-        <section aria-label="Section" className="mt-8">
-          <h3 className="text-sm font-semibold text-gray-900">Section</h3>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {(song.sections ?? [])
-              .slice()
-              .sort((a, b) => a.order_index - b.order_index)
-              .map((sec) => (
-                <Link
-                  key={sec.id}
-                  to="/songs/$songId/sections/$sectionId"
-                  params={{ songId: String(id), sectionId: String(sec.id) }}
-                  className="flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-xs hover:border-indigo-300 hover:text-indigo-600"
-                >
-                  {sec.name}
-                  <span className="text-xs text-gray-500">
-                    {sec.bpm_override !== null ? `★${sec.bpm_override}` : song.bpm} BPM
-                  </span>
-                </Link>
-              ))}
-            {(!song.sections || song.sections.length === 0) && (
-              <p className="text-sm text-gray-400">Lagu ini belum memiliki section.</p>
-            )}
-          </div>
-        </section>
-      </main>
-    </div>
+        }
+        readOnly
+        onEditAttempt={() => setShowPrompt(true)}
+        onChanged={() => songQuery.refetch()}
+      />
+    </main>
   );
 }

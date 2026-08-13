@@ -1,15 +1,10 @@
 import { useState } from 'react';
-import { Link } from '@tanstack/react-router';
 import {
   usePostSongsSongIdSections,
-  usePutSectionsId,
   usePutSectionsIdReorder,
-  useDeleteSectionsId,
-  usePostSectionsIdDuplicate,
 } from '../../../api/endpoints/sections/sections';
 import { Button } from '../../../components/atoms/Button';
-import { FormField } from '../../../components/molecules/FormField';
-import { ConfirmDialog } from '../../../components/molecules/ConfirmDialog';
+import { Badge } from '../../../components/atoms/Badge';
 import { useToast } from '../../../components/molecules/Toast';
 import { ApiError } from '../../../api/mutator/custom-instance';
 
@@ -25,26 +20,38 @@ interface SectionStripProps {
   songId: number;
   songBpm: number;
   sections: SectionItem[];
+  selectedId: number | null;
+  onSelect: (section: SectionItem) => void;
   onChanged: () => void;
+  /** Mode lihat-saja (Guest / Song Template): aksi edit memicu onEditAttempt. */
+  readOnly?: boolean;
+  onEditAttempt?: () => void;
 }
 
-export function SectionStrip({ songId, songBpm, sections, onChanged }: SectionStripProps) {
+/**
+ * Strip chip Section (layar 2 wireframe): pegangan #N + nama + BPM badge (★ untuk
+ * override) + chip "Tambah Section". Urutan menentukan susunan pad Launcher.
+ */
+export function SectionStrip({
+  songId,
+  songBpm,
+  sections,
+  selectedId,
+  onSelect,
+  onChanged,
+  readOnly = false,
+  onEditAttempt,
+}: SectionStripProps) {
   const { addToast } = useToast();
   const createMutation = usePostSongsSongIdSections();
-  const updateMutation = usePutSectionsId();
   const reorderMutation = usePutSectionsIdReorder();
-  const deleteMutation = useDeleteSectionsId();
-  const duplicateMutation = usePostSectionsIdDuplicate();
 
+  const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState('');
-  const [editing, setEditing] = useState<SectionItem | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editBpm, setEditBpm] = useState('');
-  const [deleting, setDeleting] = useState<SectionItem | null>(null);
   const [dragged, setDragged] = useState<SectionItem | null>(null);
 
-  const notify = (title: string, message: string) =>
-    addToast({ variant: 'success', title, message });
+  const sorted = [...sections].sort((a, b) => a.order_index - b.order_index);
+
   const showError = (error: unknown, title: string) =>
     addToast({
       variant: 'error',
@@ -52,7 +59,18 @@ export function SectionStrip({ songId, songBpm, sections, onChanged }: SectionSt
       message: error instanceof ApiError ? error.message : 'Terjadi kesalahan tak terduga.',
     });
 
-  const sorted = [...sections].sort((a, b) => a.order_index - b.order_index);
+  const guardEdit = (): boolean => {
+    if (readOnly) {
+      onEditAttempt?.();
+      return false;
+    }
+    return true;
+  };
+
+  const startAdd = () => {
+    if (!guardEdit()) return;
+    setAdding(true);
+  };
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,8 +79,13 @@ export function SectionStrip({ songId, songBpm, sections, onChanged }: SectionSt
       { songId, data: { name: newName.trim() } },
       {
         onSuccess: () => {
-          notify('Section dibuat', '5 bagian instrumen otomatis disiapkan.');
+          addToast({
+            variant: 'success',
+            title: 'Section dibuat',
+            message: '5 bagian instrumen otomatis disiapkan di baliknya.',
+          });
           setNewName('');
+          setAdding(false);
           onChanged();
         },
         onError: (error) => showError(error, 'Gagal menambah section'),
@@ -70,37 +93,11 @@ export function SectionStrip({ songId, songBpm, sections, onChanged }: SectionSt
     );
   };
 
-  const startEdit = (sec: SectionItem) => {
-    setEditing(sec);
-    setEditName(sec.name);
-    setEditBpm(sec.bpm_override !== null ? String(sec.bpm_override) : '');
-  };
-
-  const handleUpdate = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editing) return;
-    const data: { name: string; bpm_override?: { set: boolean; value?: number } } = { name: editName.trim() };
-    if (editBpm === '') {
-      // kosongkan override → ikut BPM Song (set=true tanpa value)
-      data.bpm_override = { set: true };
-    } else {
-      const val = Number(editBpm);
-      if (val >= 20 && val <= 400) data.bpm_override = { set: true, value: val };
-    }
-    updateMutation.mutate(
-      { id: editing.id, data },
-      {
-        onSuccess: () => {
-          notify('Section diperbarui', 'Perubahan tersimpan.');
-          setEditing(null);
-          onChanged();
-        },
-        onError: (error) => showError(error, 'Gagal memperbarui section'),
-      },
-    );
-  };
-
   const move = (sec: SectionItem, newIndex: number) => {
+    if (readOnly) {
+      onEditAttempt?.();
+      return;
+    }
     reorderMutation.mutate(
       { id: sec.id, data: { order_index: newIndex } },
       {
@@ -117,191 +114,124 @@ export function SectionStrip({ songId, songBpm, sections, onChanged }: SectionSt
     setDragged(null);
   };
 
-  const confirmDelete = () => {
-    if (!deleting) return;
-    deleteMutation.mutate(
-      { id: deleting.id },
-      {
-        onSuccess: () => {
-          notify('Section dihapus', 'Seluruh pola pukulan di dalamnya ikut terhapus.');
-          setDeleting(null);
-          onChanged();
-        },
-        onError: (error) => showError(error, 'Gagal menghapus section'),
-      },
-    );
-  };
-
-  const handleDuplicate = (sec: SectionItem) => {
-    duplicateMutation.mutate(
-      { id: sec.id },
-      {
-        onSuccess: () => {
-          notify('Section diduplikasi', 'Salinan ditambahkan di akhir urutan.');
-          onChanged();
-        },
-        onError: (error) => showError(error, 'Gagal menduplikasi section'),
-      },
-    );
-  };
-
   return (
-    <div className="mt-6">
+    <section aria-label="Section" className="mt-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-900">Section</h3>
-        <span className="text-xs text-gray-500">Seret chip untuk mengubah urutan</span>
+        <h2 className="text-sm font-semibold text-stone-900">Section</h2>
+        <span className="text-xs text-stone-500">
+          {readOnly ? 'Urutan menentukan susunan pad Launcher' : 'Seret ⠿ untuk mengatur ulang urutan'}
+        </span>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        {sorted.map((sec) => (
-          <div
-            key={sec.id}
-            draggable
-            onDragStart={() => setDragged(sec)}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={() => handleDrop(sec)}
-            className={`flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm shadow-xs transition-colors ${
-              dragged?.id === sec.id ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200 bg-white'
-            } cursor-grab`}
-          >
-            <Link
-              to="/songs/$songId/sections/$sectionId"
-              params={{ songId: String(songId), sectionId: String(sec.id) }}
-              className="font-medium text-gray-900 hover:text-indigo-600 hover:underline"
-              title="Buka Sequencer Mode"
+        {sorted.map((sec, index) => {
+          const active = sec.id === selectedId;
+          const override = sec.bpm_override !== null;
+          return (
+            <div
+              key={sec.id}
+              draggable={!readOnly}
+              onDragStart={() => setDragged(sec)}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={() => handleDrop(sec)}
+              role="button"
+              tabIndex={0}
+              aria-pressed={active}
+              onClick={() => onSelect(sec)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onSelect(sec);
+                }
+              }}
+              className={[
+                'flex select-none items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors',
+                active
+                  ? 'border-brand-700 bg-brand-50 ring-1 ring-brand-700/30 ring-inset'
+                  : 'border-stone-200 bg-white hover:border-stone-300',
+                readOnly ? 'cursor-default' : 'cursor-grab',
+              ].join(' ')}
             >
-              {sec.name}
-            </Link>
-            <span className="text-xs text-gray-500">
-              {sec.bpm_override !== null ? (
-                <span className="font-semibold text-indigo-600">★{sec.bpm_override}</span>
+              <span className="flex items-center gap-1 text-xs text-stone-400" aria-hidden="true">
+                <span>⠿</span>
+                <span className={active ? 'font-semibold text-brand-800' : ''}>#{index + 1}</span>
+              </span>
+              <span className={`font-medium ${active ? 'text-brand-900' : 'text-stone-900'}`}>
+                {sec.name}
+              </span>
+              {override ? (
+                <span className="flex items-center gap-1">
+                  <Badge variant="star">★</Badge>
+                  <span className="text-xs font-semibold text-amber-700">{sec.bpm_override} BPM</span>
+                </span>
               ) : (
-                <span>{songBpm}</span>
-              )}{' '}
-              BPM
-            </span>
-            <div className="ml-1 flex items-center gap-0.5">
-              <button
-                type="button"
-                title="Naikkan urutan"
-                className="rounded px-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 cursor-pointer"
-                onClick={() => move(sec, Math.max(0, sec.order_index - 1))}
-              >
-                ▲
-              </button>
-              <button
-                type="button"
-                title="Turunkan urutan"
-                className="rounded px-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 cursor-pointer"
-                onClick={() => move(sec, sec.order_index + 1)}
-              >
-                ▼
-              </button>
-              <button
-                type="button"
-                className="rounded px-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 cursor-pointer"
-                title="Edit section"
-                onClick={() => startEdit(sec)}
-              >
-                ✎
-              </button>
-              <button
-                type="button"
-                className="rounded px-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 cursor-pointer"
-                title="Duplikasi section"
-                onClick={() => handleDuplicate(sec)}
-              >
-                ⧉
-              </button>
-              <button
-                type="button"
-                className="rounded px-1 text-gray-400 hover:bg-red-50 hover:text-red-600 cursor-pointer"
-                title="Hapus section"
-                onClick={() => setDeleting(sec)}
-              >
-                ✕
-              </button>
+                <span className="text-xs text-stone-500">{songBpm} BPM</span>
+              )}
+              {!readOnly && (
+                <span className="ml-1 flex items-center gap-0.5">
+                  <button
+                    type="button"
+                    title="Naikkan urutan"
+                    aria-label={`Naikkan urutan ${sec.name}`}
+                    className="rounded px-1 text-stone-400 hover:bg-stone-100 hover:text-stone-700 cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      move(sec, Math.max(0, sec.order_index - 1));
+                    }}
+                  >
+                    ▲
+                  </button>
+                  <button
+                    type="button"
+                    title="Turunkan urutan"
+                    aria-label={`Turunkan urutan ${sec.name}`}
+                    className="rounded px-1 text-stone-400 hover:bg-stone-100 hover:text-stone-700 cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      move(sec, sec.order_index + 1);
+                    }}
+                  >
+                    ▼
+                  </button>
+                </span>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
 
-        {sections.length === 0 && (
-          <p className="text-sm text-gray-400">Belum ada section — tambahkan yang pertama.</p>
-        )}
-      </div>
-
-      {editing && (
-        <form
-          onSubmit={handleUpdate}
-          className="mt-4 rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-900/5"
-        >
-          <h4 className="text-sm font-semibold text-gray-900">Edit Section: {editing.name}</h4>
-          <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="sm:col-span-2">
-              <FormField
-                id="edit-name"
-                name="edit-name"
-                type="text"
-                label="Nama section"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                required
-                maxLength={255}
-              />
-            </div>
-            <FormField
-              id="edit-bpm"
-              name="edit-bpm"
-              type="number"
-              label={`BPM override (kosongkan = ikut ${songBpm})`}
-              value={editBpm}
-              onChange={(e) => setEditBpm(e.target.value)}
-              min={20}
-              max={400}
-            />
-          </div>
-          <div className="mt-3 flex gap-2">
-            <Button type="submit" disabled={updateMutation.isPending}>
-              Simpan
-            </Button>
-            <Button type="button" variant="secondary" onClick={() => setEditing(null)}>
-              Batal
-            </Button>
-          </div>
-        </form>
-      )}
-
-      {!editing && (
-        <form onSubmit={handleCreate} className="mt-4 flex items-end gap-2">
-          <div className="flex-1 max-w-xs">
-            <FormField
-              id="new-section"
-              name="new-section"
-              type="text"
-              label="Nama section baru"
+        {adding ? (
+          <form onSubmit={handleCreate} className="flex items-center gap-2">
+            <input
+              autoFocus
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="mis. Awalan"
               required
               maxLength={255}
+              aria-label="Nama section baru"
+              className="block w-40 rounded-md border-0 px-3 py-1.5 text-sm text-stone-900 outline-1 -outline-offset-1 outline-stone-300 placeholder:text-stone-400 focus:outline-2 focus:-outline-offset-2 focus:outline-brand-700"
             />
-          </div>
-          <Button type="submit" disabled={createMutation.isPending}>
+            <Button type="submit" size="sm" disabled={createMutation.isPending}>
+              Simpan
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setAdding(false)}>
+              Batal
+            </Button>
+          </form>
+        ) : (
+          <button
+            type="button"
+            onClick={startAdd}
+            className="rounded-lg border border-dashed border-stone-300 px-3 py-2 text-sm text-stone-500 transition-colors hover:border-brand-700 hover:text-brand-700 cursor-pointer"
+          >
             + Tambah Section
-          </Button>
-        </form>
-      )}
+          </button>
+        )}
+      </div>
 
-      <ConfirmDialog
-        open={!!deleting}
-        title="Hapus section"
-        description={`Yakin menghapus "${deleting?.name}"? Seluruh SectionPart & pola pukulannya ikut terhapus.`}
-        confirmLabel="Hapus"
-        cancelLabel="Batal"
-        variant="danger"
-        onConfirm={confirmDelete}
-        onCancel={() => setDeleting(null)}
-      />
-    </div>
+      {sections.length === 0 && !adding && (
+        <p className="mt-2 text-sm text-stone-400">Belum ada section — tambahkan yang pertama.</p>
+      )}
+    </section>
   );
 }
