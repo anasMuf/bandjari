@@ -130,6 +130,38 @@ func TestSectionCreate_AutoCreatesFiveParts(t *testing.T) {
 	}
 }
 
+// TestSectionCreate_SlotsStartEmpty memastikan SoundSlot default dibuat tanpa
+// sample terpasang — keputusan pemilik produk: susunan standar belum final,
+// jadi Section baru mulai kosong (auto-attach Template System ditunda).
+func TestSectionCreate_SlotsStartEmpty(t *testing.T) {
+	songRepo := newFakeSongRepo(&model.Song{UserID: uptr(5), Name: "Lagu", Bpm: 90})
+	sectionRepo := newFakeSectionRepo()
+	// Sedikan template sample — dulu auto-attach memakainya; kini harus diabaikan.
+	sampleRepo := newFakeSampleRepo()
+	tmpl := &model.Sample{IsSystemTemplate: true, Name: "Rebana1 Tak", Part: model.PartRebana1}
+	tmpl.ID = 7
+	sampleRepo.samples[7] = tmpl
+
+	svc := NewSectionService(sectionRepo, songRepo, sampleRepo)
+
+	sec, err := svc.Create(5, 1, dto.CreateSectionRequest{Name: "Awalan"})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	stored := sectionRepo.sections[sec.ID]
+	for _, p := range stored.Parts {
+		if len(p.SoundSlots) != 2 {
+			t.Fatalf("SoundSlot part %s = %d, want 2 default (Tak/Dung)", p.Part, len(p.SoundSlots))
+		}
+		for _, slot := range p.SoundSlots {
+			if slot.SampleID != nil {
+				t.Fatalf("SoundSlot %s (%s) harus kosong (sample_id nil), got %d", slot.Label, p.Part, *slot.SampleID)
+			}
+		}
+	}
+}
+
 func TestSectionCreate_TemplateSongForbidden(t *testing.T) {
 	songRepo := newFakeSongRepo(&model.Song{IsSystemTemplate: true, Name: "Template", Bpm: 90})
 	sectionRepo := newFakeSectionRepo()

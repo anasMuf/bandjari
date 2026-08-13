@@ -20,7 +20,9 @@ type SectionService interface {
 type sectionService struct {
 	sectionRepo repository.SectionRepository
 	songRepo    repository.SongRepository
-	sampleRepo  repository.SampleRepository
+	// sampleRepo dicadangkan untuk auto-attach Sample Template System saat
+	// Section dibuat (FR-SLOT-09/AC-10) — sementara dinonaktifkan (slot kosong).
+	sampleRepo repository.SampleRepository
 }
 
 func NewSectionService(sectionRepo repository.SectionRepository, songRepo repository.SongRepository, sampleRepo repository.SampleRepository) SectionService {
@@ -73,9 +75,11 @@ func (s *sectionService) loadGuardedSection(sectionID uint, userID uint) (*model
 
 // Create menambah Section baru dan otomatis membuat tepat 5 SectionPart
 // (satu per Part) — FR-SEC-01/02. Tiap SectionPart mendapat 2 SoundSlot default
-// ("Tak"/T, "Dung"/D) yang langsung terpasang Sample Template System bila
-// tersedia untuk part+label terkait (FR-SLOT-09, FR-SAMP-11); bila tidak ada,
-// SampleID tetap NULL tanpa error (FR-SAMP-07).
+// ("Tak"/T, "Dung"/D) yang KOSONG (tanpa sample terpasang).
+//
+// Catatan keputusan (pemilik produk): auto-attach Sample Template System
+// (FR-SLOT-09 / AC-10) ditunda sementara — susunan standar belum final, jadi
+// Section baru dimulai kosong dan user memasang sample sendiri di Sequencer.
 func (s *sectionService) Create(userID uint, songID uint, req dto.CreateSectionRequest) (*dto.SectionResponse, error) {
 	song, err := s.songRepo.FindByID(songID)
 	if err != nil {
@@ -101,12 +105,12 @@ func (s *sectionService) Create(userID uint, songID uint, req dto.CreateSectionR
 	for _, part := range model.AllParts {
 		sp := model.SectionPart{Part: part}
 		for _, def := range defaultSoundSlots {
-			slot := model.SoundSlot{Label: def.label, Key: def.key, OrderIndex: len(sp.SoundSlots)}
-			if template, err := s.sampleRepo.FindTemplateByPartAndLabel(part, def.label); err == nil && template.ID != 0 {
-				sampleID := template.ID
-				slot.SampleID = &sampleID
-			}
-			sp.SoundSlots = append(sp.SoundSlots, slot)
+			// Slot dibuat kosong — SampleID tetap NULL (keputusan: slot kosong dulu).
+			sp.SoundSlots = append(sp.SoundSlots, model.SoundSlot{
+				Label:      def.label,
+				Key:        def.key,
+				OrderIndex: len(sp.SoundSlots),
+			})
 		}
 		section.Parts = append(section.Parts, sp)
 	}
