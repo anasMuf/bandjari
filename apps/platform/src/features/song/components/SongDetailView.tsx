@@ -71,8 +71,8 @@ export function SongDetailView({ song, back, banner, readOnly, onEditAttempt, on
         </p>
       )}
 
-      {selected ? (
-        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_300px]">
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_300px]">
+        {selected ? (
           <SectionDetailPanel
             key={selected.id}
             songId={song.id}
@@ -82,15 +82,15 @@ export function SongDetailView({ song, back, banner, readOnly, onEditAttempt, on
             readOnly={readOnly}
             onEditAttempt={onEditAttempt}
           />
-          <SongSummaryPanel songId={song.id} sections={sorted} />
-        </div>
-      ) : (
-        <EmptyState
-          icon="♪"
-          title="Belum ada Section"
-          description="Tambahkan section pertamamu lewat chip “+ Tambah Section” di atas."
-        />
-      )}
+        ) : (
+          <EmptyState
+            icon="♪"
+            title="Belum ada Section"
+            description="Tambahkan section pertamamu lewat chip “+ Tambah Section” di atas."
+          />
+        )}
+        <SongSummaryPanel songId={song.id} sections={sorted} />
+      </div>
     </div>
   );
 }

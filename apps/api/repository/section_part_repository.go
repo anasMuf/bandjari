@@ -29,17 +29,17 @@ func (r *sectionPartRepository) FindByID(id uint) (*model.SectionPart, error) {
 
 func (r *sectionPartRepository) FindByIDWithSlots(id uint) (*model.SectionPart, error) {
 	var part model.SectionPart
-	err := r.db.Preload("SoundSlots.Sample", func(db *gorm.DB) *gorm.DB {
+	err := r.db.Preload("SoundSlots", func(db *gorm.DB) *gorm.DB {
 		return db.Order("order_index ASC")
-	}).First(&part, id).Error
+	}).Preload("SoundSlots.Sample").First(&part, id).Error
 	return &part, err
 }
 
 func (r *sectionPartRepository) ListBySectionID(sectionID uint) ([]model.SectionPart, error) {
 	var parts []model.SectionPart
-	err := r.db.Preload("SoundSlots.Sample", func(db *gorm.DB) *gorm.DB {
+	err := r.db.Preload("SoundSlots", func(db *gorm.DB) *gorm.DB {
 		return db.Order("order_index ASC")
-	}).Where("section_id = ?", sectionID).Order("id ASC").Find(&parts).Error
+	}).Preload("SoundSlots.Sample").Where("section_id = ?", sectionID).Order("id ASC").Find(&parts).Error
 	return parts, err
 }
 

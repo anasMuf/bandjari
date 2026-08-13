@@ -1,11 +1,14 @@
-// E2E UI check (dev): login → buat lagu → kelola section → sequencer → launcher.
+// E2E UI check (dev): alur lengkap + alur Guest + screenshot tiap layar.
 // Jalankan dengan API (8080) & vite dev (5199) aktif:
 //   pnpm exec vite dev --port 5199
 //   node scripts/ui-check.mjs
 import { chromium } from 'playwright';
+import { mkdirSync } from 'node:fs';
 
 const BASE = 'http://localhost:5199';
-const API = 'http://localhost:8080/api/v1';
+const API = process.env.BANDJARI_API || 'http://localhost:8080/api/v1';
+const SHOTS = '/tmp/bandjari-ui-shots';
+mkdirSync(SHOTS, { recursive: true });
 
 const email = `ui-${Date.now()}@test.dev`;
 const password = 'secret123';
@@ -16,11 +19,15 @@ await fetch(`${API}/auth/register`, {
 });
 
 const browser = await chromium.launch();
-const page = await browser.newPage();
+const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 const errors = [];
+const badResponses = [];
 page.on('pageerror', (e) => errors.push(String(e)));
 page.on('console', (m) => {
   if (m.type() === 'error') errors.push(m.text());
+});
+page.on('response', (r) => {
+  if (r.status() >= 400) badResponses.push(`${r.status()} ${r.url()}`);
 });
 
 const step = async (name, fn) => {
@@ -28,14 +35,59 @@ const step = async (name, fn) => {
     await fn();
     console.log(`✅ ${name}`);
   } catch (e) {
-    console.log(`❌ ${name}: ${String(e).slice(0, 200)}`);
+    console.log(`❌ ${name}: ${String(e).slice(0, 300)}`);
     console.log('   url:', page.url());
-    console.log('   body:', (await page.locator('body').innerText()).slice(0, 200).replace(/\n/g, ' | '));
+    console.log('   body:', (await page.locator('body').innerText()).slice(0, 300).replace(/\n/g, ' | '));
+    await page.screenshot({ path: `${SHOTS}/fail-${name.replace(/[^a-z0-9]+/gi, '-')}.png`, fullPage: true });
     await browser.close();
     process.exit(1);
   }
 };
 
+const shot = async (name) => {
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: true });
+  console.log(`📸 ${name}`);
+};
+
+// ===== Alur Guest (Flow 5.0, AC-11): tanpa login =====
+await step('guest: beranda menampilkan Song Bawaan + SYSTEM badge', async () => {
+  await page.goto(`${BASE}/`);
+  await page.waitForSelector('text=Selamat Datang di BandJari', { timeout: 20000 });
+  await page.waitForSelector('text=Song Template System', { timeout: 20000 });
+  const sysBadges = await page.locator('text=SYSTEM').count();
+  if (sysBadges === 0) throw new Error('badge SYSTEM tidak muncul di kartu template');
+  const mainBtns = await page.locator('a:has-text("▶ Main")').count();
+  if (mainBtns === 0) throw new Error('tombol ▶ Main tidak ada');
+});
+await shot('01-landing-guest');
+
+await step('guest: buka detail template → banner Mode Lihat Saja', async () => {
+  await page.locator('a:has-text("▶ Main")').first().locator('..').locator('..').locator('a').first().click();
+  await page.waitForSelector('text=Mode Lihat Saja', { timeout: 15000 });
+  const cta = await page.locator('text=Login untuk Edit').count();
+  if (cta === 0) throw new Error('banner guest tanpa CTA Login untuk Edit');
+});
+await shot('02-detail-template-guest');
+
+await step('guest: sequencer template read-only', async () => {
+  await page.click('a:has-text("Buka di Sequencer Mode →")');
+  await page.waitForSelector('text=Sequencer — Section:', { timeout: 15000 });
+  await page.waitForSelector('text=Mode Lihat Saja', { timeout: 15000 });
+  const subheaders = await page.locator('button:has-text("Kelola bunyi")').count();
+  if (subheaders !== 0) throw new Error('grid read-only masih menampilkan kontrol edit');
+});
+await shot('03-sequencer-guest');
+
+await step('guest: launcher template menampilkan pad + transport', async () => {
+  await page.click('a:has-text("Buka Launcher")');
+  await page.waitForSelector('text=Launcher —', { timeout: 15000 });
+  await page.waitForSelector('button[aria-label^="Mainkan section"]', { timeout: 20000 });
+  await page.waitForSelector('text=Mute Part…', { timeout: 15000 });
+});
+await shot('04-launcher-guest');
+
+// ===== Alur user login =====
 await step('login', async () => {
   await page.goto(`${BASE}/login`);
   await page.waitForSelector('#email', { timeout: 20000 });
@@ -46,50 +98,82 @@ await step('login', async () => {
   await page.waitForURL('**/dashboard', { timeout: 15000 });
 });
 
-await step('buat lagu', async () => {
+await step('daftar lagu: meta BPM · N Section tampil', async () => {
   await page.goto(`${BASE}/songs`);
-  await page.click('button:has-text("+ Buat Lagu Baru")');
+  await page.waitForSelector('text=Lagu Saya', { timeout: 15000 });
+});
+await shot('05-song-list');
+
+await step('buat lagu → otomatis lanjut ke halaman Section', async () => {
+  await page.click('button:has-text("+ Buat Song Baru")');
   await page.fill('#name', 'Lagu UI Test');
   await page.fill('#bpm', '90');
-  await page.click('form button:has-text("Buat")');
-  await page.waitForSelector('text=Lagu UI Test', { timeout: 15000 });
-});
-
-await step('klik nama lagu → halaman kelola', async () => {
-  await page.click('a:has-text("Lagu UI Test")');
+  await page.click('form button:has-text("Simpan & Lanjut ke Section")');
   await page.waitForSelector('text=+ Tambah Section', { timeout: 15000 });
+  await page.waitForSelector('text=Ringkasan Song', { timeout: 15000 });
+  if (!page.url().includes('/songs/')) throw new Error('tidak berpindah ke halaman detail lagu');
 });
+await shot('06-song-detail-kosong');
 
-await step('tambah section Awalan', async () => {
-  await page.fill('#new-section', 'Awalan');
+await step('tambah section Awalan (form inline di strip)', async () => {
   await page.click('button:has-text("+ Tambah Section")');
-  await page.waitForSelector('a:has-text("Awalan")', { timeout: 15000 });
+  await page.fill('input[aria-label="Nama section baru"]', 'Awalan');
+  await page.click('form button:has-text("Simpan")');
+  await page.waitForSelector('[role="button"]:has-text("Awalan")', { timeout: 15000 });
+  await page.waitForSelector('text=Section Terpilih: Awalan', { timeout: 15000 });
 });
+await shot('07-song-detail-section');
 
-await step('klik chip section → Sequencer Mode', async () => {
-  await page.click('a:has-text("Awalan")');
-  await page.waitForSelector('text=Sequencer Mode', { timeout: 15000 });
-  const tabs = await page.locator('role=tab').count();
-  if (tabs !== 5) throw new Error(`tab part = ${tabs}, want 5`);
+await step('chip section → Sequencer Mode (grid terpadu 5 Part)', async () => {
+  await page.click('a:has-text("Buka di Sequencer Mode →")');
+  await page.waitForSelector('text=Sequencer — Section: Awalan', { timeout: 15000 });
+  const partHeaders = await page.locator('tbody >> text=Rebana 1').count();
+  const bassHeader = await page.locator('tbody >> text=Bass').count();
+  if (partHeaders === 0 || bassHeader === 0) throw new Error('subheader Part tidak muncul di grid terpadu');
 });
+await shot('08-sequencer');
 
-await step('grid steps: tambah langkah & simpan', async () => {
-  await page.click('button[title="Tambah langkah di akhir"]');
-  const cells = await page.locator('[aria-label^="Langkah"]').count();
-  if (cells === 0) throw new Error('grid steps tidak bertambah');
-  console.log(`   (grid cells: ${cells})`);
-  await page.click('button:has-text("Simpan Steps")');
+await step('grid steps: klik kotak, ±8 step, simpan perubahan', async () => {
+  const cells = page.locator('tbody button[aria-label^="Langkah "]');
+  const before = await cells.count();
+  if (before === 0) throw new Error('sel step tidak ada');
+  await cells.first().click();
+  await page.click('button:has-text("+ 8 Step")');
+  const after = await cells.count();
+  if (after <= before) throw new Error(`sel tidak bertambah (${before} → ${after})`);
+  await page.click('button:has-text("Simpan Perubahan")');
   await page.waitForSelector('text=Steps tersimpan', { timeout: 15000 });
 });
 
-await step('Buka Launcher → pad section tampil', async () => {
-  await page.click('a:has-text("Buka Launcher")');
-  await page.waitForSelector('text=Launcher Mode', { timeout: 15000 });
-  await page.waitForSelector('text=Awalan', { timeout: 20000 }); // pad muncul setelah audio siap
-  const pads = await page.locator('button[aria-label^="Mainkan section"]').count();
-  if (pads === 0) throw new Error('pad section tidak muncul');
-  console.log(`   (pad: ${pads})`);
+await step('kembali ke Section → Ringkasan Song terisi', async () => {
+  await page.click('a:has-text("← Kembali ke Section")');
+  await page.waitForSelector('text=1 Section tersusun', { timeout: 15000 });
 });
 
+await step('launcher: pad tampil + trigger + stop', async () => {
+  await page.click('a:has-text("▶ Buka Launcher Mode")');
+  await page.waitForSelector('text=Launcher — Lagu UI Test', { timeout: 15000 });
+  const pad = page.locator('button[aria-label^="Mainkan section"]');
+  await pad.waitFor({ timeout: 20000 });
+  await pad.click();
+  await page.waitForSelector('text=Sedang Main', { timeout: 10000 });
+  await page.waitForSelector('text=sedang main ·', { timeout: 10000 }); // status pad aktif
+  await page.click('button:has-text("■ Stop")');
+  await page.waitForSelector('text=Tekan salah satu pad Section untuk mulai.', { timeout: 10000 });
+});
+await shot('09-launcher-user');
+
+// ===== Sample Library =====
+await step('sample library: dua seksi + kartu bawaan read-only', async () => {
+  await page.goto(`${BASE}/samples`);
+  await page.waitForSelector('text=Sample Bawaan (Template System)', { timeout: 15000 });
+  await page.waitForSelector('text=Sample Saya', { timeout: 15000 });
+  const usageMeta = await page.locator('text=Dipakai di').count();
+  if (usageMeta === 0) throw new Error('meta "Dipakai di N SoundSlot" tidak muncul');
+});
+await shot('10-sample-library');
+
 console.log('console errors:', errors.length ? errors.join('\n') : '(tidak ada)');
+console.log('respons 4xx:', badResponses.length ? badResponses.join('\n') : '(tidak ada)');
 await browser.close();
+if (errors.length > 0) process.exit(1);

@@ -1,5 +1,6 @@
 import { useGetSamples, useGetSamplesTemplates } from '../../../api/endpoints/samples/samples';
 import type { DtoSuccessResponse } from '../../../api/model';
+import { useAuth } from '../../auth/AuthContext';
 
 interface SampleOption {
   id: number;
@@ -20,13 +21,16 @@ interface SamplePickerProps {
  * (milik user), plus opsi mengosongkan.
  */
 export function SamplePicker({ id, label, value, onChange }: SamplePickerProps) {
-  const mineQuery = useGetSamples();
+  const { isAuthenticated } = useAuth();
+  // Guest tidak punya akses ke daftar sample milik user — query dimatikan agar
+  // tidak memicu 401 saat menjelajah Sequencer template dalam mode lihat-saja.
+  const mineQuery = useGetSamples(undefined, { query: { enabled: isAuthenticated } });
   const templatesQuery = useGetSamplesTemplates();
   const mine = ((mineQuery.data?.data as DtoSuccessResponse | undefined)?.data ?? []) as SampleOption[];
   const templates = ((templatesQuery.data?.data as DtoSuccessResponse | undefined)?.data ??
     []) as SampleOption[];
 
-  const loading = mineQuery.isLoading || templatesQuery.isLoading;
+  const loading = templatesQuery.isLoading || (isAuthenticated && mineQuery.isLoading);
 
   return (
     <div>
@@ -53,6 +57,8 @@ export function SamplePicker({ id, label, value, onChange }: SamplePickerProps) 
         <optgroup label="Sample Saya">
           {loading ? (
             <option disabled>Memuat...</option>
+          ) : !isAuthenticated ? (
+            <option disabled>— login untuk melihat sample milikmu —</option>
           ) : mine.length === 0 ? (
             <option disabled>(belum ada sample milikmu)</option>
           ) : (
