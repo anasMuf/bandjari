@@ -16,12 +16,20 @@ function LandingPage() {
           <h1 className="text-lg font-semibold text-gray-900">BandJari</h1>
           <div className="flex items-center gap-3">
             {isAuthenticated ? (
-              <Link
-                to="/songs"
-                className="text-sm font-medium text-indigo-600 hover:text-indigo-500"
-              >
-                Lagu Saya →
-              </Link>
+              <>
+                <Link
+                  to="/songs"
+                  className="text-sm font-medium text-indigo-600 hover:text-indigo-500"
+                >
+                  Lagu Saya
+                </Link>
+                <Link
+                  to="/samples"
+                  className="text-sm font-medium text-indigo-600 hover:text-indigo-500"
+                >
+                  Sample
+                </Link>
+              </>
             ) : (
               <>
                 <Link to="/login" className="text-sm font-medium text-gray-600 hover:text-gray-900">

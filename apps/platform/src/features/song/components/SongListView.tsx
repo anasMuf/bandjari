@@ -215,6 +215,15 @@ export function SongListView() {
                 <p className="mt-0.5 text-xs text-gray-500">{song.bpm} BPM</p>
               </div>
               <div className="flex items-center gap-2">
+                <Link
+                  to="/songs/$songId/play"
+                  params={{ songId: String(song.id) }}
+                  title="Mainkan (Launcher)"
+                  aria-label={`Mainkan ${song.name}`}
+                  className="inline-flex items-center justify-center rounded-md px-2.5 py-1.5 text-xs font-semibold text-gray-900 ring-1 ring-gray-300 ring-inset transition-colors hover:bg-gray-50"
+                >
+                  ▶ Mainkan
+                </Link>
                 <Button
                   type="button"
                   variant="ghost"

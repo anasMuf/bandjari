@@ -30,17 +30,17 @@ type seedEntry struct {
 	part model.Part
 }
 
-// Pemetaan file → part. REBANA1=LANANG, REBANA2=WEDOK, REBANA3=GL, REBANA4=GW —
-// placeholder yang dapat disesuaikan dengan karakter asli tiap grup.
+// Pemetaan file → part — mengikuti konvensi pemilik produk (dikonfirmasi dari upload):
+// REBANA1=WEDOK, REBANA2=LANANG, REBANA3=GOLONG WEDOK (GL), REBANA4=GOLONG LANANG (GW).
 // Nama mengandung "Tak"/"Dung" agar auto-attach SoundSlot default (FR-SLOT-09)
 // menemukannya via pencocokan part+label.
 var sampleEntries = []seedEntry{
-	{"LANANG TEK.wav", "Rebana1 Tak", model.PartRebana1},
-	{"LANANG DUK.wav", "Rebana1 Duk", model.PartRebana1},
-	{"LANANG DEP.wav", "Rebana1 Dep", model.PartRebana1},
-	{"WEDOK TEK.wav", "Rebana2 Tak", model.PartRebana2},
-	{"WEDOK DUK.wav", "Rebana2 Duk", model.PartRebana2},
-	{"WEDOK DEP.wav", "Rebana2 Dep", model.PartRebana2},
+	{"WEDOK TEK.wav", "Rebana1 Tak", model.PartRebana1},
+	{"WEDOK DUK.wav", "Rebana1 Duk", model.PartRebana1},
+	{"WEDOK DEP.wav", "Rebana1 Dep", model.PartRebana1},
+	{"LANANG TEK.wav", "Rebana2 Tak", model.PartRebana2},
+	{"LANANG DUK.wav", "Rebana2 Duk", model.PartRebana2},
+	{"LANANG DEP.wav", "Rebana2 Dep", model.PartRebana2},
 	{"GL TEK.wav", "Rebana3 Tak", model.PartRebana3},
 	{"GL DUK.wav", "Rebana3 Duk", model.PartRebana3},
 	{"GW TEK.wav", "Rebana4 Tak", model.PartRebana4},

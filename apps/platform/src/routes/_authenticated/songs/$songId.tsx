@@ -40,7 +40,7 @@ function SongDetailPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <Link
             to="/songs"
@@ -51,6 +51,13 @@ function SongDetailPage() {
           <h2 className="mt-1 text-2xl font-bold tracking-tight text-gray-900">{song.name}</h2>
           <p className="mt-1 text-sm text-gray-500">BPM dasar: {song.bpm}</p>
         </div>
+        <Link
+          to="/songs/$songId/play"
+          params={{ songId: String(id) }}
+          className="inline-flex items-center justify-center rounded-md bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-gray-700"
+        >
+          ▶ Mainkan (Launcher)
+        </Link>
       </div>
 
       <SectionStrip
