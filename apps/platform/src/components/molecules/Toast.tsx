@@ -77,7 +77,7 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
           <div className="ml-4 flex shrink-0">
             <button
               type="button"
-              className="inline-flex rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 cursor-pointer"
+              className="inline-flex rounded-md bg-white text-stone-400 hover:text-stone-500 focus:outline-none focus:ring-2 focus:ring-brand-700 focus:ring-offset-2 cursor-pointer"
               onClick={() => onRemove(toast.id)}
             >
               <span className="sr-only">Close</span>

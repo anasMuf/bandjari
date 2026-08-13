@@ -3,6 +3,20 @@
 
 @theme {
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  /* Aksen brand — teal, nuansa seni Islami rebana (RD-1).
+     Dipakai sebagai pengganti indigo starter yang generik. */
+  --color-brand-50: #f0fdfa;
+  --color-brand-100: #ccfbf1;
+  --color-brand-200: #99f6e4;
+  --color-brand-300: #5eead4;
+  --color-brand-400: #2dd4bf;
+  --color-brand-500: #14b8a6;
+  --color-brand-600: #0d9488;
+  --color-brand-700: #0f766e;
+  --color-brand-800: #115e59;
+  --color-brand-900: #134e4a;
+  --color-brand-950: #042f2e;
 }
 
 * {
@@ -31,4 +45,20 @@ body {
     transform: translateX(0);
     opacity: 1;
   }
+}
+
+/* Kedip halus untuk pad "menunggu akhir siklus" di Launcher (wireframe: garis
+   putus-putus berkedip). Tidak mengandalkan warna semata — teks status tetap ada. */
+@keyframes pendingPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.animate-pending {
+  animation: pendingPulse 1s ease-in-out infinite;
 }

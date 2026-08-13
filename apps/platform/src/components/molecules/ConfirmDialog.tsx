@@ -46,8 +46,8 @@ export function ConfirmDialog({
 
   if (!open) return null;
 
-  const iconBg = variant === 'danger' ? 'bg-red-100' : 'bg-indigo-100';
-  const iconColor = variant === 'danger' ? 'text-red-600' : 'text-indigo-600';
+  const iconBg = variant === 'danger' ? 'bg-red-100' : 'bg-brand-100';
+  const iconColor = variant === 'danger' ? 'text-red-600' : 'text-brand-700';
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -94,7 +94,7 @@ export function ConfirmDialog({
           </div>
 
           {/* Actions */}
-          <div className="rounded-b-lg bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+          <div className="rounded-b-lg bg-stone-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
             <Button
               type="button"
               variant={variant}

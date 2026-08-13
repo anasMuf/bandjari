@@ -1,8 +1,8 @@
-import { Outlet, createFileRoute, redirect, useNavigate, Link } from '@tanstack/react-router'
+import { Outlet, createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
 import { useState, useEffect, useCallback } from 'react'
 import { hasToken, useAuth } from '../features/auth/AuthContext'
-import { Button } from '../components/atoms/Button'
 import { ConfirmDialog } from '../components/molecules/ConfirmDialog'
+import { TopBar } from '../components/molecules/TopBar'
 
 export const Route = createFileRoute('/_authenticated')({
   beforeLoad: () => {
@@ -32,52 +32,18 @@ function AuthenticatedLayout() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+      <div className="flex min-h-screen items-center justify-center bg-stone-100">
         <div className="text-center">
-          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
-          <p className="mt-3 text-sm text-gray-500">Loading...</p>
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-brand-700 border-t-transparent" />
+          <p className="mt-3 text-sm text-stone-500">Loading...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Navbar */}
-      <nav className="border-b border-gray-200 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-          <h1 className="text-lg font-semibold text-gray-900">BandJari</h1>
-          <div className="flex items-center gap-4">
-            <Link
-              to="/"
-              className="text-sm text-gray-600 hover:text-gray-900"
-              activeProps={{ className: 'text-indigo-600 font-semibold' }}
-            >
-              Lagu Bawaan
-            </Link>
-            <Link
-              to="/songs"
-              className="text-sm text-gray-600 hover:text-gray-900"
-              activeProps={{ className: 'text-indigo-600 font-semibold' }}
-            >
-              Lagu Saya
-            </Link>
-            <Link
-              to="/samples"
-              className="text-sm text-gray-600 hover:text-gray-900"
-              activeProps={{ className: 'text-indigo-600 font-semibold' }}
-            >
-              Sample
-            </Link>
-            <span className="text-sm text-gray-600">
-              {user?.name || 'User'}
-            </span>
-            <Button type="button" variant="secondary" size="sm" onClick={() => setShowLogoutDialog(true)}>
-              Logout
-            </Button>
-          </div>
-        </div>
-      </nav>
+    <div className="min-h-screen bg-stone-100">
+      <TopBar variant="app" userName={user?.name} onLogout={() => setShowLogoutDialog(true)} />
 
       {/* Main Content */}
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
