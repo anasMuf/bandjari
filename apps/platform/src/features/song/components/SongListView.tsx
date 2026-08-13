@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import {
   useGetSongs,
   usePostSongs,
@@ -11,6 +11,8 @@ import type { DtoSuccessResponse } from '../../../api/model';
 import { Button } from '../../../components/atoms/Button';
 import { FormField } from '../../../components/molecules/FormField';
 import { ConfirmDialog } from '../../../components/molecules/ConfirmDialog';
+import { PageHeader } from '../../../components/molecules/PageHeader';
+import { EmptyState } from '../../../components/molecules/EmptyState';
 import { useToast } from '../../../components/molecules/Toast';
 import { ApiError } from '../../../api/mutator/custom-instance';
 
@@ -19,6 +21,8 @@ interface SongItem {
   name: string;
   bpm: number;
   is_system_template: boolean;
+  section_count?: number;
+  updated_at?: string;
 }
 
 interface SongFormData {
@@ -26,10 +30,26 @@ interface SongFormData {
   bpm: number;
 }
 
-const emptyForm: SongFormData = { name: '', bpm: 90 };
+const emptyForm: SongFormData = { name: '', bpm:90 };
+
+/** "diubah 2 hari lalu" — meta relatif singkat untuk daftar Song. */
+function formatRelativeTime(iso?: string): string {
+  if (!iso) return 'baru saja';
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return 'baru saja';
+  const minutes = Math.max(0, Math.round((Date.now() - then) / 60000));
+  if (minutes < 1) return 'baru saja';
+  if (minutes < 60) return `diubah ${minutes} menit lalu`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `diubah ${hours} jam lalu`;
+  const days = Math.round(hours / 24);
+  if (days < 30) return `diubah ${days} hari lalu`;
+  return `diubah ${new Date(iso).toLocaleDateString('id-ID')}`;
+}
 
 export function SongListView() {
   const { addToast } = useToast();
+  const navigate = useNavigate();
   const songsQuery = useGetSongs();
   const createMutation = usePostSongs();
   const updateMutation = usePutSongsId();
@@ -80,10 +100,18 @@ export function SongListView() {
       createMutation.mutate(
         { data: payload },
         {
-          onSuccess: () => {
-            notify('Lagu dibuat', 'Lagu baru berhasil ditambahkan.');
+          // "Simpan & Lanjut ke Section →" (FR-SONG-01): setelah dibuat, langsung
+          // menuju halaman detail untuk menyusun Section (Flow 5.1).
+          onSuccess: (response) => {
+            const body = response.data as DtoSuccessResponse;
+            const created = body?.data as { id?: number } | undefined;
+            notify('Lagu dibuat', 'Lagu baru berhasil ditambahkan — lanjut susun Section.');
             setShowForm(false);
-            refresh();
+            if (created?.id) {
+              navigate({ to: '/songs/$songId', params: { songId: String(created.id) } });
+            } else {
+              refresh();
+            }
           },
           onError: (error) => showError(error, 'Gagal membuat lagu'),
         },
@@ -132,40 +160,36 @@ export function SongListView() {
   };
 
   if (songsQuery.isLoading) {
-    return <p className="text-sm text-gray-500">Memuat daftar lagu...</p>;
+    return <p className="text-sm text-stone-500">Memuat daftar lagu...</p>;
   }
 
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-gray-900">Lagu Saya</h2>
-          <p className="mt-1 text-sm text-gray-500">
-            Susun lagu Al-Banjari beserta section dan pola pukulannya.
-          </p>
-        </div>
-        <Button type="button" onClick={openCreate}>
-          + Buat Lagu Baru
-        </Button>
-      </div>
+      <PageHeader
+        title="Lagu Saya"
+        subtitle="Daftar seluruh Song milikmu — susun lagu Al-Banjari beserta section & pola pukulannya."
+        actions={
+          <Button type="button" onClick={openCreate}>
+            + Buat Song Baru
+          </Button>
+        }
+      />
 
       {showForm && (
-        <form
-          onSubmit={handleSubmit}
-          className="mt-6 rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-900/5"
-        >
-          <h3 className="text-sm font-semibold text-gray-900">
-            {editing ? 'Edit Lagu' : 'Buat Lagu Baru'}
-          </h3>
+        <form onSubmit={handleSubmit} className="mt-6 rounded-lg bg-white p-4 ring-1 ring-stone-900/5">
+          <h2 className="text-sm font-semibold text-stone-900">
+            {editing ? 'Edit Lagu' : 'Song Baru'}
+          </h2>
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="sm:col-span-2">
               <FormField
                 id="name"
                 name="name"
                 type="text"
-                label="Nama lagu"
+                label="Nama Song"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder='mis. "Ya Habibal Qolbi"'
                 required
                 maxLength={255}
               />
@@ -174,9 +198,10 @@ export function SongListView() {
               id="bpm"
               name="bpm"
               type="number"
-              label="BPM dasar"
+              label="BPM"
               value={String(form.bpm)}
               onChange={(e) => setForm({ ...form, bpm: Number(e.target.value) })}
+              placeholder="90"
               required
               min={20}
               max={400}
@@ -184,9 +209,9 @@ export function SongListView() {
           </div>
           <div className="mt-4 flex gap-2">
             <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
-              {editing ? 'Simpan' : 'Buat'}
+              {editing ? 'Simpan' : 'Simpan & Lanjut ke Section →'}
             </Button>
-            <Button type="button" variant="secondary" onClick={() => setShowForm(false)}>
+            <Button type="button" variant="ghost" onClick={() => setShowForm(false)}>
               Batal
             </Button>
           </div>
@@ -194,33 +219,34 @@ export function SongListView() {
       )}
 
       {songs && songs.length === 0 && !showForm ? (
-        <div className="mt-10 rounded-lg border-2 border-dashed border-gray-200 p-10 text-center">
-          <p className="text-sm font-medium text-gray-900">Belum ada Song</p>
-          <p className="mt-1 text-sm text-gray-500">
-            Buat lagu pertama Anda untuk mulai menyusun pola pukulan.
-          </p>
-        </div>
+        <EmptyState
+          icon="♪"
+          title="Belum ada Song"
+          description="Buat Song pertamamu untuk mulai menyusun pattern."
+        >
+          <Button type="button" onClick={openCreate}>
+            + Buat Song Baru
+          </Button>
+        </EmptyState>
       ) : (
-        <ul className="mt-6 divide-y divide-gray-100 overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-gray-900/5">
+        <ul className="mt-6 divide-y divide-stone-100 overflow-hidden rounded-lg bg-white ring-1 ring-stone-900/5">
           {(songs ?? []).map((song) => (
-            <li key={song.id} className="flex items-center justify-between px-4 py-4">
-              <div>
-                <Link
-                  to="/songs/$songId"
-                  params={{ songId: String(song.id) }}
-                  className="text-sm font-medium text-gray-900 hover:text-indigo-600 hover:underline"
-                >
+            <li key={song.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-4">
+              <Link to="/songs/$songId" params={{ songId: String(song.id) }} className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-stone-900 hover:text-brand-700">
                   {song.name}
-                </Link>
-                <p className="mt-0.5 text-xs text-gray-500">{song.bpm} BPM</p>
-              </div>
-              <div className="flex items-center gap-2">
+                </p>
+                <p className="mt-0.5 text-xs text-stone-500">
+                  BPM {song.bpm} · {song.section_count ?? 0} Section · {formatRelativeTime(song.updated_at)}
+                </p>
+              </Link>
+              <div className="flex flex-wrap items-center gap-2">
                 <Link
                   to="/songs/$songId/play"
                   params={{ songId: String(song.id) }}
                   title="Mainkan (Launcher)"
                   aria-label={`Mainkan ${song.name}`}
-                  className="inline-flex items-center justify-center rounded-md px-2.5 py-1.5 text-xs font-semibold text-gray-900 ring-1 ring-gray-300 ring-inset transition-colors hover:bg-gray-50"
+                  className="inline-flex items-center justify-center rounded-md px-2.5 py-1.5 text-xs font-semibold text-brand-800 ring-1 ring-brand-700/30 ring-inset transition-colors hover:bg-brand-50"
                 >
                   ▶ Mainkan
                 </Link>
@@ -233,8 +259,8 @@ export function SongListView() {
                 >
                   Duplikasi
                 </Button>
-                <Button type="button" variant="secondary" size="sm" onClick={() => openEdit(song)}>
-                  Edit
+                <Button type="button" variant="ghost" size="sm" onClick={() => openEdit(song)}>
+                  Ubah
                 </Button>
                 <Button type="button" variant="danger" size="sm" onClick={() => setDeleting(song)}>
                   Hapus
