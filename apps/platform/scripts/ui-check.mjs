@@ -154,6 +154,24 @@ await step('chip section → Sequencer Mode (grid terpadu 5 Part, mulai kosong)'
 });
 await shot('08-sequencer');
 
+await step('preview grid kosong: indikator playhead tetap berjalan menyusuri kolom', async () => {
+  await page.click('button:has-text("▶ Play Preview")');
+  const seen = new Set();
+  const start = Date.now();
+  while (Date.now() - start < 1500) {
+    const idx = await page.evaluate(() => {
+      const headers = Array.from(document.querySelectorAll('thead th'));
+      return headers.findIndex((c) => c.className.includes('bg-brand-100'));
+    });
+    if (idx >= 0) seen.add(idx);
+    await page.waitForTimeout(50);
+  }
+  await page.click('button:has-text("■ Stop Preview")');
+  if (seen.size < 2) {
+    throw new Error(`playhead header diam di kolom ${[...seen]} — indikator tidak berjalan saat kosong`);
+  }
+});
+
 await step('tambah SoundSlot pertama (Tak/T1, key 2 karakter) di Rebana 1', async () => {
   await page.click('button:has-text("+ Tambah Bunyi untuk Rebana 1")');
   await page.fill('#new-slot-label', 'Tak');

@@ -84,6 +84,9 @@ export function SequencerGrid({
                 className={[
                   'min-w-8 border-b border-stone-200 px-1 py-2 text-center font-normal text-stone-400',
                   i % 4 === 0 ? 'border-l-2 border-l-stone-300' : '',
+                  // Indikator playhead juga tampil di header — terlihat berjalan
+                  // meskipun grid belum punya isi/baris bunyi.
+                  playheadIndex === i ? 'bg-brand-100 font-semibold text-brand-800' : '',
                 ].join(' ')}
               >
                 {i + 1}

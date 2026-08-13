@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getSamplesIdPlaybackUrl } from '../../../api/endpoints/samples/samples';
-import { keyAt, normalizeStepsToGrid, stepCount } from '../../../lib/steps';
+import { keyAt, MIN_GRID_COLUMNS, normalizeStepsToGrid, stepCount } from '../../../lib/steps';
 
 export interface SectionPreviewPart {
   id: number;
@@ -93,7 +93,10 @@ export function useSectionPreview() {
           const parts = getParts()
             .map((p) => ({ ...p, steps: normalizeStepsToGrid(p.steps) }))
             .filter((p) => stepCount(p.steps) > 0);
-          const totalLen = parts.reduce((max, p) => Math.max(max, stepCount(p.steps)), 0);
+          const contentLen = parts.reduce((max, p) => Math.max(max, stepCount(p.steps)), 0);
+          // Bila belum ada isi sama sekali, indikator playhead tetap berjalan
+          // menyusuri lebar grid (metronom visual).
+          const cycleLen = contentLen > 0 ? contentLen : MIN_GRID_COLUMNS;
 
           for (const part of parts) {
             const keys = keyAt(part.steps, step);
@@ -120,7 +123,7 @@ export function useSectionPreview() {
             }
           }
 
-          setStepIndex(totalLen > 0 ? step % totalLen : 0);
+          setStepIndex(step % cycleLen);
           step++;
           timer = setTimeout(tick, stepMs);
         };
