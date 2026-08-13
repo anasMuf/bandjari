@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useGetSongsId } from '../../../../api/endpoints/songs/songs'
-import { useAuth } from '../../../../features/auth/AuthContext'
-import { SequencerView } from '../../../../features/sequencer/components/SequencerView'
-import type { SectionItem } from '../../../../features/section/components/SectionStrip'
+import { useGetSongsId } from '../api/endpoints/songs/songs'
+import { useAuth } from '../features/auth/AuthContext'
+import { SequencerView } from '../features/sequencer/components/SequencerView'
+import type { SectionItem } from '../features/section/components/SectionStrip'
 
 export const Route = createFileRoute('/songs/$songId/sections/$sectionId')({
   component: SectionSequencerPage,
@@ -29,19 +29,17 @@ function SectionSequencerPage() {
     song && (!isAuthenticated || song.is_system_template) ? '/templates/$songId' : '/songs/$songId';
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <Link
-          to={backTo}
-          params={{ songId: String(id) }}
-          className="text-sm text-gray-500 hover:text-gray-700"
-        >
-          ← Kembali ke lagu
-        </Link>
-        <div className="mt-4">
-          <SequencerView songId={id} sectionId={sid} sectionName={sectionName} />
-        </div>
-      </main>
-    </div>
+    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <Link
+        to={backTo}
+        params={{ songId: String(id) }}
+        className="text-sm text-gray-500 hover:text-gray-700"
+      >
+        ← Kembali ke lagu
+      </Link>
+      <div className="mt-4">
+        <SequencerView songId={id} sectionId={sid} sectionName={sectionName} />
+      </div>
+    </main>
   );
 }

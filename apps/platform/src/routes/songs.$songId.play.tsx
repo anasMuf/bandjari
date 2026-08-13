@@ -1,12 +1,12 @@
 import { useEffect } from 'react';
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useGetSongsId } from '../../../api/endpoints/songs/songs'
-import { useAuth } from '../../../features/auth/AuthContext'
-import { LauncherGrid } from '../../../features/launcher/components/LauncherGrid'
+import { useGetSongsId } from '../api/endpoints/songs/songs'
+import { useAuth } from '../features/auth/AuthContext'
+import { LauncherGrid } from '../features/launcher/components/LauncherGrid'
 import {
   useLauncherPlayback,
   type LauncherSection,
-} from '../../../features/launcher/hooks/useLauncherPlayback'
+} from '../features/launcher/hooks/useLauncherPlayback'
 
 export const Route = createFileRoute('/songs/$songId/play')({
   component: LauncherPage,
@@ -81,9 +81,8 @@ function LauncherPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="flex flex-wrap items-end justify-between gap-3">
+    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             {isAuthenticated && song && !song.is_system_template ? (
               <Link
@@ -142,7 +141,6 @@ function LauncherPage() {
             onStop={playback.stop}
           />
         )}
-      </main>
-    </div>
+    </main>
   );
 }

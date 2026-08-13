@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useGetSongsId, usePostSongsIdDuplicate } from '../../api/endpoints/songs/songs'
-import { useAuth } from '../../features/auth/AuthContext'
-import { LoginPromptInline } from '../../features/auth/components/LoginPromptInline'
-import { Button } from '../../components/atoms/Button'
-import { useToast } from '../../components/molecules/Toast'
-import { ApiError } from '../../api/mutator/custom-instance'
-import type { SectionItem } from '../../features/section/components/SectionStrip'
+import { useGetSongsId, usePostSongsIdDuplicate } from '../api/endpoints/songs/songs'
+import { useAuth } from '../features/auth/AuthContext'
+import { LoginPromptInline } from '../features/auth/components/LoginPromptInline'
+import { Button } from '../components/atoms/Button'
+import { useToast } from '../components/molecules/Toast'
+import { ApiError } from '../api/mutator/custom-instance'
+import type { SectionItem } from '../features/section/components/SectionStrip'
 
 export const Route = createFileRoute('/templates/$songId')({
   component: PublicSongViewPage,

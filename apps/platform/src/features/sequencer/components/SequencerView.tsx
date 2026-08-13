@@ -60,7 +60,8 @@ export function SequencerView({ songId, sectionId, sectionName }: SequencerViewP
     if (selectedPart) {
       setSteps(selectedPart.steps ?? '');
     }
-  }, [selectedPart]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps — hanya reset saat pindah part (id), bukan tiap render
+  }, [selectedPart?.id]);
 
   if (partsQuery.isLoading || songQuery.isLoading) {
     return <p className="text-sm text-gray-500">Memuat sequencer...</p>;
