@@ -28,9 +28,11 @@ export function setCell(cells: StepCell[], colIndex: number, key: string): StepC
   return next;
 }
 
-/** Hapus satu kolom (step) — steps memendek satu posisi. */
-export function removeColumn(cells: StepCell[], colIndex: number): StepCell[] {
-  return cells.filter((_, i) => i !== colIndex);
+/** Matikan satu langkah: ganti isi kolom menjadi istirahat (null). */
+export function clearCell(cells: StepCell[], colIndex: number): StepCell[] {
+  const next = [...cells];
+  next[colIndex] = null;
+  return next;
 }
 
 /** Tambahkan `count` langkah istirahat di akhir (kontrol +8 step). */

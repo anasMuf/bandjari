@@ -162,11 +162,29 @@ await step('tambah SoundSlot pertama (Tak/T1, key 2 karakter) di Rebana 1', asyn
   await page.waitForSelector('tbody button[aria-label^="Langkah "]', { timeout: 15000 });
 });
 
-await step('grid steps: klik kotak, ±8 step, simpan perubahan', async () => {
+await step('grid steps: isi 4 kotak, matikan kotak ke-3 — kotak lain tidak bergeser', async () => {
   const cells = page.locator('tbody button[aria-label^="Langkah "]');
   const before = await cells.count();
   if (before === 0) throw new Error('sel step tidak ada');
-  await cells.first().click();
+
+  // Isi kotak 1–4
+  for (let i = 0; i < 4; i++) {
+    await cells.nth(i).click();
+  }
+  const filled = await page.locator('tbody button[aria-pressed="true"]').count();
+  if (filled !== 4) throw new Error(`kotak terisi = ${filled}, want 4`);
+
+  // Matikan kotak ke-3 — kotak 1,2,4 harus tetap seperti semula
+  await cells.nth(2).click();
+  const on3 = await cells.nth(2).getAttribute('aria-pressed');
+  const on4 = await cells.nth(3).getAttribute('aria-pressed');
+  if (on3 !== 'false') throw new Error('kotak ke-3 tidak mati');
+  if (on4 !== 'true') throw new Error('kotak ke-4 ikut mati/bergeser');
+});
+
+await step('grid steps: ±8 step & simpan perubahan', async () => {
+  const cells = page.locator('tbody button[aria-label^="Langkah "]');
+  const before = await cells.count();
   await page.click('button:has-text("+ 8 Step")');
   const after = await cells.count();
   if (after <= before) throw new Error(`sel tidak bertambah (${before} → ${after})`);

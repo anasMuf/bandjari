@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  clearCell,
   decodeSteps,
   encodeSteps,
   keyAt,
   padSteps,
-  removeColumn,
   setCell,
   setStepExtending,
   stepCount,
@@ -30,10 +30,9 @@ describe('steps (format koma + langkah istirahat)', () => {
     expect(setCell(cells, 1, 'KD')).toEqual(['T', 'KD', 'T', 'D']);
   });
 
-  it('removeColumn menghapus satu posisi dan menggeser sisanya', () => {
-    const cells = decodeSteps('T,D,T,D');
-    expect(encodeSteps(removeColumn(cells, 0))).toBe('D,T,D');
-    expect(encodeSteps(removeColumn(cells, 2))).toBe('T,D,D');
+  it('clearCell mematikan satu kotak menjadi istirahat tanpa menggeser kotak lain', () => {
+    const cells = decodeSteps('T,T,T,T');
+    expect(encodeSteps(clearCell(cells, 2))).toBe('T,T,.,T');
   });
 
   it('padSteps menambah N langkah istirahat di akhir', () => {

@@ -11,7 +11,7 @@ import { LoginPromptInline } from '../../auth/components/LoginPromptInline';
 import { SequencerGrid, previewSampleAudio, type GridSlot } from './SequencerGrid';
 import { SoundSlotManager, type SoundSlotData } from './SoundSlotManager';
 import { useSectionPreview } from '../hooks/useSectionPreview';
-import { padSteps, trimSteps, decodeSteps, removeColumn, encodeSteps, setStepExtending, stepCount } from '../../../lib/steps';
+import { padSteps, trimSteps, decodeSteps, encodeSteps, setStepExtending, clearCell, stepCount } from '../../../lib/steps';
 import { PART_LABELS, PART_ORDER } from '../utils/parts';
 
 interface PartData {
@@ -119,9 +119,14 @@ export function SequencerView({ songId, sectionId, sectionName }: SequencerViewP
     const current = stepsOf(part);
     const cells = decodeSteps(current);
     if (colIndex < cells.length && cells[colIndex] === slotKey) {
-      setStepsByPart((prev) => ({ ...prev, [partId]: encodeSteps(removeColumn(cells, colIndex)) }));
+      // Matikan kotak itu saja → jadi langkah istirahat. Tidak ada pergeseran,
+      // posisi kotak lain tidak berubah.
+      setStepsByPart((prev) => ({
+        ...prev,
+        [partId]: encodeSteps(clearCell(cells, colIndex)),
+      }));
     } else {
-      // Klik satu kotak hanya mengisi kotak itu — celah di kirinya jadi istirahat.
+      // Nyalakan kotak itu saja — celah di kirinya jadi istirahat.
       setStepsByPart((prev) => ({ ...prev, [partId]: setStepExtending(current, colIndex, slotKey) }));
     }
   };
