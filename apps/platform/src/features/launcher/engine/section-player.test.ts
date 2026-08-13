@@ -4,13 +4,13 @@ import type { ScheduledPart } from './scheduling-math';
 
 class FakeScheduler implements SchedulerLike {
   isPlaying = false;
-  startedWith: { parts: ScheduledPart[]; bpm: number } | null = null;
+  startedWith: { parts: ScheduledPart[]; bpm: number; startAt?: number } | null = null;
   stopCalls = 0;
-  onCycleComplete: (() => void) | null = null;
+  onCycleComplete: ((boundaryTime: number) => void) | null = null;
 
-  start(parts: ScheduledPart[], bpm: number): void {
+  start(parts: ScheduledPart[], bpm: number, startAt?: number): void {
     this.isPlaying = true;
-    this.startedWith = { parts, bpm };
+    this.startedWith = { parts, bpm, startAt };
   }
 
   stop(): void {
@@ -19,8 +19,8 @@ class FakeScheduler implements SchedulerLike {
   }
 
   /** Simulasi selesainya satu siklus dari section yang sedang aktif. */
-  fireCycleComplete(): void {
-    this.onCycleComplete?.();
+  fireCycleComplete(boundaryTime: number): void {
+    this.onCycleComplete?.(boundaryTime);
   }
 }
 
@@ -51,17 +51,20 @@ describe('SectionPlayer (quantized trigger)', () => {
     expect(scheduler.startedWith?.bpm).toBe(90);
   });
 
-  it('akhir siklus dengan pending → pindah section + BPM baru seketika (hard cut, AC-9)', () => {
+  it('akhir siklus dengan pending → pindah section TEPAT di batas siklus + BPM baru seketika (hard cut, AC-9)', () => {
     const scheduler = new FakeScheduler();
     const player = new SectionPlayer(scheduler);
 
     player.trigger(1, def(70));
     player.trigger(2, def(110));
-    scheduler.fireCycleComplete();
+    scheduler.fireCycleComplete(123.456);
 
     expect(player.activeSectionId).toBe(2);
     expect(player.pendingSectionId).toBeNull();
     expect(scheduler.startedWith?.bpm).toBe(110);
+    // Section baru dimulai tepat di timestamp batas siklus section lama —
+    // bukan lebih awal (quantized trigger presisi, FR-PLAY-04).
+    expect(scheduler.startedWith?.startAt).toBe(123.456);
   });
 
   it('akhir siklus tanpa pending → tetap pada section aktif', () => {
@@ -69,7 +72,7 @@ describe('SectionPlayer (quantized trigger)', () => {
     const player = new SectionPlayer(scheduler);
 
     player.trigger(1, def(90));
-    scheduler.fireCycleComplete();
+    scheduler.fireCycleComplete(42);
     expect(player.activeSectionId).toBe(1);
     expect(scheduler.startedWith?.bpm).toBe(90);
   });

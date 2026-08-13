@@ -8,9 +8,11 @@ export interface SectionDefinition {
 /** Antarmuka minimal scheduler — memudahkan pengujian SectionPlayer. */
 export interface SchedulerLike {
   isPlaying: boolean;
-  start(parts: ScheduledPart[], bpm: number): void;
+  /** startAt opsional: timestamp mulai presisi (dipakai transisi di batas siklus). */
+  start(parts: ScheduledPart[], bpm: number, startAt?: number): void;
   stop(): void;
-  onCycleComplete: (() => void) | null;
+  /** Dipanggil tepat di akhir siklus — boundaryTime = timestamp batas siklus. */
+  onCycleComplete: ((boundaryTime: number) => void) | null;
 }
 
 /**
@@ -27,7 +29,7 @@ export class SectionPlayer {
 
   constructor(scheduler: SchedulerLike) {
     this.scheduler = scheduler;
-    scheduler.onCycleComplete = () => this.handleCycleComplete();
+    scheduler.onCycleComplete = (boundaryTime) => this.handleCycleComplete(boundaryTime);
   }
 
   /** Trigger pad Section — mulai bila idle, antre bila section lain aktif. */
@@ -50,13 +52,16 @@ export class SectionPlayer {
     this.pendingSectionId = null;
   }
 
-  private handleCycleComplete(): void {
+  private handleCycleComplete(boundaryTime: number): void {
     if (this.pendingSectionId == null) return;
     const nextId = this.pendingSectionId;
     const next = this.sections.get(nextId);
     this.pendingSectionId = null;
     if (!next) return;
     this.activeSectionId = nextId;
-    this.scheduler.start(next.parts, next.bpm); // BPM baru diterapkan seketika (hard cut)
+    // Section baru dimulai TEPAT di timestamp batas siklus section lama —
+    // bukan lebih awal (quantized trigger presisi, FR-PLAY-04). BPM baru
+    // diterapkan seketika pada langkah pertamanya (hard cut, FR-PLAY-11).
+    this.scheduler.start(next.parts, next.bpm, boundaryTime);
   }
 }

@@ -27,8 +27,9 @@ export class Scheduler {
   /** Sumber audio yang sedang berbunyi, per identitas Part (bisa lebih dari satu saat multi-bunyi sekolom). */
   private activeSources = new Map<string, AudioBufferSourceNode[]>();
 
-  /** Dipanggil tepat saat satu siklus Section selesai (untuk quantized trigger). */
-  onCycleComplete: (() => void) | null = null;
+  /** Dipanggil tepat saat satu siklus Section selesai (untuk quantized trigger).
+   *  Parameter = timestamp batas siklus (kapan langkah pertama siklus berikutnya jatuh). */
+  onCycleComplete: ((boundaryTime: number) => void) | null = null;
 
   constructor(private ctx: AudioContext) {}
 
@@ -41,12 +42,16 @@ export class Scheduler {
     return this.stepIndex;
   }
 
-  /** Mulai memutar section baru dari langkah 0 — bunyi lama dipotong (choke). */
-  start(parts: ScheduledPart[], bpm: number): void {
+  /**
+   * Mulai memutar section baru dari langkah 0 — bunyi lama dipotong (choke).
+   * `startAt` opsional: bila disediakan (transisi quantized), langkah pertama
+   * dijadwalkan tepat di timestamp itu, bukan "sekarang + buffer".
+   */
+  start(parts: ScheduledPart[], bpm: number, startAt?: number): void {
     this.parts = parts;
     this.bpm = bpm;
     this.stepIndex = 0;
-    this.nextNoteTime = this.ctx.currentTime + 0.05;
+    this.nextNoteTime = startAt ?? this.ctx.currentTime + 0.05;
     this.playing = true;
     this.chokeAll();
   }
@@ -55,19 +60,23 @@ export class Scheduler {
   tick(): void {
     if (!this.playing) return;
 
-    const stepDur = stepDurationSeconds(this.bpm);
     const lookaheadSec = LOOKAHEAD_MS / 1000;
     const totalLen = cycleLength(this.parts);
     if (totalLen === 0) return;
 
     while (this.nextNoteTime < this.ctx.currentTime + lookaheadSec) {
+      // stepDur dihitung per iterasi — BPM bisa berubah di tengah loop saat
+      // transisi quantized (hard cut) terjadi via onCycleComplete.
+      const stepDur = stepDurationSeconds(this.bpm);
       this.scheduleStep(this.stepIndex, this.nextNoteTime);
       this.nextNoteTime += stepDur;
       this.stepIndex++;
 
       if (this.stepIndex >= totalLen) {
         this.stepIndex = 0;
-        this.onCycleComplete?.();
+        // nextNoteTime saat ini = timestamp batas siklus (langkah pertama
+        // siklus berikutnya) — teruskan agar transisi quantized presisi.
+        this.onCycleComplete?.(this.nextNoteTime);
       }
     }
   }
