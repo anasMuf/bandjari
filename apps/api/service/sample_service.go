@@ -91,7 +91,7 @@ func (s *sampleService) List(userID uint, part *model.Part) ([]dto.SampleRespons
 	for i := range samples {
 		res = append(res, *toSampleResponse(&samples[i]))
 	}
-	return res, nil
+	return fillUsageCounts(s.sampleRepo, res), nil
 }
 
 // ListTemplates mengembalikan Sample Template System — read-only, dapat diakses
@@ -108,7 +108,24 @@ func (s *sampleService) ListTemplates(part *model.Part) ([]dto.SampleResponse, e
 	for i := range samples {
 		res = append(res, *toSampleResponse(&samples[i]))
 	}
-	return res, nil
+	return fillUsageCounts(s.sampleRepo, res), nil
+}
+
+// fillUsageCounts melengkapi meta "Dipakai di N SoundSlot" pada respons daftar
+// Sample — dihitung satu query agregat, bukan per-sample (RD-5).
+func fillUsageCounts(sampleRepo repository.SampleRepository, res []dto.SampleResponse) []dto.SampleResponse {
+	ids := make([]uint, 0, len(res))
+	for _, s := range res {
+		ids = append(ids, s.ID)
+	}
+	counts, err := sampleRepo.CountSoundSlotsBySampleIDs(ids)
+	if err != nil {
+		return res // meta gagal dimuat → tetap kembalikan daftar tanpa usage_count
+	}
+	for i := range res {
+		res[i].UsageCount = counts[res[i].ID]
+	}
+	return res
 }
 
 func (s *sampleService) Rename(userID uint, sampleID uint, name string) (*dto.SampleResponse, error) {

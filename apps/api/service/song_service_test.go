@@ -66,6 +66,16 @@ func (f *fakeSongRepo) Save(song *model.Song) error {
 	return nil
 }
 
+func (f *fakeSongRepo) CountSectionsBySongIDs(songIDs []uint) (map[uint]int64, error) {
+	res := make(map[uint]int64, len(songIDs))
+	for _, id := range songIDs {
+		if s, ok := f.songs[id]; ok {
+			res[id] = int64(len(s.Sections))
+		}
+	}
+	return res, nil
+}
+
 func (f *fakeSongRepo) Delete(id uint) error {
 	if _, ok := f.songs[id]; !ok {
 		return gorm.ErrRecordNotFound

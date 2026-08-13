@@ -13,10 +13,11 @@ type UpdateSoundSlotRequest struct {
 }
 
 type SoundSlotResponse struct {
-	ID            uint   `json:"id"`
-	SectionPartID uint   `json:"section_part_id"`
-	Label         string `json:"label"`
-	Key           string `json:"key"`
-	SampleID      *uint  `json:"sample_id"`
-	OrderIndex    int    `json:"order_index"`
+	ID            uint               `json:"id"`
+	SectionPartID uint               `json:"section_part_id"`
+	Label         string             `json:"label"`
+	Key           string             `json:"key"`
+	SampleID      *uint              `json:"sample_id"`
+	Sample        *SampleRefResponse `json:"sample,omitempty"`
+	OrderIndex    int                `json:"order_index"`
 }

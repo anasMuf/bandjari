@@ -37,7 +37,7 @@ func NewSoundSlotService(
 }
 
 func toSoundSlotResponse(slot *model.SoundSlot) *dto.SoundSlotResponse {
-	return &dto.SoundSlotResponse{
+	res := &dto.SoundSlotResponse{
 		ID:            slot.ID,
 		SectionPartID: slot.SectionPartID,
 		Label:         slot.Label,
@@ -45,6 +45,14 @@ func toSoundSlotResponse(slot *model.SoundSlot) *dto.SoundSlotResponse {
 		SampleID:      slot.SampleID,
 		OrderIndex:    slot.OrderIndex,
 	}
+	if slot.Sample != nil {
+		res.Sample = &dto.SampleRefResponse{
+			ID:               slot.Sample.ID,
+			Name:             slot.Sample.Name,
+			IsSystemTemplate: slot.Sample.IsSystemTemplate,
+		}
+	}
+	return res
 }
 
 // loadGuardedPart memuat SectionPart beserta rantai Section → Song dan

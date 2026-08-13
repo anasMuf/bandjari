@@ -12,6 +12,7 @@ type SongRepository interface {
 	FindByIDWithSections(id uint) (*model.Song, error)
 	ListByUserID(userID uint) ([]model.Song, error)
 	ListTemplates() ([]model.Song, error)
+	CountSectionsBySongIDs(songIDs []uint) (map[uint]int64, error)
 	Save(song *model.Song) error
 	Delete(id uint) error
 }
@@ -36,7 +37,7 @@ func (r *songRepository) FindByID(id uint) (*model.Song, error) {
 
 func (r *songRepository) FindByIDWithSections(id uint) (*model.Song, error) {
 	var song model.Song
-	err := r.db.Preload("Sections.Parts.SoundSlots").First(&song, id).Error
+	err := r.db.Preload("Sections.Parts.SoundSlots.Sample").First(&song, id).Error
 	return &song, err
 }
 
@@ -51,6 +52,33 @@ func (r *songRepository) ListTemplates() ([]model.Song, error) {
 	var songs []model.Song
 	err := r.db.Where("is_system_template = true").Order("created_at DESC").Find(&songs).Error
 	return songs, err
+}
+
+// CountSectionsBySongIDs menghitung jumlah Section (tidak terhapus) per Song
+// dalam satu query — dipakai meta "N Section" pada daftar Song tanpa memuat
+// seluruh relasi (RD-3).
+func (r *songRepository) CountSectionsBySongIDs(songIDs []uint) (map[uint]int64, error) {
+	result := make(map[uint]int64, len(songIDs))
+	if len(songIDs) == 0 {
+		return result, nil
+	}
+	type row struct {
+		SongID uint
+		Count  int64
+	}
+	var rows []row
+	err := r.db.Model(&model.Section{}).
+		Select("song_id, COUNT(*) AS count").
+		Where("song_id IN ?", songIDs).
+		Group("song_id").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	for _, r := range rows {
+		result[r.SongID] = r.Count
+	}
+	return result, nil
 }
 
 func (r *songRepository) Save(song *model.Song) error {

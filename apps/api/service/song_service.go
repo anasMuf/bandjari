@@ -34,6 +34,8 @@ func toSongResponse(song *model.Song) *dto.SongResponse {
 		IsSystemTemplate: song.IsSystemTemplate,
 		Name:             song.Name,
 		Bpm:              song.Bpm,
+		SectionCount:     len(song.Sections),
+		UpdatedAt:        song.UpdatedAt,
 	}
 	for i := range song.Sections {
 		res.Sections = append(res.Sections, *toSectionResponse(&song.Sections[i]))
@@ -63,7 +65,7 @@ func (s *songService) List(userID uint) ([]dto.SongResponse, error) {
 	for i := range songs {
 		res = append(res, *toSongResponse(&songs[i]))
 	}
-	return res, nil
+	return fillSectionCounts(s.songRepo, res), nil
 }
 
 // ListTemplates mengembalikan Song Template System — dapat diakses Guest
@@ -77,7 +79,24 @@ func (s *songService) ListTemplates() ([]dto.SongResponse, error) {
 	for i := range songs {
 		res = append(res, *toSongResponse(&songs[i]))
 	}
-	return res, nil
+	return fillSectionCounts(s.songRepo, res), nil
+}
+
+// fillSectionCounts melengkapi meta "N Section" pada respons daftar Song
+// (relasi Section tidak dimuat di query daftar) — RD-3.
+func fillSectionCounts(songRepo repository.SongRepository, res []dto.SongResponse) []dto.SongResponse {
+	ids := make([]uint, 0, len(res))
+	for _, s := range res {
+		ids = append(ids, s.ID)
+	}
+	counts, err := songRepo.CountSectionsBySongIDs(ids)
+	if err != nil {
+		return res // meta gagal dimuat → tetap kembalikan daftar tanpa section_count
+	}
+	for i := range res {
+		res[i].SectionCount = int(counts[res[i].ID])
+	}
+	return res
 }
 
 // GetByID menerapkan matriks akses TDD Bagian 6.8:

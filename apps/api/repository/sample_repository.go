@@ -15,6 +15,7 @@ type SampleRepository interface {
 	FindTemplateByNameAndPart(name string, part model.Part) (*model.Sample, error)
 	FindTemplateByPartAndLabel(part model.Part, label string) (*model.Sample, error)
 	CountReferencedBySoundSlots(sampleID uint) (int64, error)
+	CountSoundSlotsBySampleIDs(sampleIDs []uint) (map[uint]int64, error)
 	Save(sample *model.Sample) error
 	Delete(id uint) error
 }
@@ -82,6 +83,33 @@ func (r *sampleRepository) CountReferencedBySoundSlots(sampleID uint) (int64, er
 		Where("sound_slots.sample_id = ? AND section_parts.deleted_at IS NULL", sampleID).
 		Count(&count).Error
 	return count, err
+}
+
+// CountSoundSlotsBySampleIDs menghitung jumlah SoundSlot aktif yang memakai
+// tiap sample dalam satu query — dipakai meta "Dipakai di N SoundSlot" (RD-5).
+func (r *sampleRepository) CountSoundSlotsBySampleIDs(sampleIDs []uint) (map[uint]int64, error) {
+	result := make(map[uint]int64, len(sampleIDs))
+	if len(sampleIDs) == 0 {
+		return result, nil
+	}
+	type row struct {
+		SampleID uint
+		Count    int64
+	}
+	var rows []row
+	err := r.db.Model(&model.SoundSlot{}).
+		Select("sound_slots.sample_id, COUNT(*) AS count").
+		Joins("JOIN section_parts ON section_parts.id = sound_slots.section_part_id").
+		Where("sound_slots.sample_id IN ? AND section_parts.deleted_at IS NULL", sampleIDs).
+		Group("sound_slots.sample_id").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	for _, r := range rows {
+		result[r.SampleID] = r.Count
+	}
+	return result, nil
 }
 
 func (r *sampleRepository) Save(sample *model.Sample) error {

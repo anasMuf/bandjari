@@ -107,6 +107,14 @@ func (f *fakeSampleRepo) CountReferencedBySoundSlots(sampleID uint) (int64, erro
 	return f.refs[sampleID], nil
 }
 
+func (f *fakeSampleRepo) CountSoundSlotsBySampleIDs(sampleIDs []uint) (map[uint]int64, error) {
+	res := make(map[uint]int64, len(sampleIDs))
+	for _, id := range sampleIDs {
+		res[id] = f.refs[id]
+	}
+	return res, nil
+}
+
 func (f *fakeSampleRepo) Save(sample *model.Sample) error {
 	f.samples[sample.ID] = sample
 	return nil
