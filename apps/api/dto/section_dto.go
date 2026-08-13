@@ -56,9 +56,10 @@ type ReorderSectionRequest struct {
 }
 
 type SectionResponse struct {
-	ID          uint   `json:"id"`
-	SongID      uint   `json:"song_id"`
-	Name        string `json:"name"`
-	OrderIndex  int    `json:"order_index"`
-	BpmOverride *int16 `json:"bpm_override"`
+	ID          uint                  `json:"id"`
+	SongID      uint                  `json:"song_id"`
+	Name        string                `json:"name"`
+	OrderIndex  int                   `json:"order_index"`
+	BpmOverride *int16                `json:"bpm_override"`
+	Parts       []SectionPartResponse `json:"parts,omitempty"`
 }

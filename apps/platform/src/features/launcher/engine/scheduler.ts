@@ -29,6 +29,11 @@ export class Scheduler {
     return this.playing;
   }
 
+  /** Posisi step saat ini dalam siklus Section aktif (untuk indikator, FR-PLAY-08). */
+  get currentStep(): number {
+    return this.stepIndex;
+  }
+
   /** Mulai memutar section baru dari langkah 0. */
   start(parts: ScheduledPart[], bpm: number): void {
     this.parts = parts;
@@ -36,14 +41,6 @@ export class Scheduler {
     this.stepIndex = 0;
     this.nextNoteTime = this.ctx.currentTime + 0.05;
     this.playing = true;
-  }
-
-  /**
-   * Ganti BPM seketika (hard cut — FR-PLAY-11): berlaku mulai step berikutnya
-   * yang dijadwalkan, tanpa interpolasi.
-   */
-  setBpm(bpm: number): void {
-    this.bpm = bpm;
   }
 
   /** Panggil tiap tick dari clock worker. */

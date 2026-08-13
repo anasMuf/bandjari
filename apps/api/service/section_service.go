@@ -28,13 +28,17 @@ func NewSectionService(sectionRepo repository.SectionRepository, songRepo reposi
 }
 
 func toSectionResponse(section *model.Section) *dto.SectionResponse {
-	return &dto.SectionResponse{
+	res := &dto.SectionResponse{
 		ID:          section.ID,
 		SongID:      section.SongID,
 		Name:        section.Name,
 		OrderIndex:  section.OrderIndex,
 		BpmOverride: section.BpmOverride,
 	}
+	for i := range section.Parts {
+		res.Parts = append(res.Parts, *toSectionPartResponse(&section.Parts[i]))
+	}
+	return res
 }
 
 // guardSongMutation menerapkan aturan akses TDD 6.8: resource bertingkat

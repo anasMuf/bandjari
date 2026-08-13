@@ -94,9 +94,18 @@ function PublicSongViewPage() {
               {song.is_system_template ? 'Lagu Bawaan · ' : ''}BPM dasar: {song.bpm}
             </p>
           </div>
-          <Button type="button" onClick={handleDuplicate} disabled={duplicateMutation.isPending}>
-            Duplikasi ke Song Saya
-          </Button>
+          <div className="flex items-center gap-2">
+            <Link
+              to="/songs/$songId/play"
+              params={{ songId: String(id) }}
+              className="inline-flex items-center justify-center rounded-md bg-gray-900 px-3 py-2 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-gray-700"
+            >
+              ▶ Mainkan
+            </Link>
+            <Button type="button" onClick={handleDuplicate} disabled={duplicateMutation.isPending}>
+              Duplikasi ke Song Saya
+            </Button>
+          </div>
         </div>
 
         {showPrompt && !isAuthenticated && (
