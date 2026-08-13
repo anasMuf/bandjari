@@ -115,6 +115,22 @@ function LauncherPage() {
           <p className="mt-6 text-sm text-gray-500" aria-busy="true">
             Menyiapkan audio (memuat & mendekode sample)…
           </p>
+        ) : (song.sections ?? []).length === 0 ? (
+          <div className="mt-6 rounded-lg border-2 border-dashed border-gray-200 p-10 text-center">
+            <p className="text-sm font-medium text-gray-900">Lagu ini belum memiliki section</p>
+            <p className="mt-1 text-sm text-gray-500">
+              Section adalah bagian lagu (Awalan, Dasar, Naik, dst) yang menjadi pad di Launcher.
+            </p>
+            {isAuthenticated && !song.is_system_template && (
+              <Link
+                to="/songs/$songId"
+                params={{ songId: String(id) }}
+                className="mt-4 inline-flex items-center justify-center rounded-md bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-gray-700"
+              >
+                + Tambah Section (Kelola Lagu)
+              </Link>
+            )}
+          </div>
         ) : (
           <LauncherGrid
             sections={song.sections ?? []}
