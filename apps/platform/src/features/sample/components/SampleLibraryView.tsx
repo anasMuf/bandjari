@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   useGetSamples,
+  useGetSamplesTemplates,
   usePostSamples,
   usePutSamplesId,
   useDeleteSamplesId,
@@ -8,10 +9,15 @@ import {
 } from '../../../api/endpoints/samples/samples';
 import type { DtoSuccessResponse } from '../../../api/model';
 import { Button } from '../../../components/atoms/Button';
+import { Badge } from '../../../components/atoms/Badge';
 import { FormField } from '../../../components/molecules/FormField';
 import { ConfirmDialog } from '../../../components/molecules/ConfirmDialog';
+import { PageHeader } from '../../../components/molecules/PageHeader';
+import { SectionHeader } from '../../../components/molecules/SectionHeader';
+import { EmptyState } from '../../../components/molecules/EmptyState';
 import { useToast } from '../../../components/molecules/Toast';
 import { ApiError } from '../../../api/mutator/custom-instance';
+import { PART_LABELS } from '../../sequencer/utils/parts';
 
 interface SampleItem {
   id: number;
@@ -19,14 +25,20 @@ interface SampleItem {
   part: string;
   file_size_bytes: number;
   is_system_template: boolean;
+  usage_count?: number;
 }
 
 const PARTS = ['rebana1', 'rebana2', 'rebana3', 'rebana4', 'bass'] as const;
+
+function partLabel(part: string): string {
+  return PART_LABELS[part] ?? part;
+}
 
 export function SampleLibraryView() {
   const { addToast } = useToast();
   const [partFilter, setPartFilter] = useState('');
   const samplesQuery = useGetSamples(partFilter ? { part: partFilter } : undefined);
+  const templatesQuery = useGetSamplesTemplates(partFilter ? { part: partFilter } : undefined);
   const uploadMutation = usePostSamples();
   const renameMutation = usePutSamplesId();
   const deleteMutation = useDeleteSamplesId();
@@ -38,6 +50,8 @@ export function SampleLibraryView() {
   const [renaming, setRenaming] = useState<SampleItem | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [deleting, setDeleting] = useState<SampleItem | null>(null);
+  // State error 409 (FR-SAMP-08/AC-6): sample masih direferensikan SoundSlot.
+  const [deleteConflict, setDeleteConflict] = useState<{ name: string; message: string } | null>(null);
 
   const notify = (title: string, message: string) =>
     addToast({ variant: 'success', title, message });
@@ -48,8 +62,15 @@ export function SampleLibraryView() {
       message: error instanceof ApiError ? error.message : 'Terjadi kesalahan tak terduga.',
     });
 
-  const samples = ((samplesQuery.data?.data as DtoSuccessResponse | undefined)?.data ??
+  const mine = ((samplesQuery.data?.data as DtoSuccessResponse | undefined)?.data ??
     []) as SampleItem[];
+  const templates = ((templatesQuery.data?.data as DtoSuccessResponse | undefined)?.data ??
+    []) as SampleItem[];
+
+  const refreshAll = () => {
+    samplesQuery.refetch();
+    templatesQuery.refetch();
+  };
 
   const handleUpload = (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,11 +79,11 @@ export function SampleLibraryView() {
       { data: { file: uploadFile, name: uploadName.trim(), part: uploadPart } },
       {
         onSuccess: () => {
-          notify('Sample diunggah', 'File audio berhasil disimpan ke library Anda.');
+          notify('Sample diunggah', 'File audio berhasil disimpan sebagai Sample Saya.');
           setUploadOpen(false);
           setUploadName('');
           setUploadFile(null);
-          samplesQuery.refetch();
+          refreshAll();
         },
         onError: (error) => showError(error, 'Gagal mengunggah sample'),
       },
@@ -78,7 +99,7 @@ export function SampleLibraryView() {
         onSuccess: () => {
           notify('Nama diperbarui', 'Perubahan tersimpan.');
           setRenaming(null);
-          samplesQuery.refetch();
+          refreshAll();
         },
         onError: (error) => showError(error, 'Gagal mengubah nama'),
       },
@@ -87,15 +108,25 @@ export function SampleLibraryView() {
 
   const confirmDelete = () => {
     if (!deleting) return;
+    setDeleteConflict(null);
     deleteMutation.mutate(
       { id: deleting.id },
       {
         onSuccess: () => {
           notify('Sample dihapus', 'File audio dihapus dari library.');
           setDeleting(null);
-          samplesQuery.refetch();
+          refreshAll();
         },
-        onError: (error) => showError(error, 'Gagal menghapus sample'),
+        onError: (error) => {
+          if (error instanceof ApiError && error.status === 409) {
+            // FR-SAMP-08/AC-6: tolak hapus yang masih direferensikan — tampilkan
+            // kotak error inline yang memandu melepas referensi di Sequencer.
+            setDeleteConflict({ name: deleting.name, message: error.message });
+            setDeleting(null);
+          } else {
+            showError(error, 'Gagal menghapus sample');
+          }
+        },
       },
     );
   };
@@ -117,86 +148,93 @@ export function SampleLibraryView() {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-gray-900">Sample Audio</h2>
-          <p className="mt-1 text-sm text-gray-500">
-            Kelola file audio pukulan rebana milik Anda (format .wav, maks 5MB).
-          </p>
-        </div>
-        <Button type="button" onClick={() => setUploadOpen(!uploadOpen)}>
-          + Unggah Sample
-        </Button>
-      </div>
-
-      <div className="mt-4 flex items-center gap-2">
-        <span className="text-xs text-gray-500">Filter Part:</span>
-        <select
-          value={partFilter}
-          onChange={(e) => setPartFilter(e.target.value)}
-          className="rounded-md border-gray-300 bg-white text-sm shadow-xs"
-        >
-          <option value="">Semua</option>
-          {PARTS.map((p) => (
-            <option key={p} value={p}>
-              {p}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {uploadOpen && (
-        <form
-          onSubmit={handleUpload}
-          className="mt-4 rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-900/5"
-        >
-          <h3 className="text-sm font-semibold text-gray-900">Unggah Sample Baru</h3>
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <FormField
-              id="upload-name"
-              name="upload-name"
-              type="text"
-              label="Nama sample"
-              value={uploadName}
-              onChange={(e) => setUploadName(e.target.value)}
-              required
-              maxLength={255}
-            />
-            <div>
-              <label htmlFor="upload-part" className="block text-sm/6 font-medium text-gray-900">
-                Part
-              </label>
+      <PageHeader
+        title="Library Sample"
+        subtitle="Reusable lintas Song, Section & SoundSlot — format .wav, maks 5MB."
+        actions={
+          <>
+            <label className="flex items-center gap-2 text-xs text-stone-500">
+              Filter Part
               <select
-                id="upload-part"
-                value={uploadPart}
-                onChange={(e) => setUploadPart(e.target.value)}
-                className="mt-2 block w-full rounded-md border-gray-300 bg-white text-sm shadow-xs"
+                value={partFilter}
+                onChange={(e) => setPartFilter(e.target.value)}
+                className="rounded-md border-0 bg-white py-1.5 pl-3 pr-8 text-sm text-stone-900 ring-1 ring-stone-300 ring-inset focus:ring-2 focus:ring-brand-700"
               >
+                <option value="">Semua Part</option>
                 {PARTS.map((p) => (
                   <option key={p} value={p}>
-                    {p}
+                    {partLabel(p)}
                   </option>
                 ))}
               </select>
-            </div>
+            </label>
+            <Button type="button" onClick={() => setUploadOpen(!uploadOpen)}>
+              + Upload Sample
+            </Button>
+          </>
+        }
+      />
+
+      <p className="mt-4 rounded-md border border-stone-200 bg-white p-3 text-xs leading-relaxed text-stone-600">
+        <span className="font-semibold text-stone-800">Catatan:</span> Sample tidak lagi terikat pada
+        satu jenis bunyi tetap — kini sebuah Sample hanya terikat ke Part, dan bisa dipasangkan ke
+        SoundSlot manapun (Tak, Dung, Duk, atau nama lain) saat digunakan di Sequencer Mode.
+      </p>
+
+      {uploadOpen && (
+        <form onSubmit={handleUpload} className="mt-4 rounded-lg bg-white p-4 ring-1 ring-stone-900/5">
+          <h2 className="text-sm font-semibold text-stone-900">Upload Sample Baru</h2>
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
-              <label htmlFor="upload-file" className="block text-sm/6 font-medium text-gray-900">
-                File .wav (maks 5MB)
+              <label htmlFor="upload-file" className="block text-sm/6 font-medium text-stone-900">
+                File (.wav, maks 5MB)
               </label>
               <input
                 id="upload-file"
                 type="file"
                 accept=".wav,audio/wav,audio/x-wav"
                 onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
-                className="mt-2 block w-full text-sm text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-indigo-700 hover:file:bg-indigo-100"
+                className="mt-2 block w-full text-sm text-stone-700 file:mr-3 file:rounded-md file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-brand-800 hover:file:bg-brand-100"
               />
             </div>
+            <FormField
+              id="upload-name"
+              name="upload-name"
+              type="text"
+              label="Nama"
+              value={uploadName}
+              onChange={(e) => setUploadName(e.target.value)}
+              placeholder="Rebana 1 - Tak Keras"
+              required
+              maxLength={255}
+            />
+            <div>
+              <label htmlFor="upload-part" className="block text-sm/6 font-medium text-stone-900">
+                Part
+              </label>
+              <select
+                id="upload-part"
+                value={uploadPart}
+                onChange={(e) => setUploadPart(e.target.value)}
+                className="mt-2 block w-full rounded-md border-0 bg-white py-2 pl-3 pr-8 text-sm text-stone-900 ring-1 ring-stone-300 ring-inset focus:ring-2 focus:ring-brand-700"
+              >
+                {PARTS.map((p) => (
+                  <option key={p} value={p}>
+                    {partLabel(p)}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
+          <p className="mt-2 text-xs text-stone-500">
+            Jenis bunyi (Tak/Dung/Duk/dst) tidak ditentukan di sini — akan dipilih saat Sample ini
+            dipasangkan ke sebuah SoundSlot di Sequencer Mode.
+          </p>
           <div className="mt-4 flex gap-2">
             <Button type="submit" disabled={uploadMutation.isPending || !uploadFile}>
               Unggah
             </Button>
-            <Button type="button" variant="secondary" onClick={() => setUploadOpen(false)}>
+            <Button type="button" variant="ghost" onClick={() => setUploadOpen(false)}>
               Batal
             </Button>
           </div>
@@ -204,13 +242,8 @@ export function SampleLibraryView() {
       )}
 
       {renaming && (
-        <form
-          onSubmit={handleRename}
-          className="mt-4 rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-900/5"
-        >
-          <h3 className="text-sm font-semibold text-gray-900">
-            Ganti nama: {renaming.name}
-          </h3>
+        <form onSubmit={handleRename} className="mt-4 rounded-lg bg-white p-4 ring-1 ring-stone-900/5">
+          <h2 className="text-sm font-semibold text-stone-900">Ubah Nama: {renaming.name}</h2>
           <div className="mt-3 max-w-sm">
             <FormField
               id="rename-value"
@@ -227,60 +260,143 @@ export function SampleLibraryView() {
             <Button type="submit" disabled={renameMutation.isPending}>
               Simpan
             </Button>
-            <Button type="button" variant="secondary" onClick={() => setRenaming(null)}>
+            <Button type="button" variant="ghost" onClick={() => setRenaming(null)}>
               Batal
             </Button>
           </div>
         </form>
       )}
 
-      {samplesQuery.isLoading ? (
-        <p className="mt-6 text-sm text-gray-500">Memuat library sample...</p>
-      ) : samples.length === 0 ? (
-        <div className="mt-6 rounded-lg border-2 border-dashed border-gray-200 p-10 text-center">
-          <p className="text-sm font-medium text-gray-900">Belum ada sample</p>
-          <p className="mt-1 text-sm text-gray-500">
-            Unggah rekaman pukulan rebana Anda untuk mulai menyusun pola.
-          </p>
-        </div>
-      ) : (
-        <ul className="mt-6 divide-y divide-gray-100 overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-gray-900/5">
-          {samples.map((sample) => (
-            <li key={sample.id} className="flex items-center justify-between px-4 py-3">
+      {/* Seksi 1: Sample Bawaan (Template System) — read-only */}
+      <section aria-label="Sample bawaan" className="mt-8">
+        <SectionHeader
+          title={
+            <span className="flex items-center gap-2">
+              <Badge>SYSTEM</Badge>
+              Sample Bawaan (Template System)
+            </span>
+          }
+          subtitle="Disediakan platform, tersedia untuk semua pengguna. Read-only — tidak bisa diedit/dihapus. Otomatis terpasang sebagai default saat kamu membuat Section baru."
+        />
+
+        {templatesQuery.isLoading ? (
+          <p className="mt-4 text-sm text-stone-500">Memuat sample bawaan...</p>
+        ) : templates.length === 0 ? (
+          <EmptyState
+            icon="♪"
+            title="Belum ada sample bawaan"
+            description="Tim platform sedang menyiapkan sample bawaan untuk kelima Part."
+          />
+        ) : (
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {templates.map((sample) => (
+              <article key={sample.id} className="rounded-lg bg-white p-4 ring-1 ring-stone-900/5">
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="min-w-0 truncate text-sm font-medium text-stone-900">{sample.name}</h3>
+                  <span className="shrink-0 rounded bg-stone-100 px-1.5 py-0.5 text-[11px] font-medium text-stone-600">
+                    {partLabel(sample.part)}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-stone-500">
+                  Dipakai di {sample.usage_count ?? 0} SoundSlot
+                  {(sample.usage_count ?? 0) > 1 ? ' (reuse)' : ''}
+                </p>
+                <div className="mt-3 flex items-center gap-2">
+                  <Button type="button" variant="secondary" size="sm" onClick={() => handlePreview(sample)}>
+                    ▶ Preview
+                  </Button>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Seksi 2: Sample Saya */}
+      <section aria-label="Sample saya" className="mt-8">
+        <SectionHeader
+          title="Sample Saya"
+          subtitle="Upload milikmu sendiri — bisa diedit atau dihapus (selama tidak sedang dipakai)."
+        />
+
+        {deleteConflict && (
+          <div
+            role="alert"
+            className="mt-4 rounded-md border border-red-300 bg-red-50 p-4"
+          >
+            <div className="flex items-start justify-between gap-2">
               <div>
-                <p className="text-sm font-medium text-gray-900">{sample.name}</p>
-                <p className="mt-0.5 text-xs text-gray-500">
-                  {sample.part} · {Math.round(sample.file_size_bytes / 1024)} KB
+                <p className="text-sm font-semibold text-red-800">
+                  ✕ Tidak dapat menghapus “{deleteConflict.name}”
+                </p>
+                <p className="mt-1 text-xs text-red-700">
+                  {deleteConflict.message}. Lepas referensinya dulu di Sequencer Mode sebelum
+                  menghapus (FR-SAMP-10).
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handlePreview(sample)}
-                >
-                  ▶
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => {
-                    setRenaming(sample);
-                    setRenameValue(sample.name);
-                  }}
-                >
-                  Rename
-                </Button>
-                <Button type="button" variant="danger" size="sm" onClick={() => setDeleting(sample)}>
-                  Hapus
-                </Button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+              <button
+                type="button"
+                aria-label="Tutup pesan error"
+                onClick={() => setDeleteConflict(null)}
+                className="rounded p-1 text-red-400 hover:bg-red-100 hover:text-red-600 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+
+        {samplesQuery.isLoading ? (
+          <p className="mt-4 text-sm text-stone-500">Memuat sample milikmu...</p>
+        ) : mine.length === 0 ? (
+          <EmptyState
+            icon="♪"
+            title="Belum ada sample milikmu"
+            description="Unggah rekaman pukulan rebana Anda untuk mulai menyusun pola."
+          >
+            <Button type="button" onClick={() => setUploadOpen(true)}>
+              + Upload Sample
+            </Button>
+          </EmptyState>
+        ) : (
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {mine.map((sample) => (
+              <article key={sample.id} className="rounded-lg bg-white p-4 ring-1 ring-stone-900/5">
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="min-w-0 truncate text-sm font-medium text-stone-900">{sample.name}</h3>
+                  <span className="shrink-0 rounded bg-stone-100 px-1.5 py-0.5 text-[11px] font-medium text-stone-600">
+                    {partLabel(sample.part)}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-stone-500">
+                  Dipakai di {sample.usage_count ?? 0} SoundSlot
+                  {(sample.usage_count ?? 0) > 1 ? ' (reuse)' : ''} ·{' '}
+                  {Math.round(sample.file_size_bytes / 1024)} KB
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <Button type="button" variant="secondary" size="sm" onClick={() => handlePreview(sample)}>
+                    ▶ Preview
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setRenaming(sample);
+                      setRenameValue(sample.name);
+                    }}
+                  >
+                    Ubah Nama
+                  </Button>
+                  <Button type="button" variant="danger" size="sm" onClick={() => setDeleting(sample)}>
+                    Hapus
+                  </Button>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
 
       <ConfirmDialog
         open={!!deleting}
