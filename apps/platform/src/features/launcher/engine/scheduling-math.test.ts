@@ -14,9 +14,10 @@ function part(steps: string, keys: string[]): ScheduledPart {
 }
 
 describe('scheduling-math', () => {
-  it('stepDurationSeconds konversi BPM', () => {
-    expect(stepDurationSeconds(120)).toBeCloseTo(0.5);
-    expect(stepDurationSeconds(60)).toBeCloseTo(1);
+  it('stepDurationSeconds konversi BPM (1 step = 1/16 ketukan)', () => {
+    expect(stepDurationSeconds(120)).toBeCloseTo(0.125); // 120 BPM → 125 ms/step
+    expect(stepDurationSeconds(60)).toBeCloseTo(0.25); // 60 BPM → 250 ms/step
+    expect(stepDurationSeconds(90)).toBeCloseTo(1 / 6); // 90 BPM → 166,7 ms/step
   });
 
   it('cycleLength = panjang steps terpanjang (AC-2)', () => {

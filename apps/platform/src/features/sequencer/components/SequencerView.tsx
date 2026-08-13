@@ -291,8 +291,8 @@ export function SequencerView({ songId, sectionId, sectionName, songBpm, bpmOver
               </span>
             )}
             {' · '}
-            {Math.max(...orderedParts.map((p) => stepCount(stepsOf(p))), 0)} step ditampilkan (panjang steps bebas,
-            tanpa batas)
+            {Math.max(...orderedParts.map((p) => stepCount(stepsOf(p))), 0)} step ditampilkan (1 step = 1/16 ketukan;
+            panjang bebas)
           </span>
         </div>
         <div className="flex items-center gap-2">

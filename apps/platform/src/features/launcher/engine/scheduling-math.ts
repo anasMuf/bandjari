@@ -12,9 +12,13 @@ export interface ScheduledPart {
   buffers: Map<string, AudioBuffer>;
 }
 
-/** Durasi satu step dalam detik pada BPM tertentu. */
+/**
+ * Durasi satu step dalam detik pada BPM tertentu.
+ * Konvensi grid sequencer standar (drum machine): 1 step = 1/16 ketukan —
+ * rujukan pemilik produk. 120 BPM → 125 ms per step; 90 BPM → 166,7 ms.
+ */
 export function stepDurationSeconds(bpm: number): number {
-  return 60 / bpm;
+  return 60 / bpm / 4;
 }
 
 /**

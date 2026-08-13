@@ -49,7 +49,8 @@ async function measureLauncher(label) {
   await page.click('button:has-text("■ Stop")');
   const gaps = changes.slice(1).map((t, i) => t - changes[i]);
   const avg = gaps.length ? gaps.reduce((a, b) => a + b, 0) / gaps.length : NaN;
-  console.log(`${label}: ${gaps.length} transisi, rata-rata ${avg.toFixed(0)} ms/step (harapan ${label.includes('120') ? '500' : '667'})`);
+  const expected = label.includes('120') ? '125' : '167';
+  console.log(`${label}: ${gaps.length} transisi, rata-rata ${avg.toFixed(0)} ms/step (harapan ±${expected})`);
 }
 
 async function measureSequencerPreview(label) {

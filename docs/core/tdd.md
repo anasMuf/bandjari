@@ -519,6 +519,8 @@ apps/platform/src/features/launcher/
 4. `section-player.ts` menyimpan state Section mana yang `active` vs `pendingNext` — saat pad baru ditekan, tidak langsung switch, tapi menunggu `endBeat` dari siklus Section aktif tercapai (quantized trigger, FR-PLAY-04)
 5. **Tempo aktif per Section (FR-PLAY-03, FR-PLAY-11):** `section-player.ts` menentukan BPM efektif setiap kali sebuah Section menjadi `active` — memakai `section.bpm_override` jika terisi, atau `song.bpm` jika `null`. Tepat saat transisi quantized trigger terjadi (Section lama berhenti, Section baru mulai), `scheduler.ts` langsung memakai BPM efektif Section baru untuk menghitung interval step berikutnya — **tanpa interpolasi/ramp** antara BPM lama dan baru (hard cut, sesuai keputusan produk). Karena perubahan BPM hanya diterapkan tepat di titik mulainya Section baru (bukan di tengah siklus Section yang sedang berjalan), pendekatan ini tidak menambah kompleksitas pada logic quantized trigger yang sudah ada di poin 4
 
+> **Subdivisi step (keputusan final, rujukan pemilik produk):** satu step grid = **seperenambelas ketukan (1/16)** — standar grid drum machine. Durasi satu step = `60.000 / BPM / 4` ms (120 BPM → 125 ms; 90 BPM → 166,7 ms). Berlaku sama di Sequencer Preview dan Launcher engine (`stepDurationSeconds` di `scheduling-math.ts`).
+
 > Detail lebih lanjut (kode konkret worker, exact scheduling math) akan disusun sebagai spesifikasi implementasi terpisah saat masuk sprint terkait modul Launcher — di luar cakupan level-desain TDD ini.
 
 ---

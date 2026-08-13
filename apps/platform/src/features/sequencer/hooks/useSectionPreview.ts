@@ -70,7 +70,8 @@ export function useSectionPreview() {
 
         let step = 0;
         let timer: ReturnType<typeof setTimeout>;
-        const stepMs = 60000 / bpm;
+        // 1 step = 1/16 ketukan (grid sequencer standar): 60000/bpm/4 ms.
+        const stepMs = 60000 / bpm / 4;
 
         const tick = () => {
           for (const part of prepared) {
