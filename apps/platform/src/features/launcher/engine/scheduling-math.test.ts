@@ -30,30 +30,37 @@ describe('scheduling-math', () => {
     const parts = [part('T,D,T,D', ['T', 'D']), part('D,D', ['D'])];
     // part2 panjang 2 → pada index 2 kembali ke awal (D), part1 lanjut (T)
     expect(stepKeysAt(parts, 2)).toEqual([
-      { key: 'T', buffer: expect.anything() },
-      { key: 'D', buffer: expect.anything() },
+      { part: undefined, key: 'T', buffer: expect.anything() },
+      { part: undefined, key: 'D', buffer: expect.anything() },
     ]);
   });
 
   it('stepKeysAt mengembalikan buffer undefined untuk key tak dikenal (senyap)', () => {
     const parts = [part('T,K', ['T'])];
-    expect(stepKeysAt(parts, 1)).toEqual([{ key: 'K', buffer: undefined }]);
+    expect(stepKeysAt(parts, 1)).toEqual([{ part: undefined, key: 'K', buffer: undefined }]);
   });
 
   it('stepKeysAt mendukung key 2 karakter', () => {
     const parts = [part('T,KD', ['T', 'KD'])];
-    expect(stepKeysAt(parts, 1)).toEqual([{ key: 'KD', buffer: expect.anything() }]);
+    expect(stepKeysAt(parts, 1)).toEqual([{ part: undefined, key: 'KD', buffer: expect.anything() }]);
+  });
+
+  it('stepKeysAt membawa identitas part untuk choke monofonik', () => {
+    const parts = [{ ...part('T,D', ['T', 'D']), part: 'rebana1' }];
+    expect(stepKeysAt(parts, 0)).toEqual([
+      { part: 'rebana1', key: 'T', buffer: expect.anything() },
+    ]);
   });
 
   it('stepKeysAt memperlakukan langkah istirahat sebagai senyap', () => {
     const parts = [part('.,T', ['T'])];
-    expect(stepKeysAt(parts, 0)).toEqual([{ key: '', buffer: undefined }]);
-    expect(stepKeysAt(parts, 1)).toEqual([{ key: 'T', buffer: expect.anything() }]);
+    expect(stepKeysAt(parts, 0)).toEqual([{ part: undefined, key: '', buffer: undefined }]);
+    expect(stepKeysAt(parts, 1)).toEqual([{ part: undefined, key: 'T', buffer: expect.anything() }]);
   });
 
   it('stepKeysAt menangani steps kosong', () => {
     const parts = [part('', [])];
-    expect(stepKeysAt(parts, 0)).toEqual([{ key: '', buffer: undefined }]);
+    expect(stepKeysAt(parts, 0)).toEqual([{ part: undefined, key: '', buffer: undefined }]);
   });
 
   it('excludeMutedParts membuang Part yang di-mute (FR-PLAY-10)', () => {

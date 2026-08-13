@@ -12,6 +12,11 @@ const LOOKAHEAD_MS = 100;
  * Scheduler lookahead berbasis AudioContext (FR-PLAY-05): setiap tick (dari
  * clock worker) menjadwalkan semua step yang jatuh dalam window berikutnya
  * dengan timestamp presisi — playback tidak drift walau tab tidak fokus.
+ *
+ * Choke monofonik per Part: tiap Part adalah satu instrumen fisik — bunyi baru
+ * pada part yang sama memotong bunyi sebelumnya (perilaku standar drum
+ * machine). Ini mencegah ekor sample panjang menumpuk dan mengotori downbeat
+ * saat pola mengulang.
  */
 export class Scheduler {
   private parts: ScheduledPart[] = [];
@@ -19,6 +24,8 @@ export class Scheduler {
   private stepIndex = 0;
   private nextNoteTime = 0;
   private playing = false;
+  /** Sumber audio yang sedang berbunyi, per identitas Part. */
+  private activeSources = new Map<string, AudioBufferSourceNode>();
 
   /** Dipanggil tepat saat satu siklus Section selesai (untuk quantized trigger). */
   onCycleComplete: (() => void) | null = null;
@@ -34,13 +41,14 @@ export class Scheduler {
     return this.stepIndex;
   }
 
-  /** Mulai memutar section baru dari langkah 0. */
+  /** Mulai memutar section baru dari langkah 0 — bunyi lama dipotong (choke). */
   start(parts: ScheduledPart[], bpm: number): void {
     this.parts = parts;
     this.bpm = bpm;
     this.stepIndex = 0;
     this.nextNoteTime = this.ctx.currentTime + 0.05;
     this.playing = true;
+    this.chokeAll();
   }
 
   /** Panggil tiap tick dari clock worker. */
@@ -64,19 +72,52 @@ export class Scheduler {
     }
   }
 
-  /** Hentikan penjadwalan (sumber audio yang sudah start akan habis dengan sendirinya). */
+  /** Hentikan penjadwalan dan potong semua bunyi yang masih berbunyi. */
   stop(): void {
     this.playing = false;
     this.parts = [];
+    this.chokeAll();
+  }
+
+  /** Potong semua sumber audio aktif (dipakai saat stop / ganti section). */
+  private chokeAll(): void {
+    for (const source of this.activeSources.values()) {
+      try {
+        source.stop();
+      } catch {
+        // Sumber sudah berhenti sendiri — abaikan.
+      }
+    }
+    this.activeSources.clear();
   }
 
   private scheduleStep(index: number, when: number): void {
-    for (const { buffer } of stepKeysAt(this.parts, index)) {
+    for (const { part, buffer } of stepKeysAt(this.parts, index)) {
       if (!buffer) continue; // step senyap — SoundSlot tanpa sample (FR-PLAY-09, AC-5)
+      if (part) {
+        // Choke monofonik: bunyi baru part ini memotong bunyi sebelumnya
+        // tepat di titik bunyi baru dimulai.
+        const previous = this.activeSources.get(part);
+        if (previous) {
+          try {
+            previous.stop(when);
+          } catch {
+            // Sumber sudah berhenti — abaikan.
+          }
+        }
+      }
       const source = this.ctx.createBufferSource();
       source.buffer = buffer;
       source.connect(this.ctx.destination);
       source.start(when);
+      if (part) {
+        source.onended = () => {
+          if (this.activeSources.get(part) === source) {
+            this.activeSources.delete(part);
+          }
+        };
+        this.activeSources.set(part, source);
+      }
     }
   }
 }

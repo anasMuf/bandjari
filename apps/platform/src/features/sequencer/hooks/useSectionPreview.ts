@@ -59,6 +59,7 @@ export function useSectionPreview() {
         const prepared = parts
           .filter((p) => stepCount(p.steps) > 0)
           .map((part) => ({
+            id: part.id,
             steps: part.steps,
             keys: new Map(part.slots.map((slot) => [slot.key, slot.sample_id])),
           }));
@@ -67,6 +68,10 @@ export function useSectionPreview() {
           ctx.close();
           return;
         }
+
+        // Choke monofonik per Part: bunyi baru memotong bunyi sebelumnya dari
+        // part yang sama — ekor sample panjang tidak menumpuk antar step.
+        const activeSources = new Map<string, AudioBufferSourceNode>();
 
         let step = 0;
         let timer: ReturnType<typeof setTimeout>;
@@ -81,10 +86,20 @@ export function useSectionPreview() {
             if (sampleId == null) continue; // senyap (AC-5)
             const buffer = buffers.get(sampleId);
             if (!buffer) continue;
+            const srcKey = `part-${part.id}`;
+            const previous = activeSources.get(srcKey);
+            if (previous) {
+              try {
+                previous.stop();
+              } catch {
+                // sudah berhenti — abaikan
+              }
+            }
             const source = ctx.createBufferSource();
             source.buffer = buffer;
             source.connect(ctx.destination);
             source.start();
+            activeSources.set(srcKey, source);
           }
           setStepIndex(step % totalLen);
           step++;
@@ -95,6 +110,13 @@ export function useSectionPreview() {
         setIsPlaying(true);
         stopRef.current = () => {
           clearTimeout(timer);
+          for (const source of activeSources.values()) {
+            try {
+              source.stop();
+            } catch {
+              // sudah berhenti — abaikan
+            }
+          }
           ctx.close();
           setIsPlaying(false);
           setStepIndex(0);

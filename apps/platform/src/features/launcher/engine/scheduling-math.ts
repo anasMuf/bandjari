@@ -30,11 +30,11 @@ export function cycleLength(parts: ScheduledPart[]): number {
 }
 
 /** Key tiap part pada indeks langkah global (tiap part loop sesuai panjangnya — AC-2). */
-export function stepKeysAt(parts: ScheduledPart[], index: number): Array<{ key: string; buffer: AudioBuffer | undefined }> {
+export function stepKeysAt(parts: ScheduledPart[], index: number): Array<{ part?: string; key: string; buffer: AudioBuffer | undefined }> {
   return parts.map((part) => {
     const key = keyAt(part.steps, index);
-    if (key === undefined) return { key: '', buffer: undefined };
-    return { key, buffer: part.buffers.get(key) };
+    if (key === undefined) return { part: part.part, key: '', buffer: undefined };
+    return { part: part.part, key, buffer: part.buffers.get(key) };
   });
 }
 
