@@ -129,13 +129,23 @@ export function SequencerView({ songId, sectionId, sectionName }: SequencerViewP
     <div>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <Link
-            to="/songs/$songId"
-            params={{ songId: String(songId) }}
-            className="text-sm text-gray-500 hover:text-gray-700"
-          >
-            ← Detail lagu
-          </Link>
+          {readOnly ? (
+            <Link
+              to="/templates/$songId"
+              params={{ songId: String(songId) }}
+              className="text-sm text-gray-500 hover:text-gray-700"
+            >
+              ← Detail lagu
+            </Link>
+          ) : (
+            <Link
+              to="/songs/$songId"
+              params={{ songId: String(songId) }}
+              className="text-sm text-gray-500 hover:text-gray-700"
+            >
+              ← Kelola lagu
+            </Link>
+          )}
           <h2 className="mt-1 text-2xl font-bold tracking-tight text-gray-900">{sectionName}</h2>
           <p className="mt-1 text-sm text-gray-500">Sequencer Mode · {effectiveBpm} BPM</p>
         </div>

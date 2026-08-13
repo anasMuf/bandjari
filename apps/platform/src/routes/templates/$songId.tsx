@@ -8,7 +8,7 @@ import { useToast } from '../../components/molecules/Toast'
 import { ApiError } from '../../api/mutator/custom-instance'
 import type { SectionItem } from '../../features/section/components/SectionStrip'
 
-export const Route = createFileRoute('/songs/$songId')({
+export const Route = createFileRoute('/templates/$songId')({
   component: PublicSongViewPage,
 })
 

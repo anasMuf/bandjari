@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useGetSongsId } from '../../../api/endpoints/songs/songs'
+import { useAuth } from '../../../features/auth/AuthContext'
 import { LauncherGrid } from '../../../features/launcher/components/LauncherGrid'
 import {
   useLauncherPlayback,
@@ -15,6 +16,7 @@ interface SongDetail {
   id: number;
   name: string;
   bpm: number;
+  is_system_template: boolean;
   sections?: LauncherSection[];
 }
 
@@ -26,6 +28,7 @@ function LauncherPage() {
   const { songId } = Route.useParams()
   const id = Number(songId)
   const songQuery = useGetSongsId(id)
+  const { isAuthenticated } = useAuth()
   const resp = songQuery.data?.data;
   const song =
     resp && 'data' in resp && resp.status === 200 ? (resp.data as SongDetail) : undefined;
@@ -61,13 +64,23 @@ function LauncherPage() {
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <Link
-              to="/songs/$songId"
-              params={{ songId: String(id) }}
-              className="text-sm text-gray-500 hover:text-gray-700"
-            >
-              ← Kembali ke lagu
-            </Link>
+            {isAuthenticated && song && !song.is_system_template ? (
+              <Link
+                to="/songs/$songId"
+                params={{ songId: String(id) }}
+                className="text-sm text-gray-500 hover:text-gray-700"
+              >
+                ← Kelola lagu
+              </Link>
+            ) : (
+              <Link
+                to="/templates/$songId"
+                params={{ songId: String(id) }}
+                className="text-sm text-gray-500 hover:text-gray-700"
+              >
+                ← Kembali ke lagu
+              </Link>
+            )}
             <h2 className="mt-1 text-2xl font-bold tracking-tight text-gray-900">{song.name}</h2>
             <p className="mt-1 text-sm text-gray-500">Launcher Mode · {song.bpm} BPM dasar</p>
           </div>
