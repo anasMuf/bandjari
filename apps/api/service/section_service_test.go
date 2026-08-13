@@ -130,10 +130,11 @@ func TestSectionCreate_AutoCreatesFiveParts(t *testing.T) {
 	}
 }
 
-// TestSectionCreate_SlotsStartEmpty memastikan SoundSlot default dibuat tanpa
-// sample terpasang — keputusan pemilik produk: susunan standar belum final,
-// jadi Section baru mulai kosong (auto-attach Template System ditunda).
-func TestSectionCreate_SlotsStartEmpty(t *testing.T) {
+// TestSectionCreate_PartsStartWithoutSlots memastikan Section baru TIDAK membuat
+// SoundSlot apapun — keputusan pemilik produk: susunan standar belum final,
+// jadi grid Sequencer mulai benar-benar kosong (0 baris), diisi manual lewat
+// "+ Tambah Bunyi" (FR-SLOT-01).
+func TestSectionCreate_PartsStartWithoutSlots(t *testing.T) {
 	songRepo := newFakeSongRepo(&model.Song{UserID: uptr(5), Name: "Lagu", Bpm: 90})
 	sectionRepo := newFakeSectionRepo()
 	// Sedikan template sample — dulu auto-attach memakainya; kini harus diabaikan.
@@ -151,13 +152,8 @@ func TestSectionCreate_SlotsStartEmpty(t *testing.T) {
 
 	stored := sectionRepo.sections[sec.ID]
 	for _, p := range stored.Parts {
-		if len(p.SoundSlots) != 2 {
-			t.Fatalf("SoundSlot part %s = %d, want 2 default (Tak/Dung)", p.Part, len(p.SoundSlots))
-		}
-		for _, slot := range p.SoundSlots {
-			if slot.SampleID != nil {
-				t.Fatalf("SoundSlot %s (%s) harus kosong (sample_id nil), got %d", slot.Label, p.Part, *slot.SampleID)
-			}
+		if len(p.SoundSlots) != 0 {
+			t.Fatalf("SoundSlot part %s = %d, want 0 — grid harus mulai kosong", p.Part, len(p.SoundSlots))
 		}
 	}
 }

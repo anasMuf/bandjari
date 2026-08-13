@@ -30,6 +30,9 @@ func toSectionPartResponse(part *model.SectionPart) *dto.SectionPartResponse {
 		SectionID: part.SectionID,
 		Part:      part.Part,
 		Steps:     part.Steps,
+		// Selalu [] (bukan null) — bagian dari kontrak respons agar klien aman
+		// memanggil .length/.map tanpa pengecekan null.
+		SoundSlots: make([]dto.SoundSlotResponse, 0),
 	}
 	for i := range part.SoundSlots {
 		res.SoundSlots = append(res.SoundSlots, *toSoundSlotResponse(&part.SoundSlots[i]))

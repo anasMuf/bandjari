@@ -51,41 +51,60 @@ const shot = async (name) => {
 };
 
 // ===== Alur Guest (Flow 5.0, AC-11): tanpa login =====
-await step('guest: beranda menampilkan Song Bawaan + SYSTEM badge', async () => {
+// Dijalankan hanya bila Song Template System tersedia di DB — bila data
+// template sengaja dibersihkan, verifikasi state kosong Beranda lalu lewati.
+let hasTemplates = true;
+await step('beranda: template ada atau state kosong tertangani', async () => {
   await page.goto(`${BASE}/`);
   await page.waitForSelector('text=Selamat Datang di BandJari', { timeout: 20000 });
-  await page.waitForSelector('text=Song Template System', { timeout: 20000 });
-  const sysBadges = await page.locator('text=SYSTEM').count();
-  if (sysBadges === 0) throw new Error('badge SYSTEM tidak muncul di kartu template');
-  const mainBtns = await page.locator('a:has-text("▶ Main")').count();
-  if (mainBtns === 0) throw new Error('tombol ▶ Main tidak ada');
+  try {
+    await page.waitForSelector('text=Song Template System', { timeout: 8000 });
+    hasTemplates = true;
+    console.log('   (template tersedia — alur Guest lengkap dijalankan)');
+  } catch {
+    hasTemplates = false;
+    const empty = await page.locator('text=Belum ada lagu bawaan').count();
+    if (empty === 0) throw new Error('state kosong beranda tidak tampil');
+    console.log('   (template kosong — alur Guest dilewati, state kosong terverifikasi)');
+  }
 });
-await shot('01-landing-guest');
 
-await step('guest: buka detail template → banner Mode Lihat Saja', async () => {
-  await page.locator('a:has-text("▶ Main")').first().locator('..').locator('..').locator('a').first().click();
-  await page.waitForSelector('text=Mode Lihat Saja', { timeout: 15000 });
-  const cta = await page.locator('text=Login untuk Edit').count();
-  if (cta === 0) throw new Error('banner guest tanpa CTA Login untuk Edit');
-});
-await shot('02-detail-template-guest');
+if (hasTemplates) {
+  await step('guest: beranda menampilkan Song Bawaan + SYSTEM badge', async () => {
+    const sysBadges = await page.locator('text=SYSTEM').count();
+    if (sysBadges === 0) throw new Error('badge SYSTEM tidak muncul di kartu template');
+    const mainBtns = await page.locator('a:has-text("▶ Main")').count();
+    if (mainBtns === 0) throw new Error('tombol ▶ Main tidak ada');
+  });
+  await shot('01-landing-guest');
 
-await step('guest: sequencer template read-only', async () => {
-  await page.click('a:has-text("Buka di Sequencer Mode →")');
-  await page.waitForSelector('text=Sequencer — Section:', { timeout: 15000 });
-  await page.waitForSelector('text=Mode Lihat Saja', { timeout: 15000 });
-  const subheaders = await page.locator('button:has-text("Kelola bunyi")').count();
-  if (subheaders !== 0) throw new Error('grid read-only masih menampilkan kontrol edit');
-});
-await shot('03-sequencer-guest');
+  await step('guest: buka detail template → banner Mode Lihat Saja', async () => {
+    await page.locator('a:has-text("▶ Main")').first().locator('..').locator('..').locator('a').first().click();
+    await page.waitForSelector('text=Mode Lihat Saja', { timeout: 15000 });
+    const cta = await page.locator('text=Login untuk Edit').count();
+    if (cta === 0) throw new Error('banner guest tanpa CTA Login untuk Edit');
+  });
+  await shot('02-detail-template-guest');
 
-await step('guest: launcher template menampilkan pad + transport', async () => {
-  await page.click('a:has-text("Buka Launcher")');
-  await page.waitForSelector('text=Launcher —', { timeout: 15000 });
-  await page.waitForSelector('button[aria-label^="Mainkan section"]', { timeout: 20000 });
-  await page.waitForSelector('text=Mute Part…', { timeout: 15000 });
-});
-await shot('04-launcher-guest');
+  await step('guest: sequencer template read-only', async () => {
+    await page.click('a:has-text("Buka di Sequencer Mode →")');
+    await page.waitForSelector('text=Sequencer — Section:', { timeout: 15000 });
+    await page.waitForSelector('text=Mode Lihat Saja', { timeout: 15000 });
+    const subheaders = await page.locator('button:has-text("Kelola bunyi")').count();
+    if (subheaders !== 0) throw new Error('grid read-only masih menampilkan kontrol edit');
+  });
+  await shot('03-sequencer-guest');
+
+  await step('guest: launcher template menampilkan pad + transport', async () => {
+    await page.click('a:has-text("Buka Launcher")');
+    await page.waitForSelector('text=Launcher —', { timeout: 15000 });
+    await page.waitForSelector('button[aria-label^="Mainkan section"]', { timeout: 20000 });
+    await page.waitForSelector('text=Mute Part…', { timeout: 15000 });
+  });
+  await shot('04-launcher-guest');
+} else {
+  await shot('01-landing-tanpa-template');
+}
 
 // ===== Alur user login =====
 await step('login', async () => {
@@ -124,14 +143,24 @@ await step('tambah section Awalan (form inline di strip)', async () => {
 });
 await shot('07-song-detail-section');
 
-await step('chip section → Sequencer Mode (grid terpadu 5 Part)', async () => {
+await step('chip section → Sequencer Mode (grid terpadu 5 Part, mulai kosong)', async () => {
   await page.click('a:has-text("Buka di Sequencer Mode →")');
   await page.waitForSelector('text=Sequencer — Section: Awalan', { timeout: 15000 });
   const partHeaders = await page.locator('tbody >> text=Rebana 1').count();
   const bassHeader = await page.locator('tbody >> text=Bass').count();
   if (partHeaders === 0 || bassHeader === 0) throw new Error('subheader Part tidak muncul di grid terpadu');
+  const emptyHint = await page.locator('text=Belum ada jenis bunyi').count();
+  if (emptyHint === 0) throw new Error('grid tidak mulai kosong — masih ada SoundSlot default');
 });
 await shot('08-sequencer');
+
+await step('tambah SoundSlot pertama (Tak/T) di Rebana 1', async () => {
+  await page.click('button:has-text("+ Tambah Bunyi untuk Rebana 1")');
+  await page.fill('#new-slot-label', 'Tak');
+  await page.fill('#new-slot-key', 'T');
+  await page.click('form button:has-text("+ Tambah Bunyi")');
+  await page.waitForSelector('tbody button[aria-label^="Langkah "]', { timeout: 15000 });
+});
 
 await step('grid steps: klik kotak, ±8 step, simpan perubahan', async () => {
   const cells = page.locator('tbody button[aria-label^="Langkah "]');
@@ -169,7 +198,12 @@ await step('sample library: dua seksi + kartu bawaan read-only', async () => {
   await page.waitForSelector('text=Sample Bawaan (Template System)', { timeout: 15000 });
   await page.waitForSelector('text=Sample Saya', { timeout: 15000 });
   const usageMeta = await page.locator('text=Dipakai di').count();
-  if (usageMeta === 0) throw new Error('meta "Dipakai di N SoundSlot" tidak muncul');
+  if (usageMeta > 0) {
+    console.log('   (kartu template ada — meta usage_count terverifikasi)');
+  } else {
+    await page.waitForSelector('text=Belum ada sample bawaan', { timeout: 15000 });
+    console.log('   (template sample kosong — state kosong terverifikasi)');
+  }
 });
 await shot('10-sample-library');
 

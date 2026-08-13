@@ -36,6 +36,8 @@ func toSectionResponse(section *model.Section) *dto.SectionResponse {
 		Name:        section.Name,
 		OrderIndex:  section.OrderIndex,
 		BpmOverride: section.BpmOverride,
+		// Selalu [] (bukan null) — konsisten dengan kontrak SoundSlots.
+		Parts: make([]dto.SectionPartResponse, 0),
 	}
 	for i := range section.Parts {
 		res.Parts = append(res.Parts, *toSectionPartResponse(&section.Parts[i]))
@@ -74,12 +76,12 @@ func (s *sectionService) loadGuardedSection(sectionID uint, userID uint) (*model
 }
 
 // Create menambah Section baru dan otomatis membuat tepat 5 SectionPart
-// (satu per Part) — FR-SEC-01/02. Tiap SectionPart mendapat 2 SoundSlot default
-// ("Tak"/T, "Dung"/D) yang KOSONG (tanpa sample terpasang).
+// (satu per Part) — FR-SEC-01/02 — TANPA SoundSlot apa pun.
 //
-// Catatan keputusan (pemilik produk): auto-attach Sample Template System
-// (FR-SLOT-09 / AC-10) ditunda sementara — susunan standar belum final, jadi
-// Section baru dimulai kosong dan user memasang sample sendiri di Sequencer.
+// Catatan keputusan (pemilik produk): grid Sequencer mulai benar-benar kosong;
+// jenis bunyi (SoundSlot) dibuat manual oleh user lewat "+ Tambah Bunyi"
+// (FR-SLOT-01). Pembuatan slot default + auto-attach Sample Template System
+// (FR-SLOT-09 / AC-10) ditunda sampai susunan standar final.
 func (s *sectionService) Create(userID uint, songID uint, req dto.CreateSectionRequest) (*dto.SectionResponse, error) {
 	song, err := s.songRepo.FindByID(songID)
 	if err != nil {
@@ -103,28 +105,13 @@ func (s *sectionService) Create(userID uint, songID uint, req dto.CreateSectionR
 		OrderIndex: int(count),
 	}
 	for _, part := range model.AllParts {
-		sp := model.SectionPart{Part: part}
-		for _, def := range defaultSoundSlots {
-			// Slot dibuat kosong — SampleID tetap NULL (keputusan: slot kosong dulu).
-			sp.SoundSlots = append(sp.SoundSlots, model.SoundSlot{
-				Label:      def.label,
-				Key:        def.key,
-				OrderIndex: len(sp.SoundSlots),
-			})
-		}
-		section.Parts = append(section.Parts, sp)
+		section.Parts = append(section.Parts, model.SectionPart{Part: part})
 	}
 
 	if err := s.sectionRepo.Create(section); err != nil {
 		return nil, err
 	}
 	return toSectionResponse(section), nil
-}
-
-// defaultSoundSlots — pasangan SoundSlot bawaan saat SectionPart dibuat (FR-SLOT-09).
-var defaultSoundSlots = []struct{ label, key string }{
-	{label: "Tak", key: "T"},
-	{label: "Dung", key: "D"},
 }
 
 func (s *sectionService) Update(userID uint, sectionID uint, req dto.UpdateSectionRequest) (*dto.SectionResponse, error) {

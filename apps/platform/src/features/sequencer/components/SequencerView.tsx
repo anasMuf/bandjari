@@ -45,7 +45,10 @@ export function SequencerView({ songId, sectionId, sectionName }: SequencerViewP
   const [focusCreateSignal, setFocusCreateSignal] = useState(0);
   const managerRef = useRef<HTMLDivElement>(null);
 
-  const parts = ((partsQuery.data?.data as DtoSuccessResponse | undefined)?.data ?? []) as PartData[];
+  // Normalisasi defensif: sound_slots mungkin null dari respons lama — pastikan array.
+  const parts = (((partsQuery.data?.data as DtoSuccessResponse | undefined)?.data ?? []) as PartData[]).map(
+    (part) => ({ ...part, sound_slots: part.sound_slots ?? [] }),
+  );
   const orderedParts = useMemo(
     () =>
       PART_ORDER.map((p) => parts.find((part) => part.part === p)).filter(
@@ -108,6 +111,7 @@ export function SequencerView({ songId, sectionId, sectionName }: SequencerViewP
   const readOnly = !isAuthenticated || songData?.is_system_template === true;
 
   const dirtyParts = orderedParts.filter((part) => stepsOf(part) !== (part.steps ?? ''));
+  const allPartsEmpty = orderedParts.every((part) => part.sound_slots.length === 0);
 
   const defaultKeyOf = (part: PartData): string => part.sound_slots[0]?.key ?? 'T';
 
@@ -131,9 +135,19 @@ export function SequencerView({ songId, sectionId, sectionName }: SequencerViewP
       setEditPromptZone('grid');
       return;
     }
+    // Tanpa jenis bunyi (SoundSlot) tidak ada key untuk mengisi langkah.
+    const withSlots = orderedParts.filter((part) => part.sound_slots.length > 0);
+    if (withSlots.length === 0) {
+      addToast({
+        variant: 'info',
+        title: 'Tambahkan jenis bunyi dulu',
+        message: 'Buat SoundSlot lewat “+ Tambah Bunyi” sebelum mengatur panjang langkah.',
+      });
+      return;
+    }
     setStepsByPart((prev) => {
       const next = { ...prev };
-      for (const part of orderedParts) {
+      for (const part of withSlots) {
         const current = stepsOf(part);
         next[part.id] = delta > 0 ? padSteps(current, delta, defaultKeyOf(part)) : trimSteps(current, -delta);
       }
@@ -279,6 +293,14 @@ export function SequencerView({ songId, sectionId, sectionName }: SequencerViewP
 
       {editPromptZone === 'grid' && (
         <LoginPromptInline action="mengubah pola pukulan" onDismiss={() => setEditPromptZone(null)} />
+      )}
+
+      {allPartsEmpty && (
+        <p className="mt-4 rounded-md border border-dashed border-stone-300 bg-white p-3 text-xs text-stone-500">
+          Belum ada jenis bunyi (SoundSlot) di Section ini — mulai dari nol: klik{' '}
+          <span className="font-semibold text-stone-700">+ Tambah Bunyi</span> pada tiap Part untuk
+          membuat bunyi pertama (mis. Tak dengan key T), lalu klik kotak step untuk mengisi pola.
+        </p>
       )}
 
       {/* Grid terpadu semua Part */}
