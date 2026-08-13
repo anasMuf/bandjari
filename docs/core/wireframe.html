@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BandJari — Wireframe</title>
+<style>
+  :root{
+    --line:#8a8a8a;
+    --line-soft:#c7c7c7;
+    --bg:#ffffff;
+    --bg-alt:#f2f2f2;
+    --bg-panel:#e9e9e9;
+    --text:#1a1a1a;
+    --text-soft:#6b6b6b;
+    --accent:#1a1a1a;
+    --radius:2px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:"Courier New", Courier, monospace;
+    background:#d8d8d8;
+    color:var(--text);
+    font-size:14px;
+  }
+
+  /* ===== App Shell ===== */
+  .app{
+    max-width:1180px;
+    margin:0 auto;
+    background:var(--bg);
+    min-height:100vh;
+    border-left:1px solid var(--line);
+    border-right:1px solid var(--line);
+  }
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:14px 20px;
+    border-bottom:2px solid var(--accent);
+  }
+  .brand{
+    font-weight:bold;
+    letter-spacing:1px;
+    font-size:16px;
+  }
+  .brand small{
+    display:block;
+    font-weight:normal;
+    font-size:10px;
+    color:var(--text-soft);
+    letter-spacing:0.5px;
+  }
+  .topbar-right{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    font-size:12px;
+    color:var(--text-soft);
+  }
+
+  .crumbs{
+    padding:8px 20px;
+    font-size:11px;
+    color:var(--text-soft);
+    border-bottom:1px dashed var(--line-soft);
+  }
+  .crumbs span{color:var(--text);}
+
+  .screen{padding:20px;}
+  .screen h1{
+    font-size:18px;
+    margin:0 0 4px 0;
+  }
+  .screen .sub{
+    color:var(--text-soft);
+    font-size:12px;
+    margin:0 0 18px 0;
+  }
+
+  /* ===== annotation box ===== */
+  .note{
+    border:1px dashed var(--line);
+    background:var(--bg-alt);
+    padding:8px 10px;
+    font-size:11px;
+    color:var(--text-soft);
+    margin-bottom:16px;
+    line-height:1.5;
+  }
+  .note b{color:var(--text);}
+
+  /* ===== boxy primitives ===== */
+  .box{
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:12px;
+    background:var(--bg);
+  }
+  .box-label{
+    font-size:10px;
+    text-transform:uppercase;
+    letter-spacing:1px;
+    color:var(--text-soft);
+    margin-bottom:6px;
+  }
+  .btn{
+    display:inline-block;
+    border:1px solid var(--accent);
+    padding:7px 14px;
+    font-family:inherit;
+    font-size:12px;
+    background:var(--bg);
+    color:var(--text);
+    cursor:pointer;
+    border-radius:var(--radius);
+  }
+  .btn:hover{background:var(--bg-panel);}
+  .btn.primary{background:var(--accent);color:#fff;}
+  .btn.primary:hover{opacity:0.85;}
+  .btn.ghost{border-style:dashed;}
+  .btn.sm{padding:4px 8px;font-size:11px;}
+  .btn.danger{border-color:#a33;color:#a33;}
+
+  .field{margin-bottom:12px;}
+  .field label{
+    display:block;
+    font-size:11px;
+    color:var(--text-soft);
+    margin-bottom:4px;
+  }
+  .field input, .field select{
+    width:100%;
+    border:1px solid var(--line);
+    padding:7px 8px;
+    font-family:inherit;
+    font-size:13px;
+    border-radius:var(--radius);
+    background:#fff;
+  }
+
+  .row{display:flex; gap:16px;}
+  .col{flex:1;}
+
+  /* ===== Song list ===== */
+  .song-list{display:flex; flex-direction:column; gap:8px;}
+  .song-item{
+    border:1px solid var(--line);
+    padding:12px 14px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    cursor:pointer;
+    border-radius:var(--radius);
+  }
+  .song-item:hover{background:var(--bg-alt);}
+  .song-item .meta{font-size:11px; color:var(--text-soft); margin-top:2px;}
+  .song-item .actions{display:flex; gap:6px;}
+
+  .empty-state{
+    border:1px dashed var(--line);
+    padding:40px 20px;
+    text-align:center;
+    color:var(--text-soft);
+    font-size:12px;
+  }
+  .empty-state .big{font-size:28px; margin-bottom:8px;}
+
+  /* ===== Song detail: section list ===== */
+  .section-strip{
+    display:flex;
+    gap:10px;
+    overflow-x:auto;
+    padding-bottom:10px;
+    margin-bottom:16px;
+  }
+  .section-chip{
+    flex:0 0 auto;
+    border:1px solid var(--line);
+    padding:10px 14px;
+    border-radius:var(--radius);
+    cursor:pointer;
+    background:#fff;
+    min-width:120px;
+    text-align:center;
+  }
+  .section-chip.active{
+    border:2px solid var(--accent);
+    background:var(--bg-panel);
+    font-weight:bold;
+  }
+  .section-chip .order{font-size:10px; color:var(--text-soft);}
+  .bpm-badge{
+    font-size:9px;
+    color:var(--text-soft);
+    margin-top:4px;
+    border:1px solid var(--line-soft);
+    border-radius:8px;
+    padding:1px 6px;
+    display:inline-block;
+  }
+  .bpm-badge.override{
+    border-color:var(--accent);
+    font-weight:bold;
+    color:var(--text);
+  }
+  .section-chip.add-new{
+    border-style:dashed;
+    color:var(--text-soft);
+  }
+  .drag-handle{font-size:10px; color:var(--text-soft);}
+
+  /* ===== Sequencer grid — step sequencer style (clickable grid) ===== */
+  .seq-toolbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:12px;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .seq-toolbar .playhead-info{font-size:11px; color:var(--text-soft);}
+  .seq-grid-wrap{
+    overflow-x:auto;
+    border:1px solid var(--line);
+  }
+  .seq-grid{
+    border-collapse:collapse;
+    font-size:11px;
+    min-width:100%;
+  }
+  .seq-grid th, .seq-grid td{
+    border:1px solid var(--line-soft);
+    text-align:center;
+    padding:0;
+  }
+  .seq-grid thead th{
+    background:var(--bg-panel);
+    font-size:9px;
+    color:var(--text-soft);
+    padding:4px 2px;
+    min-width:22px;
+  }
+  .seq-grid thead th.playhead-col{
+    background:#3a3a3a;
+    color:#fff;
+  }
+  .row-label{
+    background:var(--bg-alt);
+    text-align:left !important;
+    padding:6px 10px !important;
+    white-space:nowrap;
+    font-size:11px;
+  }
+  .row-label .part-name{font-weight:bold; display:block;}
+  .row-label .sound-name{color:var(--text-soft); font-size:9px;}
+  .row-label .preview-btn{float:right; margin-top:1px;}
+  .sound-sample{
+    display:block;
+    font-size:8px;
+    color:var(--text-soft);
+    margin-top:2px;
+  }
+  .sound-sample.empty{font-style:italic;}
+
+  .step{
+    width:24px;
+    height:24px;
+    cursor:pointer;
+    background:#fff;
+    position:relative;
+  }
+  .step:hover{background:var(--bg-panel);}
+  .step.on{background:#3a3a3a;}
+  .step.on::after{
+    content:'';
+    position:absolute;
+    inset:5px;
+    background:#fff;
+    border-radius:1px;
+  }
+  .step.beat-marker, .seq-grid thead th.beat-marker{border-left:2px solid var(--line);}
+  .step.playhead{outline:2px solid #a33; outline-offset:-2px;}
+  .step-row.empty-part .step{background:repeating-linear-gradient(45deg,#fafafa,#fafafa 4px,#f0f0f0 4px,#f0f0f0 8px);}
+
+  .steps-text-alt{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    margin-top:4px;
+    font-size:10px;
+    color:var(--text-soft);
+  }
+  .steps-text-alt input{
+    font-family:inherit;
+    font-size:10px;
+    letter-spacing:1px;
+    border:1px solid var(--line-soft);
+    padding:3px 5px;
+    width:180px;
+    color:var(--text-soft);
+  }
+
+  .sample-row{
+    display:flex;
+    gap:16px;
+    margin-top:10px;
+    padding:10px;
+    background:var(--bg-alt);
+    border:1px solid var(--line-soft);
+    font-size:11px;
+  }
+  .sample-row .slot-group{flex:1;}
+  .sample-row .slot-group .lbl{color:var(--text-soft); font-size:9px; text-transform:uppercase; margin-bottom:3px;}
+  .sample-row .slot{
+    border:1px solid var(--line-soft);
+    background:#fff;
+    padding:5px 8px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .sample-row .slot.empty{color:var(--text-soft); font-style:italic;}
+
+  .preview-btn{
+    border:1px solid var(--line);
+    background:#fff;
+    width:20px;height:20px;
+    border-radius:50%;
+    cursor:pointer;
+    font-size:9px;
+    line-height:1;
+    flex:0 0 auto;
+  }
+
+  /* ===== Sample Library ===== */
+  .sample-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(220px,1fr));
+    gap:10px;
+  }
+  .sample-card{
+    border:1px solid var(--line);
+    padding:10px;
+    border-radius:var(--radius);
+  }
+  .sample-card.template{
+    background:var(--bg-alt);
+    border-style:dashed;
+  }
+  .sample-section-header{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:4px;
+    font-size:13px;
+  }
+  .badge-template{
+    font-size:8px;
+    letter-spacing:0.5px;
+    background:var(--accent);
+    color:#fff;
+    padding:2px 6px;
+    border-radius:3px;
+    font-weight:bold;
+  }
+  .sample-card .title{font-weight:bold; font-size:12px; margin-bottom:4px;}
+  .sample-card .tag{
+    display:inline-block;
+    font-size:9px;
+    border:1px solid var(--line-soft);
+    padding:1px 6px;
+    margin-right:4px;
+    border-radius:8px;
+    color:var(--text-soft);
+  }
+  .sample-card .usage{
+    font-size:10px;
+    color:var(--text-soft);
+    margin-top:6px;
+  }
+  .sample-card .row-actions{
+    margin-top:8px;
+    display:flex;
+    gap:6px;
+  }
+
+  /* ===== Launcher ===== */
+  .launcher-wrap{
+    border:1px solid var(--line);
+    padding:20px;
+    background:var(--bg-alt);
+  }
+  .launcher-grid{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:14px;
+    margin-bottom:20px;
+  }
+  .pad{
+    aspect-ratio:1.4;
+    border:2px solid var(--line);
+    background:#fff;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    border-radius:4px;
+    position:relative;
+    text-align:center;
+    padding:8px;
+  }
+  .pad:hover{background:var(--bg-panel);}
+  .pad .name{font-weight:bold; font-size:13px;}
+  .pad .sub{font-size:10px; color:var(--text-soft); margin-top:4px;}
+  .pad.playing{
+    background:var(--accent);
+    color:#fff;
+    border-color:var(--accent);
+  }
+  .pad.playing .sub{color:#ddd;}
+  .pad.pending{
+    border-style:dashed;
+    animation:pulse 1s infinite;
+  }
+  @keyframes pulse{
+    0%,100%{opacity:1;}
+    50%{opacity:0.5;}
+  }
+  .pad .step-dots{
+    display:flex;
+    gap:3px;
+    margin-top:8px;
+  }
+  .dot{width:5px;height:5px;border-radius:50%;background:var(--line-soft);}
+  .pad.playing .dot{background:#666;}
+  .pad.playing .dot.on{background:#fff;}
+
+  .transport{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    border-top:1px solid var(--line);
+    padding-top:14px;
+  }
+  .transport .status{font-size:12px;}
+  .transport .status .label{color:var(--text-soft); font-size:10px; display:block;}
+
+  /* ===== Nav sim (top tabs to switch screens) ===== */
+  .screen-nav{
+    display:flex;
+    gap:0;
+    border-bottom:1px solid var(--line);
+    background:var(--bg-panel);
+    overflow-x:auto;
+  }
+  .screen-nav button{
+    font-family:inherit;
+    font-size:11px;
+    padding:10px 14px;
+    border:none;
+    border-right:1px solid var(--line-soft);
+    background:transparent;
+    cursor:pointer;
+    white-space:nowrap;
+    color:var(--text-soft);
+  }
+  .screen-nav button.active{
+    background:var(--bg);
+    color:var(--text);
+    font-weight:bold;
+    border-bottom:2px solid var(--accent);
+    margin-bottom:-1px;
+  }
+
+  .legend{
+    display:flex;
+    gap:14px;
+    font-size:10px;
+    color:var(--text-soft);
+    padding:10px 20px;
+    border-top:1px solid var(--line-soft);
+    background:var(--bg-alt);
+    flex-wrap:wrap;
+  }
+  .legend b{color:var(--text);}
+
+  /* Guest access states (FR-AUTH-04–07) */
+  .is-disabled{
+    opacity:0.4;
+    cursor:not-allowed !important;
+    pointer-events:none;
+  }
+  .readonly-panel{
+    position:relative;
+    opacity:0.55;
+    pointer-events:none;
+    filter:grayscale(40%);
+  }
+  .readonly-panel::after{
+    content:'🔒 Lihat saja — Login untuk edit';
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:rgba(255,255,255,0.05);
+    font-size:11px;
+    font-weight:bold;
+    color:var(--text-soft);
+    pointer-events:none;
+  }
+  .badge-guest{
+    font-size:8px;
+    letter-spacing:0.5px;
+    background:#a33;
+    color:#fff;
+    padding:2px 6px;
+    border-radius:3px;
+    font-weight:bold;
+  }
+
+  [data-view]{display:none;}
+  [data-view].visible{display:block;}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="topbar">
+    <div class="brand">BANDJARI <small>bermain seperti band, cukup dengan jari — WIREFRAME v0.2</small></div>
+    <div class="topbar-right">
+      <span id="userLabel">Guest (belum login)</span>
+      <button class="btn sm" onclick="toggleLogin()">Login/Logout (sim)</button>
+    </div>
+  </div>
+
+  <div class="screen-nav">
+    <button data-nav="landing" onclick="goto('landing')">0. Beranda (Guest)</button>
+    <button data-nav="auth" onclick="goto('auth')">0b. Auth</button>
+    <button data-nav="songlist" onclick="goto('songlist')">1. Daftar Song Saya</button>
+    <button data-nav="songdetail" onclick="goto('songdetail')">2. Detail Song / Section</button>
+    <button data-nav="sequencer" onclick="goto('sequencer')">3. Sequencer Mode</button>
+    <button data-nav="samples" onclick="goto('samples')">4. Sample Library</button>
+    <button data-nav="launcher" onclick="goto('launcher')">5. Launcher Mode</button>
+  </div>
+
+  <div class="crumbs" id="crumbs">Beranda</div>
+
+  <!-- ============ 0. LANDING (GUEST ENTRY POINT) ============ -->
+  <div class="screen" data-view="landing">
+    <h1>Selamat Datang di BandJari</h1>
+    <p class="sub">FR-SONG-07–10, FR-AUTH-04 — Guest dapat langsung mencoba tanpa login, khusus Song Template System</p>
+    <div class="note"><b>Flow 5.0:</b> Ini halaman pertama yang dilihat pengunjung — tanpa perlu login, langsung disuguhi Song bawaan (Template System) yang siap dimainkan. Login baru diperlukan saat mau membuat/mengedit karya sendiri.</div>
+
+    <div class="song-list">
+      <div class="song-item" onclick="openSong('Ya Habibal Qolbi (Bawaan)', true)">
+        <div>
+          <div><b>Ya Habibal Qolbi</b> <span class="badge-template">SYSTEM</span></div>
+          <div class="meta">BPM 90 · 5 Section · Song Template System — siap dimainkan</div>
+        </div>
+        <div class="actions">
+          <button class="btn sm primary" onclick="event.stopPropagation(); openSong('Ya Habibal Qolbi (Bawaan)', true); goto('launcher');">▶ Main</button>
+        </div>
+      </div>
+      <div class="song-item" onclick="openSong('Sholawat Badar (Bawaan)', true)">
+        <div>
+          <div><b>Sholawat Badar</b> <span class="badge-template">SYSTEM</span></div>
+          <div class="meta">BPM 100 · 5 Section · Song Template System — siap dimainkan</div>
+        </div>
+        <div class="actions">
+          <button class="btn sm primary" onclick="event.stopPropagation(); openSong('Sholawat Badar (Bawaan)', true); goto('launcher');">▶ Main</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="box" style="margin-top:20px; background:var(--bg-alt);">
+      <div class="box-label">Mau susun lagu sendiri?</div>
+      <p class="sub" style="margin:0 0 10px 0;">Login atau daftar untuk membuat Song sendiri, menambah Section, mengedit pola pukulan, dan mengunggah sample audio milikmu.</p>
+      <button class="btn primary" onclick="goto('auth')">Login / Daftar</button>
+    </div>
+  </div>
+
+  <!-- ============ 0b. AUTH ============ -->
+  <div class="screen" data-view="auth">
+    <h1>Masuk ke BandJari</h1>
+    <p class="sub">FR-AUTH-01 · FR-AUTH-03 — prasyarat sebelum membuat/mengedit Song sendiri</p>
+    <div class="note"><b>Catatan wireframe:</b> Layar auth disederhanakan — fokus wireframe ini pada modul inti (Song/Section/Sequencer/Sample/Launcher). Detail form validasi tidak dirinci di sini.</div>
+    <div class="row">
+      <div class="col box" style="max-width:360px;">
+        <div class="box-label">Login</div>
+        <div class="field"><label>Email</label><input placeholder="nama@email.com"></div>
+        <div class="field"><label>Password</label><input type="password" placeholder="••••••••"></div>
+        <button class="btn primary" onclick="doLogin()">Masuk</button>
+        <p class="sub" style="margin-top:10px;">Belum punya akun? <a href="#">Daftar</a> · <a href="#" onclick="goto('landing'); return false;">← Lihat Song Bawaan tanpa login</a></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 1. SONG LIST ============ -->
+  <div class="screen" data-view="songlist">
+    <div id="songlistGuestBlock" style="display:none;">
+      <h1>Lagu Saya</h1>
+      <div class="empty-state" style="border-color:var(--accent);">
+        <div class="big">🔒</div>
+        Halaman ini khusus untuk pengguna yang sudah login.<br>
+        <button class="btn primary" style="margin-top:10px;" onclick="goto('auth')">Login untuk Melihat Lagu Saya</button>
+        <br><br>
+        <a href="#" onclick="goto('landing'); return false;">← Kembali ke Song Bawaan (tanpa login)</a>
+      </div>
+    </div>
+
+    <div id="songlistUserContent">
+    <h1>Lagu Saya</h1>
+    <p class="sub">FR-SONG-02, FR-SONG-05 — daftar seluruh Song milik user</p>
+
+    <div class="row" style="margin-bottom:16px; align-items:center; justify-content:space-between;">
+      <div></div>
+      <button class="btn primary" onclick="showNewSongForm()">+ Buat Song Baru</button>
+    </div>
+
+    <div class="box" id="newSongForm" style="display:none; margin-bottom:16px;">
+      <div class="box-label">Song Baru — FR-SONG-01</div>
+      <div class="row">
+        <div class="col field"><label>Nama Song</label><input id="newSongName" placeholder='mis. "Ya Habibal Qolbi"'></div>
+        <div class="col field" style="max-width:140px;"><label>BPM</label><input id="newSongBpm" type="number" placeholder="90"></div>
+      </div>
+      <button class="btn primary" onclick="createSong()">Simpan &amp; Lanjut ke Section →</button>
+      <button class="btn ghost" onclick="hideNewSongForm()">Batal</button>
+    </div>
+
+    <div class="song-list" id="songListWrap">
+      <div class="song-item" onclick="openSong('Ya Habibal Qolbi')">
+        <div>
+          <div><b>Ya Habibal Qolbi</b></div>
+          <div class="meta">BPM 90 · 5 Section · diubah 2 hari lalu</div>
+        </div>
+        <div class="actions">
+          <button class="btn sm" onclick="event.stopPropagation(); alert('FR-SONG-06: duplicate song (sim)')">Duplikasi</button>
+          <button class="btn sm danger" onclick="event.stopPropagation(); alert('FR-SONG-04: hapus + cascade section (sim)')">Hapus</button>
+        </div>
+      </div>
+      <div class="song-item" onclick="openSong('Sholawat Badar')">
+        <div>
+          <div><b>Sholawat Badar</b></div>
+          <div class="meta">BPM 100 · 3 Section · diubah 5 hari lalu</div>
+        </div>
+        <div class="actions">
+          <button class="btn sm" onclick="event.stopPropagation(); alert('FR-SONG-06: duplicate song (sim)')">Duplikasi</button>
+          <button class="btn sm danger" onclick="event.stopPropagation(); alert('FR-SONG-04: hapus + cascade section (sim)')">Hapus</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="note" style="margin-top:16px;"><b>State kosong (first-time user):</b></div>
+    <div class="empty-state">
+      <div class="big">♪</div>
+      Belum ada Song. Buat Song pertamamu untuk mulai menyusun pattern.
+    </div>
+    </div><!-- /songlistUserContent -->
+  </div>
+
+  <!-- ============ 2. SONG DETAIL / SECTION MANAGEMENT ============ -->
+  <div class="screen" data-view="songdetail">
+    <div id="songdetailGuestBanner" style="display:none;" class="note">
+      <b>🔒 Mode Lihat Saja (Guest)</b> — Kamu sedang melihat Song Template System <b id="songdetailGuestName">Ya Habibal Qolbi</b>. Kontrol edit dinonaktifkan.
+      <button class="btn sm primary" style="margin-left:8px;" onclick="goto('auth')">Login untuk Edit</button>
+    </div>
+    <h1 id="sdTitle">Ya Habibal Qolbi</h1>
+    <p class="sub">BPM dasar 90 · FR-SEC-01–09 — susun Section secara dinamis, urutan bebas, tempo bisa berbeda tiap Section</p>
+    <div class="note"><b>Flow 5.1:</b> Section bersifat dinamis — nama & jumlah bebas ditentukan user. Saat Section dibuat, sistem otomatis membuat 5 SectionPart kosong (rebana1-4, bass) di baliknya — tidak terlihat di layar ini, baru tampak saat masuk Sequencer Mode. Tempo (BPM) tiap Section bersifat opsional — kosong berarti ikut BPM dasar Song.</div>
+
+    <div class="section-strip" id="sectionStrip">
+      <div class="section-chip active" onclick="selectSection(this)">
+        <div class="drag-handle">⠿ #1</div>
+        <div>Awalan</div>
+        <div class="bpm-badge">90 BPM</div>
+      </div>
+      <div class="section-chip" onclick="selectSection(this)">
+        <div class="drag-handle">⠿ #2</div>
+        <div>Dasar Lambat</div>
+        <div class="bpm-badge override">70 BPM ★</div>
+      </div>
+      <div class="section-chip" onclick="selectSection(this)">
+        <div class="drag-handle">⠿ #3</div>
+        <div>Naik 1</div>
+        <div class="bpm-badge override">110 BPM ★</div>
+      </div>
+      <div class="section-chip" onclick="selectSection(this)">
+        <div class="drag-handle">⠿ #4</div>
+        <div>Sahutan</div>
+        <div class="bpm-badge">90 BPM</div>
+      </div>
+      <div class="section-chip" onclick="selectSection(this)">
+        <div class="drag-handle">⠿ #5</div>
+        <div>Penutup</div>
+        <div class="bpm-badge">90 BPM</div>
+      </div>
+      <div class="section-chip add-new" id="addSectionBtn" onclick="addSectionInline()">+ Tambah Section</div>
+    </div>
+    <p class="sub" style="margin-top:-10px;">★ = Section ini punya BPM override, berbeda dari BPM dasar Song (90)</p>
+
+    <div class="row">
+      <div class="col box">
+        <div class="box-label">Section Terpilih: Awalan</div>
+        <div class="row" style="margin-bottom:10px;" id="sectionEditActions">
+          <button class="btn sm" onclick="goto('sequencer')">Buka di Sequencer Mode →</button>
+          <button class="btn sm" onclick="requireLogin('FR-SEC-07: duplicate section')">Duplikasi Section</button>
+          <button class="btn sm danger" onclick="requireLogin('FR-SEC-05: hapus + cascade 5 SectionPart')">Hapus Section</button>
+        </div>
+        <p class="sub">Drag ⠿ di atas untuk mengatur ulang urutan (FR-SEC-04). Urutan ini yang menentukan susunan pad di Launcher Mode nanti — tapi saat live, pad tetap bisa dipicu di luar urutan.</p>
+
+        <div class="box" style="margin-top:12px; background:var(--bg-alt);" id="bpmOverrideBox">
+          <div class="box-label">Tempo (BPM Override) — FR-SEC-08/09</div>
+          <div class="row" style="align-items:center; gap:10px;">
+            <div class="field" style="max-width:120px; margin-bottom:0;">
+              <input type="number" placeholder="ikut BPM Song (90)" value="" id="bpmOverrideInput" onclick="if(isGuestMode()){ requireLogin('FR-SEC-08: set BPM override'); this.blur(); }">
+            </div>
+            <span class="sub">Kosong = ikut BPM dasar Song (90). Isi angka untuk override khusus Section ini.</span>
+          </div>
+        </div>
+      </div>
+      <div class="col box" style="max-width:280px;">
+        <div class="box-label">Ringkasan Song</div>
+        <div class="sub">5 Section tersusun</div>
+        <div class="sub">2 Section punya tempo berbeda (BPM override)</div>
+        <div class="sub">Kelengkapan sample: 3/5 Section sudah punya sample lengkap</div>
+        <button class="btn primary" style="margin-top:10px; width:100%;" onclick="goto('launcher')">▶ Buka Launcher Mode</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 3. SEQUENCER MODE ============ -->
+  <div class="screen" data-view="sequencer">
+    <div id="sequencerGuestBanner" style="display:none;" class="note">
+      <b>🔒 Mode Lihat Saja (Guest)</b> — Kamu bisa melihat susunan pola pukulan, tapi tidak bisa mengedit. <button class="btn sm primary" onclick="goto('auth')">Login untuk Edit</button>
+    </div>
+    <h1>Sequencer — Section: Awalan</h1>
+    <p class="sub">FR-SEQ-01–06 — isi rumus pukulan T/D per Part, panjang bebas, preview audio wajib (Must, MVP)</p>
+    <div class="note"><b>Aturan kunci (PRD §10):</b> Karakter hanya boleh <b>T</b>/<b>D</b>, panjang steps tanpa batas. Slot sample boleh kosong dulu — playback tetap jalan, part tsb senyap (FR-PLAY-09).</div>
+
+    <div class="seq-toolbar">
+      <div class="row" style="gap:8px;">
+        <button class="btn sm" id="playBtn" onclick="togglePlayhead()">▶ Play Preview</button>
+        <span class="playhead-info">BPM 90 · 16 step ditampilkan (panjang steps sebenarnya bebas, tanpa batas — FR-SEQ-03)</span>
+      </div>
+      <div class="row" style="gap:6px;" id="seqStepCountControls">
+        <button class="btn sm" onclick="requireLogin('FR-SEQ-03: tambah 8 step')">+ 8 Step</button>
+        <button class="btn sm ghost" onclick="requireLogin('FR-SEQ-03: kurangi 8 step')">− 8 Step</button>
+      </div>
+    </div>
+
+    <div class="seq-grid-wrap">
+      <table class="seq-grid" id="seqGrid">
+        <thead>
+          <tr id="seqHeaderRow">
+            <th class="row-label" style="background:var(--bg-panel);">Part / Bunyi</th>
+            <!-- kolom angka step 1-16 dirender via JS (renderSeqHeader) -->
+          </tr>
+        </thead>
+        <tbody id="seqBody">
+          <!-- baris SoundSlot dirender dinamis via JS (renderSeqGrid) berdasarkan data soundSlotsByPart —
+               jumlah baris per Part TIDAK seragam, mencerminkan SoundSlot yang bersifat dinamis per SectionPart -->
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note" style="margin-top:12px;"><b>Cara pakai:</b> klik langsung kotak pada baris & kolom step untuk mengaktifkan/menonaktifkan bunyi (seperti step sequencer pada umumnya) — bukan mengetik teks. <b>Jumlah baris tiap Part bersifat dinamis</b> — tiap Part punya sejumlah <b>SoundSlot</b> (jenis bunyi) yang bisa ditambah bebas oleh user (mis. "Tak", "Dung", atau tambahan seperti "Duk"), tidak dipaksa selalu 2. Perhatikan pada contoh di bawah: Rebana 1 & 2 hanya punya 2 SoundSlot, Rebana 4 punya 3 SoundSlot (ada tambahan "Duk"), sementara Bass hanya 1. Tombol ▶ di kiri tiap baris memutar preview sample bunyi tsb sendirian (FR-SEQ-05). Tombol "+ Tambah Bunyi" di setiap Part membuka form SoundSlot baru (FR-SLOT-01).</div>
+
+    <div class="note"><b>Sample Bawaan (Template System) — FR-SLOT-09, FR-SAMP-11–14:</b> lihat label kecil <span class="badge-template" style="font-size:7px; padding:1px 4px;">SYS</span> di bawah nama tiap SoundSlot (contoh: baris Rebana 1 & Bass) — ini menandakan SoundSlot tsb masih memakai Sample bawaan dari platform, bukan hasil upload user. Section baru otomatis terisi Sample Bawaan seperti ini sehingga bisa langsung didengar/dimainkan tanpa perlu upload apapun (AC-10). Bandingkan dengan Rebana 2 & 4 yang beberapa SoundSlot-nya sudah diganti user dengan Sample sendiri (tanpa label SYS).</div>
+
+    <div class="row" style="margin-top:16px; align-items:center;">
+      <button class="btn primary" id="seqSaveBtn" onclick="requireLogin('FR-SEQ-01: simpan perubahan steps')">Simpan Perubahan</button>
+      <button class="btn" onclick="alert('preview loop seluruh section, 5 part sekaligus (sim)')">▶ Preview Section Ini (Semua Part)</button>
+      <button class="btn ghost" onclick="goto('songdetail')">← Kembali ke Section</button>
+    </div>
+
+    <div class="box" style="margin-top:16px;" id="soundSlotManagerBox">
+      <div class="box-label">Kelola Bunyi (SoundSlot) — Rebana 1 · FR-SLOT-01–09</div>
+      <p class="sub" style="margin:0 0 8px 0;">Muncul saat sebuah Part dipilih (mis. "Rebana 1"). Setiap baris di bawah = satu SoundSlot pada SectionPart ini — jumlahnya bisa ditambah bebas, tidak dibatasi hanya Tak/Dung. Dropdown Sample menampilkan dua kelompok terpisah: Bawaan (Template System, read-only) dan Saya (milik sendiri) — FR-SAMP-14.</p>
+
+      <table style="width:100%; border-collapse:collapse; font-size:11px; margin-bottom:10px;">
+        <thead>
+          <tr style="background:var(--bg-panel);">
+            <th style="text-align:left; padding:5px 8px; border:1px solid var(--line-soft);">Label</th>
+            <th style="text-align:center; padding:5px 8px; border:1px solid var(--line-soft); width:50px;">Key</th>
+            <th style="text-align:left; padding:5px 8px; border:1px solid var(--line-soft);">Sample</th>
+            <th style="padding:5px 8px; border:1px solid var(--line-soft); width:60px;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding:5px 8px; border:1px solid var(--line-soft);">Tak</td>
+            <td style="text-align:center; padding:5px 8px; border:1px solid var(--line-soft); font-weight:bold;">T</td>
+            <td style="padding:5px 8px; border:1px solid var(--line-soft);">
+              <select style="width:100%; font-size:11px;">
+                <optgroup label="Bawaan (Template System)">
+                  <option selected>Tak Keras (Bawaan).wav</option>
+                  <option>Tak Sedang (Bawaan).wav</option>
+                </optgroup>
+                <optgroup label="Sample Saya">
+                  <option>Tak Tajam.wav</option>
+                </optgroup>
+                <option>— kosongkan —</option>
+              </select>
+            </td>
+            <td style="text-align:center; padding:5px 8px; border:1px solid var(--line-soft);">
+              <button class="btn sm danger" onclick="alert('✕ Tidak dapat dihapus — key \'T\' masih dipakai di steps Rebana 1. Kosongkan step yang memakai T terlebih dahulu. (FR-SLOT-06 / AC-8, sim)')">✕</button>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:5px 8px; border:1px solid var(--line-soft);">Dung</td>
+            <td style="text-align:center; padding:5px 8px; border:1px solid var(--line-soft); font-weight:bold;">D</td>
+            <td style="padding:5px 8px; border:1px solid var(--line-soft);">
+              <select style="width:100%; font-size:11px;">
+                <optgroup label="Bawaan (Template System)">
+                  <option selected>Dung Dalam (Bawaan).wav</option>
+                </optgroup>
+                <optgroup label="Sample Saya">
+                  <option>(belum ada Sample Dung milikmu)</option>
+                </optgroup>
+                <option>— kosongkan —</option>
+              </select>
+            </td>
+            <td style="text-align:center; padding:5px 8px; border:1px solid var(--line-soft);">
+              <button class="btn sm danger" onclick="alert('coba hapus (sim)')">✕</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="row" style="align-items:flex-end; gap:8px;">
+        <div class="field" style="flex:2; margin-bottom:0;"><label>Label Bunyi Baru</label><input placeholder='mis. "Duk"'></div>
+        <div class="field" style="flex:0 0 70px; margin-bottom:0;"><label>Key</label><input maxlength="1" placeholder="K" style="text-align:center;"></div>
+        <button class="btn primary sm" onclick="alert('tambah SoundSlot baru (sim) — FR-SLOT-01, key harus unik di SectionPart ini (FR-SLOT-02)')">+ Tambah Bunyi</button>
+      </div>
+      <p class="sub" style="margin-top:8px;">Contoh: Rebana 4 pada Section ini punya SoundSlot tambahan "Duk" (key <b>K</b>) di luar Tak/Dung standar — lihat baris "Rebana 4" pada grid di atas yang punya 3 baris, berbeda dari Part lain yang cuma 2.</p>
+    </div>
+  </div>
+
+  <!-- ============ 4. SAMPLE LIBRARY ============ -->
+  <div class="screen" data-view="samples">
+    <h1>Library Sample</h1>
+    <p class="sub">FR-SAMP-01–14 — reusable lintas Song, Section &amp; SoundSlot, format .wav maks 5MB</p>
+    <div class="note"><b>Catatan:</b> Sample tidak lagi terikat pada satu jenis bunyi tetap (dulu "Tak"/"Dung") — kini sebuah Sample hanya terikat ke Part, dan bisa dipasangkan ke SoundSlot manapun (Tak, Dung, Duk, atau nama lain) saat digunakan di Sequencer Mode.</div>
+
+    <div class="row" style="margin-bottom:16px; justify-content:space-between;">
+      <div class="row" style="gap:8px;">
+        <select style="width:140px;"><option>Semua Part</option><option>Rebana 1</option><option>Rebana 2</option><option>Rebana 3</option><option>Rebana 4</option><option>Bass</option></select>
+      </div>
+      <button class="btn primary" onclick="if(isGuestMode()){ requireLogin('FR-SAMP-01: upload Sample'); } else { showUploadForm(); }">+ Upload Sample</button>
+    </div>
+
+    <div class="box" id="uploadForm" style="display:none; margin-bottom:16px;">
+      <div class="box-label">Upload Sample Baru — FR-SAMP-01/02/06</div>
+      <div class="row">
+        <div class="col field"><label>File (.wav, maks 5MB)</label><input type="file" accept=".wav"></div>
+        <div class="col field"><label>Nama</label><input placeholder="Rebana 1 - Tak Keras"></div>
+      </div>
+      <div class="row">
+        <div class="col field"><label>Part</label>
+          <select><option>Rebana 1</option><option>Rebana 2</option><option>Rebana 3</option><option>Rebana 4</option><option>Bass</option></select>
+        </div>
+      </div>
+      <p class="sub" style="margin:-4px 0 8px 0;">Jenis bunyi (Tak/Dung/Duk/dst) tidak ditentukan di sini — akan dipilih saat Sample ini dipasangkan ke sebuah SoundSlot di Sequencer Mode.</p>
+      <button class="btn primary" onclick="alert('upload ke object storage → simpan metadata, tersimpan sebagai Sample Saya (sim)')">Unggah</button>
+      <button class="btn ghost" onclick="hideUploadForm()">Batal</button>
+    </div>
+
+    <div class="sample-section-header">
+      <span class="badge-template">SYSTEM</span>
+      <b>Sample Bawaan (Template System)</b> — FR-SAMP-11–14
+    </div>
+    <p class="sub" style="margin:0 0 10px 0;">Disediakan platform, tersedia untuk semua pengguna. <b>Read-only</b> — tidak bisa diedit/dihapus. Otomatis terpasang sebagai default saat kamu membuat Section baru.</p>
+
+    <div class="sample-grid">
+      <div class="sample-card template">
+        <div class="title">Tak Keras (Bawaan).wav</div>
+        <span class="tag">Rebana 1</span>
+        <div class="usage">Dipakai di 3 SoundSlot (reuse — FR-SAMP-04)</div>
+        <div class="row-actions">
+          <button class="btn sm" onclick="alert('preview (sim)')">▶ Preview</button>
+        </div>
+      </div>
+      <div class="sample-card template">
+        <div class="title">Dung Dalam (Bawaan).wav</div>
+        <span class="tag">Rebana 1</span>
+        <div class="usage">Dipakai di 5 SoundSlot</div>
+        <div class="row-actions">
+          <button class="btn sm" onclick="alert('preview (sim)')">▶ Preview</button>
+        </div>
+      </div>
+      <div class="sample-card template">
+        <div class="title">Jidor Berat (Bawaan).wav</div>
+        <span class="tag">Bass</span>
+        <div class="usage">Dipakai di 4 SoundSlot</div>
+        <div class="row-actions">
+          <button class="btn sm" onclick="alert('preview (sim)')">▶ Preview</button>
+        </div>
+      </div>
+    </div>
+    <p class="sub" style="margin:8px 0 0 0;">… lengkap untuk kelima Part (rebana1-4, bass) × Tak/Dung — lihat semua di filter Part di atas.</p>
+
+    <div class="sample-section-header" style="margin-top:24px;">
+      <b>Sample Saya</b> — FR-SAMP-01–10
+    </div>
+    <p class="sub" style="margin:0 0 10px 0;">Upload milikmu sendiri — bisa diedit atau dihapus (selama tidak sedang dipakai).</p>
+
+    <div id="mySamplesGuestBlock" style="display:none;" class="empty-state">
+      <div class="big">🔒</div>
+      Login untuk melihat &amp; mengelola Sample milikmu sendiri.
+      <br><button class="btn primary" style="margin-top:10px;" onclick="goto('auth')">Login</button>
+    </div>
+
+    <div class="sample-grid" id="mySamplesContent">
+      <div class="sample-card">
+        <div class="title">Tak Keras.wav</div>
+        <span class="tag">Rebana 1</span>
+        <div class="usage">Dipakai di 3 SoundSlot (reuse — FR-SAMP-04)</div>
+        <div class="row-actions">
+          <button class="btn sm" onclick="alert('preview (sim)')">▶ Preview</button>
+          <button class="btn sm" onclick="alert('ganti nama (sim)')">Ubah Nama</button>
+        </div>
+      </div>
+      <div class="sample-card">
+        <div class="title">Dung Dalam.wav</div>
+        <span class="tag">Rebana 1</span>
+        <div class="usage">Dipakai di 2 SoundSlot</div>
+        <div class="row-actions">
+          <button class="btn sm" onclick="alert('preview (sim)')">▶ Preview</button>
+          <button class="btn sm danger" onclick="alert('coba hapus (sim)')">Hapus</button>
+        </div>
+      </div>
+      <div class="sample-card">
+        <div class="title">Duk Ringan.wav</div>
+        <span class="tag">Rebana 4</span>
+        <div class="usage">Dipakai di 1 SoundSlot — contoh sample untuk jenis bunyi tambahan di luar Tak/Dung</div>
+        <div class="row-actions">
+          <button class="btn sm" onclick="alert('preview (sim)')">▶ Preview</button>
+          <button class="btn sm danger" onclick="alert('coba hapus (sim)')">Hapus</button>
+        </div>
+      </div>
+      <div class="sample-card">
+        <div class="title">Jidor Berat.wav</div>
+        <span class="tag">Bass</span>
+        <div class="usage">Dipakai di 1 SoundSlot</div>
+        <div class="row-actions">
+          <button class="btn sm" onclick="alert('preview (sim)')">▶ Preview</button>
+          <button class="btn sm danger" onclick="alert('coba hapus (sim)')">Hapus</button>
+        </div>
+      </div>
+    </div><!-- /mySamplesContent -->
+
+    <div class="note" style="margin-top:16px;"><b>State — coba hapus sample yang masih dipakai (FR-SAMP-08 / AC-6):</b></div>
+    <div class="box" style="border-color:#a33;">
+      <b style="color:#a33;">✕ Tidak dapat menghapus "Tak Keras.wav"</b>
+      <p class="sub" style="margin:6px 0 0 0;">Sample ini masih dipakai di 3 SectionPart. Lepas referensinya dulu di Sequencer Mode sebelum menghapus (FR-SAMP-10).</p>
+    </div>
+  </div>
+
+  <!-- ============ 5. LAUNCHER MODE ============ -->
+  <div class="screen" data-view="launcher">
+    <h1>Launcher — Ya Habibal Qolbi</h1>
+    <p class="sub">FR-PLAY-01–11 — tekan pad untuk loop Section, quantized trigger saat berpindah, tempo berubah hard cut jika BPM Section berbeda</p>
+
+    <div class="launcher-wrap">
+      <div class="launcher-grid" id="launcherGrid">
+        <div class="pad playing" data-bpm="90" onclick="triggerPad(this)">
+          <div class="name">Awalan</div>
+          <div class="sub">sedang main · 90 BPM</div>
+          <div class="step-dots">
+            <div class="dot on"></div><div class="dot on"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+          </div>
+        </div>
+        <div class="pad pending" data-bpm="70" onclick="triggerPad(this)">
+          <div class="name">Dasar Lambat</div>
+          <div class="sub">menunggu akhir siklus... · 70 BPM ★</div>
+        </div>
+        <div class="pad" data-bpm="110" onclick="triggerPad(this)">
+          <div class="name">Naik 1</div>
+          <div class="sub">siap · 110 BPM ★</div>
+        </div>
+        <div class="pad" data-bpm="90" onclick="triggerPad(this)">
+          <div class="name">Sahutan</div>
+          <div class="sub">siap · 90 BPM</div>
+        </div>
+        <div class="pad" data-bpm="90" onclick="triggerPad(this)">
+          <div class="name">Penutup</div>
+          <div class="sub">2/5 sample kosong · 90 BPM</div>
+        </div>
+        <div class="pad" style="border-style:dashed; color:#999; cursor:default;">
+          <div class="name" style="font-weight:normal;">+ pad baru = Section baru</div>
+          <div class="sub">jumlah pad dinamis</div>
+        </div>
+      </div>
+      <p class="sub" style="margin:-10px 0 16px 0;">★ = Section dengan BPM override, berbeda dari BPM dasar Song (90)</p>
+
+      <div class="transport">
+        <div class="status">
+          <span class="label">Sedang Main</span>
+          <b>Awalan</b> — <b>90 BPM</b> — akan pindah ke <b>Dasar Lambat</b> (70 BPM) di akhir siklus
+        </div>
+        <div class="row">
+          <button class="btn" onclick="alert('mute per part (Could — FR-PLAY-10, sim)')">Mute Part…</button>
+          <button class="btn danger" onclick="stopAll()">■ Stop</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="note" style="margin-top:16px;">
+      <b>Simulasi interaksi (Flow 5.4):</b> Klik pad "Naik 1" — perhatikan pad "Dasar Lambat" tidak langsung berhenti, melainkan menunggu titik akhir siklus terlebih dulu (state "pending", garis putus-putus berkedip) sebelum benar-benar berpindah. Ini merepresentasikan <b>Quantized Trigger (FR-PLAY-04)</b> — bukan potong paksa di tengah ketukan. Perhatikan juga baris status transport di bawah grid: begitu Section baru resmi mulai, angka BPM langsung berganti seketika ke tempo Section baru (mis. 90 → 70 BPM) — ini mensimulasikan <b>hard cut tempo (FR-PLAY-11)</b>, bukan transisi bertahap.
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><b>Tujuan dokumen:</b> validasi struktur & alur, bukan visual final</span>
+    <span>Kotak solid = elemen wajib (Must)</span>
+    <span>Kotak putus-putus = state kosong / opsional</span>
+    <span>Semua tombol adalah simulasi (alert), tidak terhubung ke backend</span>
+  </div>
+</div>
+
+<script>
+  const views = ['landing','auth','songlist','songdetail','sequencer','samples','launcher'];
+  const crumbLabels = {
+    landing: 'Beranda',
+    auth: 'Beranda → Masuk',
+    songlist: 'Beranda → Lagu Saya',
+    songdetail: 'Beranda → Lagu Saya → Ya Habibal Qolbi',
+    sequencer: 'Beranda → Lagu Saya → Ya Habibal Qolbi → Section: Awalan → Sequencer',
+    samples: 'Beranda → Library Sample',
+    launcher: 'Beranda → Lagu Saya → Ya Habibal Qolbi → Launcher'
+  };
+  let loggedIn = false;
+  let currentSongIsTemplate = true; // default: Song Template System (skenario Guest awal)
+
+  function isGuestMode(){
+    return !loggedIn;
+  }
+
+  // FR-AUTH-07: prompt "Login untuk edit" di tempat yang sama, bukan redirect paksa.
+  // Guest tetap bisa mengabaikan dan melanjutkan menjelajah.
+  function requireLogin(actionLabel){
+    if(confirm(`🔒 Login untuk edit\n\nAksi "${actionLabel}" membutuhkan login.\n\nBuka halaman Login sekarang?`)){
+      goto('auth');
+    }
+    // jika "Cancel": guest tetap di halaman yang sama, tidak terjadi apa-apa (FR-AUTH-07)
+  }
+
+  function goto(view){
+    views.forEach(v=>{
+      document.querySelector(`[data-view="${v}"]`).classList.remove('visible');
+      document.querySelector(`[data-nav="${v}"]`).classList.remove('active');
+    });
+    document.querySelector(`[data-view="${view}"]`).classList.add('visible');
+    document.querySelector(`[data-nav="${view}"]`).classList.add('active');
+    document.getElementById('crumbs').textContent = crumbLabels[view];
+    window.scrollTo(0,0);
+    applyAccessState();
+  }
+
+  // Menerapkan aturan akses (FR-AUTH-04–07, Bagian 6.8 TDD) ke elemen UI yang relevan,
+  // dipanggil ulang tiap kali berpindah layar atau status login berubah.
+  function applyAccessState(){
+    const guestOnTemplate = isGuestMode() && currentSongIsTemplate;
+    const guestOnUserSong = isGuestMode() && !currentSongIsTemplate; // Guest coba akses Song milik user -> 404 (FR-AUTH-05)
+
+    // --- Daftar Song Saya: blok total untuk Guest ---
+    const songlistGuestBlock = document.getElementById('songlistGuestBlock');
+    const songlistUserContent = document.getElementById('songlistUserContent');
+    if(songlistGuestBlock && songlistUserContent){
+      songlistGuestBlock.style.display = isGuestMode() ? 'block' : 'none';
+      songlistUserContent.style.display = isGuestMode() ? 'none' : 'block';
+    }
+
+    // --- Song Detail: banner + disable tombol edit jika guest & Song Template ---
+    const sdBanner = document.getElementById('songdetailGuestBanner');
+    if(sdBanner) sdBanner.style.display = guestOnTemplate ? 'block' : 'none';
+    document.querySelectorAll('#sectionEditActions .btn, #addSectionBtn').forEach(el=>{
+      if(guestOnTemplate) el.classList.add('is-disabled'); else el.classList.remove('is-disabled');
+    });
+    const bpmInput = document.getElementById('bpmOverrideInput');
+    if(bpmInput) bpmInput.readOnly = guestOnTemplate;
+
+    // --- Sequencer Mode: banner + read-only grid ---
+    const seqBanner = document.getElementById('sequencerGuestBanner');
+    if(seqBanner) seqBanner.style.display = guestOnTemplate ? 'block' : 'none';
+    document.querySelectorAll('#seqStepCountControls .btn').forEach(el=>{
+      if(guestOnTemplate) el.classList.add('is-disabled'); else el.classList.remove('is-disabled');
+    });
+    const seqSaveBtn = document.getElementById('seqSaveBtn');
+    if(seqSaveBtn) seqSaveBtn.classList.toggle('is-disabled', guestOnTemplate);
+    const soundSlotBox = document.getElementById('soundSlotManagerBox');
+    if(soundSlotBox) soundSlotBox.classList.toggle('readonly-panel', guestOnTemplate);
+    const seqGridWrap = document.querySelector('.seq-grid-wrap');
+    if(seqGridWrap) seqGridWrap.classList.toggle('readonly-panel', guestOnTemplate);
+
+    // --- Launcher & playback TIDAK dibatasi untuk Guest pada Song Template (FR-AUTH-04) ---
+
+    // --- Sample Library: section "Sample Saya" diblok total untuk Guest, "Sample Bawaan" tetap terlihat ---
+    const mySamplesGuestBlock = document.getElementById('mySamplesGuestBlock');
+    const mySamplesContent = document.getElementById('mySamplesContent');
+    if(mySamplesGuestBlock && mySamplesContent){
+      mySamplesGuestBlock.style.display = isGuestMode() ? 'block' : 'none';
+      mySamplesContent.style.display = isGuestMode() ? 'none' : 'grid';
+    }
+  }
+
+  function toggleLogin(){
+    loggedIn = !loggedIn;
+    document.getElementById('userLabel').textContent = loggedIn ? 'Andi (login)' : 'Guest (belum login)';
+    goto(loggedIn ? 'songlist' : 'landing');
+  }
+  function doLogin(){
+    loggedIn = true;
+    document.getElementById('userLabel').textContent = 'Andi (login)';
+    goto('songlist');
+  }
+
+  function showNewSongForm(){ document.getElementById('newSongForm').style.display='block'; }
+  function hideNewSongForm(){ document.getElementById('newSongForm').style.display='none'; }
+  function createSong(){
+    const name = document.getElementById('newSongName').value || 'Song Baru';
+    document.getElementById('sdTitle').textContent = name;
+    currentSongIsTemplate = false; // Song baru selalu milik User, bukan Template
+    goto('songdetail');
+  }
+  function openSong(name, isTemplate){
+    document.getElementById('sdTitle').textContent = name;
+    currentSongIsTemplate = !!isTemplate;
+    goto('songdetail');
+  }
+
+  function selectSection(el){
+    document.querySelectorAll('.section-chip').forEach(c=>c.classList.remove('active'));
+    el.classList.add('active');
+  }
+  function addSectionInline(){
+    if(isGuestMode() && currentSongIsTemplate){ requireLogin('FR-SEC-01: tambah Section'); return; }
+    const strip = document.getElementById('sectionStrip');
+    const addBtn = strip.querySelector('.add-new');
+    const chip = document.createElement('div');
+    chip.className = 'section-chip';
+    chip.onclick = function(){ selectSection(this); };
+    chip.innerHTML = `<div class="drag-handle">⠿ #${strip.children.length}</div><div contenteditable="true">Section Baru</div>`;
+    strip.insertBefore(chip, addBtn);
+    selectSection(chip);
+  }
+
+  function showUploadForm(){ document.getElementById('uploadForm').style.display='block'; }
+  function hideUploadForm(){ document.getElementById('uploadForm').style.display='none'; }
+
+  const SONG_BPM = 90;
+  function triggerPad(el){
+    const pads = document.querySelectorAll('.pad');
+    const current = document.querySelector('.pad.playing');
+    if(current === el) return;
+    pads.forEach(p=>p.classList.remove('pending'));
+    const newBpm = el.dataset.bpm || SONG_BPM;
+    const newName = el.querySelector('.name').textContent;
+    if(current){
+      current.classList.remove('playing');
+      const bpm = current.dataset.bpm || SONG_BPM;
+      current.querySelector('.sub').textContent = `siap · ${bpm} BPM${bpm!=SONG_BPM?' ★':''}`;
+    }
+    el.classList.add('pending');
+    el.querySelector('.sub').textContent = `menunggu akhir siklus... · ${newBpm} BPM${newBpm!=SONG_BPM?' ★':''}`;
+    document.querySelector('.transport .status').innerHTML =
+      `<span class="label">Sedang Main</span> <b>${current ? current.querySelector('.name').textContent : '—'}</b> — akan pindah ke <b>${newName}</b> (${newBpm} BPM) di akhir siklus`;
+    setTimeout(()=>{
+      el.classList.remove('pending');
+      el.classList.add('playing');
+      el.querySelector('.sub').textContent = `sedang main · ${newBpm} BPM${newBpm!=SONG_BPM?' ★':''}`;
+      // simulasi hard-cut: tempo berubah SEKETIKA tepat saat section baru mulai (FR-PLAY-11), bukan bertahap
+      document.querySelector('.transport .status').innerHTML =
+        `<span class="label">Sedang Main</span> <b>${newName}</b> — <b>${newBpm} BPM</b>${newBpm!=SONG_BPM?' <span style="color:#a33;">(hard cut dari tempo sebelumnya)</span>':''}`;
+    }, 900);
+  }
+  function stopAll(){
+    document.querySelectorAll('.pad').forEach(p=>{
+      p.classList.remove('playing','pending');
+      const sub = p.querySelector('.sub');
+      if(sub) sub.textContent = 'siap';
+    });
+  }
+
+  // ===== Sequencer: data SoundSlot dinamis per Part (mensimulasikan FR-SLOT-01–09, FR-SAMP-11–14) =====
+  // Jumlah & label SoundSlot SENGAJA dibuat berbeda antar Part untuk membuktikan sifat dinamisnya:
+  // - Rebana 1: SoundSlot default masih pakai Sample Template System bawaan (belum diganti user) — contoh FR-SLOT-09
+  // - Rebana 2: user sudah ganti sebagian sample jadi milik sendiri
+  // - Rebana 3: 2 SoundSlot, satu masih kosong (sengaja dikosongkan user, bukan default) — state kosong FR-SEQ-04
+  // - Rebana 4: 3 SoundSlot — ada tambahan "Duk", contoh dinamika pukulan lebih variatif
+  // - Bass: hanya 1 SoundSlot, masih pakai Sample Template System bawaan
+  // sample: null = kosong, string biasa = Sample milik User, {name, isTemplate:true} = Sample Template System (read-only)
+  const STEP_COUNT = 16;
+  const soundSlotsByPart = {
+    rebana1: [
+      { label: 'Tak', key: 'T', sample: { name: 'Tak Keras (Bawaan).wav', isTemplate: true }, active: [0,2,4,6,8,10] },
+      { label: 'Dung', key: 'D', sample: { name: 'Dung Dalam (Bawaan).wav', isTemplate: true }, active: [1,3,7,9] },
+    ],
+    rebana2: [
+      { label: 'Tak', key: 'T', sample: null, active: [2,5,8,11] },
+      { label: 'Dung', key: 'D', sample: 'Dung Sedang.wav', active: [0,3,6,9] },
+    ],
+    rebana3: [
+      { label: 'Tak', key: 'T', sample: { name: 'Tak Keras (Bawaan).wav', isTemplate: true }, active: [] },
+      { label: 'Dung', key: 'D', sample: null, active: [] },
+    ],
+    rebana4: [
+      { label: 'Tak', key: 'T', sample: 'Tak Tajam.wav', active: [0,2,5,7,10] },
+      { label: 'Dung', key: 'D', sample: null, active: [] },
+      { label: 'Duk', key: 'K', sample: 'Duk Ringan.wav', active: [3,11] },
+    ],
+    bass: [
+      { label: 'Dung (Jidor)', key: 'D', sample: { name: 'Jidor Berat (Bawaan).wav', isTemplate: true }, active: [0,4,8,12] },
+    ],
+  };
+  const partLabels = { rebana1:'Rebana 1', rebana2:'Rebana 2', rebana3:'Rebana 3', rebana4:'Rebana 4', bass:'Bass' };
+  function sampleDisplayName(sample){
+    if(!sample) return null;
+    return typeof sample === 'string' ? sample : sample.name;
+  }
+  function sampleIsTemplate(sample){
+    return sample && typeof sample === 'object' && sample.isTemplate;
+  }
+
+  function renderSeqGrid(){
+    const tbody = document.getElementById('seqBody');
+    tbody.innerHTML = '';
+    Object.keys(soundSlotsByPart).forEach(part=>{
+      const slots = soundSlotsByPart[part];
+      slots.forEach((slot, idx)=>{
+        const tr = document.createElement('tr');
+        tr.className = 'step-row' + (!slot.sample ? ' empty-part' : '');
+        tr.dataset.part = part;
+        tr.dataset.key = slot.key;
+
+        const sampleName = sampleDisplayName(slot.sample);
+        const isTemplate = sampleIsTemplate(slot.sample);
+        const sampleInfo = sampleName
+          ? `<span class="sound-sample">${isTemplate ? '<span class="badge-template" style="font-size:7px; padding:1px 4px;">SYS</span> ' : ''}${sampleName}</span>`
+          : `<span class="sound-sample empty">belum ada sample</span>`;
+
+        const labelTd = document.createElement('td');
+        labelTd.className = 'row-label';
+        labelTd.innerHTML = `
+          <span class="part-name">${idx===0 ? partLabels[part] : '&nbsp;'}</span>
+          <span class="sound-name">${slot.label} (${slot.key})</span>
+          <button class="preview-btn" onclick="alert('preview sample ${slot.label} ${partLabels[part]} (sim)')">▶</button>
+          <br>${sampleInfo}
+        `;
+        tr.appendChild(labelTd);
+
+        for(let i=0;i<STEP_COUNT;i++){
+          const td = document.createElement('td');
+          td.className = 'step' + (i%4===0?' beat-marker':'') + (slot.active.includes(i)?' on':'');
+          td.dataset.step = i;
+          td.onclick = ()=> td.classList.toggle('on');
+          tr.appendChild(td);
+        }
+        tbody.appendChild(tr);
+      });
+      // baris "+ Tambah Bunyi" ringkas per Part, agar sifat dinamis (nambah SoundSlot) terlihat langsung di grid
+      const addTr = document.createElement('tr');
+      addTr.className = 'step-row-add';
+      const addTd = document.createElement('td');
+      addTd.colSpan = STEP_COUNT + 1;
+      addTd.style.cssText = 'text-align:left; padding:4px 10px; background:var(--bg-alt); border-top:none;';
+      addTd.innerHTML = `<button class="btn sm ghost" style="font-size:9px; padding:2px 8px;" onclick="alert('tambah SoundSlot baru untuk ${partLabels[part]} (sim) — FR-SLOT-01')">+ Tambah Bunyi untuk ${partLabels[part]}</button>`;
+      addTr.appendChild(addTd);
+      tbody.appendChild(addTr);
+    });
+  }
+  function renderSeqHeader(){
+    const headerRow = document.getElementById('seqHeaderRow');
+    for(let i=0;i<STEP_COUNT;i++){
+      const th = document.createElement('th');
+      th.className = i%4===0 ? 'beat-marker' : '';
+      th.dataset.step = i;
+      th.textContent = i+1;
+      headerRow.appendChild(th);
+    }
+  }
+  renderSeqHeader();
+  renderSeqGrid();
+  let playheadTimer = null;
+  let playheadPos = 0;
+  function togglePlayhead(){
+    const btn = document.getElementById('playBtn');
+    if(playheadTimer){
+      clearInterval(playheadTimer);
+      playheadTimer = null;
+      clearPlayheadHighlight();
+      btn.textContent = '▶ Play Preview';
+      return;
+    }
+    btn.textContent = '■ Stop Preview';
+    playheadPos = 0;
+    playheadTimer = setInterval(()=>{
+      clearPlayheadHighlight();
+      document.querySelectorAll(`#seqBody .step[data-step="${playheadPos}"]`).forEach(c=>c.classList.add('playhead'));
+      playheadPos = (playheadPos + 1) % STEP_COUNT;
+    }, 250);
+  }
+  function clearPlayheadHighlight(){
+    document.querySelectorAll('#seqBody .step.playhead').forEach(c=>c.classList.remove('playhead'));
+  }
+
+  // Entry point: aplikasi dibuka sebagai Guest di halaman Beranda (Flow 5.0),
+  // bukan langsung ke Daftar Song Saya yang mewajibkan login.
+  goto('landing');
+</script>
+
+</body>
+</html>
