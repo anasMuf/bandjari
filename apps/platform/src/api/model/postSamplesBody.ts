@@ -6,9 +6,11 @@
  * OpenAPI spec version: 1.0
  */
 
-export interface DtoErrorResponse {
-  code?: string;
-  details?: unknown;
-  message?: string;
-  status?: number;
-}
+export type PostSamplesBody = {
+  /** File audio .wav */
+  file: Blob;
+  /** Nama sample */
+  name: string;
+  /** Part (rebana1-4, bass) */
+  part: string;
+};

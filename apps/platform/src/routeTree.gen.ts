@@ -13,6 +13,9 @@ import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedSongsRouteImport } from './routes/_authenticated/songs'
+import { Route as AuthenticatedSamplesRouteImport } from './routes/_authenticated/samples'
+import { Route as AuthenticatedSongsSongIdRouteImport } from './routes/_authenticated/songs/$songId'
 
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
@@ -33,35 +36,69 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedSongsRoute = AuthenticatedSongsRouteImport.update({
+  id: '/songs',
+  path: '/songs',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedSamplesRoute = AuthenticatedSamplesRouteImport.update({
+  id: '/samples',
+  path: '/samples',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedSongsSongIdRoute =
+  AuthenticatedSongsSongIdRouteImport.update({
+    id: '/$songId',
+    path: '/$songId',
+    getParentRoute: () => AuthenticatedSongsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/samples': typeof AuthenticatedSamplesRoute
+  '/songs': typeof AuthenticatedSongsRouteWithChildren
+  '/songs/$songId': typeof AuthenticatedSongsSongIdRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/samples': typeof AuthenticatedSamplesRoute
+  '/songs': typeof AuthenticatedSongsRouteWithChildren
   '/': typeof AuthenticatedIndexRoute
+  '/songs/$songId': typeof AuthenticatedSongsSongIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/_authenticated/samples': typeof AuthenticatedSamplesRoute
+  '/_authenticated/songs': typeof AuthenticatedSongsRouteWithChildren
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/songs/$songId': typeof AuthenticatedSongsSongIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/register'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/register'
+    | '/samples'
+    | '/songs'
+    | '/songs/$songId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/register' | '/'
+  to: '/login' | '/register' | '/samples' | '/songs' | '/' | '/songs/$songId'
   id:
     | '__root__'
     | '/_authenticated'
     | '/login'
     | '/register'
+    | '/_authenticated/samples'
+    | '/_authenticated/songs'
     | '/_authenticated/'
+    | '/_authenticated/songs/$songId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -100,14 +137,50 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/songs': {
+      id: '/_authenticated/songs'
+      path: '/songs'
+      fullPath: '/songs'
+      preLoaderRoute: typeof AuthenticatedSongsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/samples': {
+      id: '/_authenticated/samples'
+      path: '/samples'
+      fullPath: '/samples'
+      preLoaderRoute: typeof AuthenticatedSamplesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/songs/$songId': {
+      id: '/_authenticated/songs/$songId'
+      path: '/$songId'
+      fullPath: '/songs/$songId'
+      preLoaderRoute: typeof AuthenticatedSongsSongIdRouteImport
+      parentRoute: typeof AuthenticatedSongsRoute
+    }
   }
 }
 
+interface AuthenticatedSongsRouteChildren {
+  AuthenticatedSongsSongIdRoute: typeof AuthenticatedSongsSongIdRoute
+}
+
+const AuthenticatedSongsRouteChildren: AuthenticatedSongsRouteChildren = {
+  AuthenticatedSongsSongIdRoute: AuthenticatedSongsSongIdRoute,
+}
+
+const AuthenticatedSongsRouteWithChildren =
+  AuthenticatedSongsRoute._addFileChildren(AuthenticatedSongsRouteChildren)
+
 interface AuthenticatedRouteChildren {
+  AuthenticatedSamplesRoute: typeof AuthenticatedSamplesRoute
+  AuthenticatedSongsRoute: typeof AuthenticatedSongsRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedSamplesRoute: AuthenticatedSamplesRoute,
+  AuthenticatedSongsRoute: AuthenticatedSongsRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 

@@ -6,9 +6,10 @@
  * OpenAPI spec version: 1.0
  */
 
-export interface DtoErrorResponse {
-  code?: string;
-  details?: unknown;
-  message?: string;
-  status?: number;
+export interface DtoRenameSampleRequest {
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  name: string;
 }

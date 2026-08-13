@@ -6,9 +6,7 @@
  * OpenAPI spec version: 1.0
  */
 
-export interface DtoErrorResponse {
-  code?: string;
-  details?: unknown;
-  message?: string;
-  status?: number;
+export interface DtoReorderSectionRequest {
+  /** @minimum 0 */
+  order_index?: number;
 }

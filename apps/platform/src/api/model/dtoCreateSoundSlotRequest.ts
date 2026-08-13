@@ -6,9 +6,12 @@
  * OpenAPI spec version: 1.0
  */
 
-export interface DtoErrorResponse {
-  code?: string;
-  details?: unknown;
-  message?: string;
-  status?: number;
+export interface DtoCreateSoundSlotRequest {
+  key: string;
+  /**
+     * @minLength 1
+     * @maxLength 64
+     */
+  label: string;
+  sample_id?: number;
 }

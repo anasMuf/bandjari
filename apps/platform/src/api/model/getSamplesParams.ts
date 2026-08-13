@@ -6,9 +6,9 @@
  * OpenAPI spec version: 1.0
  */
 
-export interface DtoErrorResponse {
-  code?: string;
-  details?: unknown;
-  message?: string;
-  status?: number;
-}
+export type GetSamplesParams = {
+/**
+ * Filter part (rebana1-4, bass)
+ */
+part?: string;
+};

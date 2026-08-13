@@ -1,8 +1,8 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "Ini adalah API starter kit menggunakan Echo Go.",
-        "title": "Starter Kit API",
+        "description": "API untuk BandJari — penyusun \u0026 pemutar pola pukulan rebana Al-Banjari.",
+        "title": "BandJari API",
         "termsOfService": "http://swagger.io/terms/",
         "contact": {
             "name": "API Support",
@@ -16,49 +16,9 @@
         "version": "1.0"
     },
     "host": "localhost:8080",
-    "basePath": "/api",
+    "basePath": "/api/v1",
     "paths": {
-        "/users": {
-            "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "Get current logged in user profile based on JWT token",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "users"
-                ],
-                "summary": "Get user profile",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/dto.SuccessResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/users/login": {
+        "/auth/login": {
             "post": {
                 "description": "Authenticate user and return JWT token",
                 "consumes": [
@@ -68,7 +28,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "users"
+                    "auth"
                 ],
                 "summary": "Login user",
                 "parameters": [
@@ -104,9 +64,9 @@
                 }
             }
         },
-        "/users/register": {
+        "/auth/register": {
             "post": {
-                "description": "Create a new user with the provided details",
+                "description": "Create a new user account (name, email, password)",
                 "consumes": [
                     "application/json"
                 ],
@@ -114,7 +74,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "users"
+                    "auth"
                 ],
                 "summary": "Register new user",
                 "parameters": [
@@ -140,43 +100,1359 @@
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/samples": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Daftar Sample milik user login (filter opsional ?part=)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "samples"
+                ],
+                "summary": "List user samples",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter part (rebana1-4, bass)",
+                        "name": "part",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Upload file audio .wav (maks 5MB) sebagai Sample milik user",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "samples"
+                ],
+                "summary": "Upload sample",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "File audio .wav",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Nama sample",
+                        "name": "name",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Part (rebana1-4, bass)",
+                        "name": "part",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "413": {
+                        "description": "Request Entity Too Large",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "415": {
+                        "description": "Unsupported Media Type",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/samples/{id}": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Ganti nama Sample milik user. Ditolak 403 untuk Sample Template System.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "samples"
+                ],
+                "summary": "Rename sample",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Sample ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Nama baru",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.RenameSampleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Hapus Sample milik user. Ditolak 409 bila masih direferensikan SoundSlot, 403 untuk template.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "samples"
+                ],
+                "summary": "Delete sample",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Sample ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/samples/{id}/playback-url": {
+            "get": {
+                "description": "Signed URL sementara (60 menit) untuk memutar file audio. Template dapat diakses Guest.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "samples"
+                ],
+                "summary": "Get sample playback URL",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Sample ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SuccessResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/section-parts/{id}": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Update rumus pukulan (steps) — tiap karakter harus merujuk key SoundSlot pada SectionPart terkait",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "section-parts"
+                ],
+                "summary": "Update section part steps",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "SectionPart ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Steps baru",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateStepsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/section-parts/{id}/sound-slots": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Tambah SoundSlot (jenis bunyi) pada SectionPart — key unik per SectionPart",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sound-slots"
+                ],
+                "summary": "Create sound slot",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "SectionPart ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "SoundSlot details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateSoundSlotRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/sections/{id}": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Update nama dan/atau bpm_override (null untuk kembali mengikuti BPM Song)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sections"
+                ],
+                "summary": "Update section",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Section ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Section update",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateSectionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Hapus Section beserta seluruh SectionPart (cascade)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sections"
+                ],
+                "summary": "Delete section",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Section ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/sections/{id}/duplicate": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Duplikasi Section dalam Song yang sama (starting point variasi baru)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sections"
+                ],
+                "summary": "Duplicate section",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Section ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/sections/{id}/parts": {
+            "get": {
+                "description": "Daftar 5 SectionPart milik Section beserta SoundSlots (nested). Section Song Template dapat dilihat Guest.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "section-parts"
+                ],
+                "summary": "List section parts",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Section ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SuccessResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/sections/{id}/reorder": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Pindahkan Section ke posisi baru; seluruh order_index dinormalkan ulang",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sections"
+                ],
+                "summary": "Reorder section",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Section ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Posisi baru",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.ReorderSectionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/songs": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Daftar Song milik user yang sedang login",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "songs"
+                ],
+                "summary": "List user songs",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Buat Song baru (nama, BPM) milik user yang login",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "songs"
+                ],
+                "summary": "Create song",
+                "parameters": [
+                    {
+                        "description": "Song details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateSongRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/songs/{id}": {
+            "get": {
+                "description": "Detail Song. Song Template System dapat diakses Guest; Song milik User hanya pemiliknya.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "songs"
+                ],
+                "summary": "Get song by id",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Song ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SuccessResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Update nama/BPM Song milik user. Ditolak 403 untuk Song Template System.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "songs"
+                ],
+                "summary": "Update song",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Song ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Song update",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateSongRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Hapus Song beserta seluruh Section (cascade). Ditolak 403 untuk Song Template System.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "songs"
+                ],
+                "summary": "Delete song",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Song ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/songs/{id}/duplicate": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Duplikasi Song (deep copy Section/SectionPart/SoundSlot). Hasil milik user login.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "songs"
+                ],
+                "summary": "Duplicate song",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Song ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/songs/{songId}/sections": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Tambah Section baru (nama bebas) — otomatis dibuat 5 SectionPart (satu per Part)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sections"
+                ],
+                "summary": "Create section",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Song ID",
+                        "name": "songId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Section details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateSectionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/sound-slots/{id}": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Update label/key/sample_id (sample_id null untuk melepas referensi). Ubah key yang masih dipakai steps ditolak 400.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sound-slots"
+                ],
+                "summary": "Update sound slot",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "SoundSlot ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "SoundSlot update",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateSoundSlotRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Hapus SoundSlot. Ditolak 409 bila key masih dipakai di steps.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sound-slots"
+                ],
+                "summary": "Delete sound slot",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "SoundSlot ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get current logged in user profile based on JWT token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Get user profile",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
                     }
                 }
             }
         }
     },
     "definitions": {
+        "dto.CreateSectionRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
+                }
+            }
+        },
+        "dto.CreateSongRequest": {
+            "type": "object",
+            "required": [
+                "bpm",
+                "name"
+            ],
+            "properties": {
+                "bpm": {
+                    "type": "integer",
+                    "maximum": 400,
+                    "minimum": 20
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
+                }
+            }
+        },
+        "dto.CreateSoundSlotRequest": {
+            "type": "object",
+            "required": [
+                "key",
+                "label"
+            ],
+            "properties": {
+                "key": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string",
+                    "maxLength": 64,
+                    "minLength": 1
+                },
+                "sample_id": {
+                    "type": "integer"
+                }
+            }
+        },
         "dto.CreateUserRequest": {
             "type": "object",
             "required": [
-                "address",
                 "email",
-                "full_name",
-                "password",
-                "phone",
-                "username"
+                "name",
+                "password"
             ],
             "properties": {
-                "address": {
-                    "type": "string"
-                },
                 "email": {
-                    "type": "string"
-                },
-                "full_name": {
                     "type": "string",
-                    "minLength": 3
+                    "maxLength": 255
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
                 },
                 "password": {
                     "type": "string",
+                    "maxLength": 255,
                     "minLength": 6
-                },
-                "phone": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string",
-                    "minLength": 3
                 }
             }
         },
@@ -218,6 +1494,62 @@
                 }
             }
         },
+        "dto.NullableInt16": {
+            "type": "object",
+            "properties": {
+                "set": {
+                    "type": "boolean"
+                },
+                "value": {
+                    "type": "integer",
+                    "format": "int32"
+                }
+            }
+        },
+        "dto.NullableString": {
+            "type": "object",
+            "properties": {
+                "set": {
+                    "type": "boolean"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.NullableUint": {
+            "type": "object",
+            "properties": {
+                "set": {
+                    "type": "boolean"
+                },
+                "value": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.RenameSampleRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
+                }
+            }
+        },
+        "dto.ReorderSectionRequest": {
+            "type": "object",
+            "properties": {
+                "order_index": {
+                    "type": "integer",
+                    "minimum": 0
+                }
+            }
+        },
         "dto.SuccessResponse": {
             "type": "object",
             "properties": {
@@ -227,6 +1559,58 @@
                 },
                 "status": {
                     "type": "integer"
+                }
+            }
+        },
+        "dto.UpdateSectionRequest": {
+            "type": "object",
+            "properties": {
+                "bpm_override": {
+                    "$ref": "#/definitions/dto.NullableInt16"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
+                }
+            }
+        },
+        "dto.UpdateSongRequest": {
+            "type": "object",
+            "properties": {
+                "bpm": {
+                    "type": "integer",
+                    "maximum": 400,
+                    "minimum": 20
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
+                }
+            }
+        },
+        "dto.UpdateSoundSlotRequest": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string",
+                    "maxLength": 64,
+                    "minLength": 1
+                },
+                "sample_id": {
+                    "$ref": "#/definitions/dto.NullableUint"
+                }
+            }
+        },
+        "dto.UpdateStepsRequest": {
+            "type": "object",
+            "properties": {
+                "steps": {
+                    "$ref": "#/definitions/dto.NullableString"
                 }
             }
         }

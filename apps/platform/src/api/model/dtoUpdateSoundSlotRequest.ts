@@ -5,18 +5,14 @@
  * API untuk BandJari — penyusun & pemutar pola pukulan rebana Al-Banjari.
  * OpenAPI spec version: 1.0
  */
+import type { DtoNullableUint } from './dtoNullableUint';
 
-export interface DtoCreateUserRequest {
-  /** @maxLength 255 */
-  email: string;
+export interface DtoUpdateSoundSlotRequest {
+  key?: string;
   /**
      * @minLength 1
-     * @maxLength 255
+     * @maxLength 64
      */
-  name: string;
-  /**
-     * @minLength 6
-     * @maxLength 255
-     */
-  password: string;
+  label?: string;
+  sample_id?: DtoNullableUint;
 }

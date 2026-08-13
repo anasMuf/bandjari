@@ -1,29 +1,59 @@
-basePath: /api
+basePath: /api/v1
 definitions:
-  dto.CreateUserRequest:
+  dto.CreateSectionRequest:
     properties:
-      address:
-        type: string
-      email:
-        type: string
-      full_name:
-        minLength: 3
-        type: string
-      password:
-        minLength: 6
-        type: string
-      phone:
-        type: string
-      username:
-        minLength: 3
+      name:
+        maxLength: 255
+        minLength: 1
         type: string
     required:
-    - address
+    - name
+    type: object
+  dto.CreateSongRequest:
+    properties:
+      bpm:
+        maximum: 400
+        minimum: 20
+        type: integer
+      name:
+        maxLength: 255
+        minLength: 1
+        type: string
+    required:
+    - bpm
+    - name
+    type: object
+  dto.CreateSoundSlotRequest:
+    properties:
+      key:
+        type: string
+      label:
+        maxLength: 64
+        minLength: 1
+        type: string
+      sample_id:
+        type: integer
+    required:
+    - key
+    - label
+    type: object
+  dto.CreateUserRequest:
+    properties:
+      email:
+        maxLength: 255
+        type: string
+      name:
+        maxLength: 255
+        minLength: 1
+        type: string
+      password:
+        maxLength: 255
+        minLength: 6
+        type: string
+    required:
     - email
-    - full_name
+    - name
     - password
-    - phone
-    - username
     type: object
   dto.ErrorResponse:
     properties:
@@ -50,6 +80,43 @@ definitions:
       token:
         type: string
     type: object
+  dto.NullableInt16:
+    properties:
+      set:
+        type: boolean
+      value:
+        format: int32
+        type: integer
+    type: object
+  dto.NullableString:
+    properties:
+      set:
+        type: boolean
+      value:
+        type: string
+    type: object
+  dto.NullableUint:
+    properties:
+      set:
+        type: boolean
+      value:
+        type: integer
+    type: object
+  dto.RenameSampleRequest:
+    properties:
+      name:
+        maxLength: 255
+        minLength: 1
+        type: string
+    required:
+    - name
+    type: object
+  dto.ReorderSectionRequest:
+    properties:
+      order_index:
+        minimum: 0
+        type: integer
+    type: object
   dto.SuccessResponse:
     properties:
       data: {}
@@ -58,46 +125,57 @@ definitions:
       status:
         type: integer
     type: object
+  dto.UpdateSectionRequest:
+    properties:
+      bpm_override:
+        $ref: '#/definitions/dto.NullableInt16'
+      name:
+        maxLength: 255
+        minLength: 1
+        type: string
+    type: object
+  dto.UpdateSongRequest:
+    properties:
+      bpm:
+        maximum: 400
+        minimum: 20
+        type: integer
+      name:
+        maxLength: 255
+        minLength: 1
+        type: string
+    type: object
+  dto.UpdateSoundSlotRequest:
+    properties:
+      key:
+        type: string
+      label:
+        maxLength: 64
+        minLength: 1
+        type: string
+      sample_id:
+        $ref: '#/definitions/dto.NullableUint'
+    type: object
+  dto.UpdateStepsRequest:
+    properties:
+      steps:
+        $ref: '#/definitions/dto.NullableString'
+    type: object
 host: localhost:8080
 info:
   contact:
     email: support@swagger.io
     name: API Support
     url: http://www.swagger.io/support
-  description: Ini adalah API starter kit menggunakan Echo Go.
+  description: API untuk BandJari — penyusun & pemutar pola pukulan rebana Al-Banjari.
   license:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: http://swagger.io/terms/
-  title: Starter Kit API
+  title: BandJari API
   version: "1.0"
 paths:
-  /users:
-    get:
-      consumes:
-      - application/json
-      description: Get current logged in user profile based on JWT token
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.SuccessResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - ApiKeyAuth: []
-      summary: Get user profile
-      tags:
-      - users
-  /users/login:
+  /auth/login:
     post:
       consumes:
       - application/json
@@ -126,12 +204,12 @@ paths:
             $ref: '#/definitions/dto.ErrorResponse'
       summary: Login user
       tags:
-      - users
-  /users/register:
+      - auth
+  /auth/register:
     post:
       consumes:
       - application/json
-      description: Create a new user with the provided details
+      description: Create a new user account (name, email, password)
       parameters:
       - description: User registration details
         in: body
@@ -150,9 +228,843 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
       summary: Register new user
       tags:
-      - users
+      - auth
+  /samples:
+    get:
+      consumes:
+      - application/json
+      description: Daftar Sample milik user login (filter opsional ?part=)
+      parameters:
+      - description: Filter part (rebana1-4, bass)
+        in: query
+        name: part
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: List user samples
+      tags:
+      - samples
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload file audio .wav (maks 5MB) sebagai Sample milik user
+      parameters:
+      - description: File audio .wav
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: Nama sample
+        in: formData
+        name: name
+        required: true
+        type: string
+      - description: Part (rebana1-4, bass)
+        in: formData
+        name: part
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "413":
+          description: Request Entity Too Large
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "415":
+          description: Unsupported Media Type
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Upload sample
+      tags:
+      - samples
+  /samples/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Hapus Sample milik user. Ditolak 409 bila masih direferensikan
+        SoundSlot, 403 untuk template.
+      parameters:
+      - description: Sample ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Delete sample
+      tags:
+      - samples
+    put:
+      consumes:
+      - application/json
+      description: Ganti nama Sample milik user. Ditolak 403 untuk Sample Template
+        System.
+      parameters:
+      - description: Sample ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Nama baru
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RenameSampleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Rename sample
+      tags:
+      - samples
+  /samples/{id}/playback-url:
+    get:
+      consumes:
+      - application/json
+      description: Signed URL sementara (60 menit) untuk memutar file audio. Template
+        dapat diakses Guest.
+      parameters:
+      - description: Sample ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Get sample playback URL
+      tags:
+      - samples
+  /section-parts/{id}:
+    put:
+      consumes:
+      - application/json
+      description: Update rumus pukulan (steps) — tiap karakter harus merujuk key
+        SoundSlot pada SectionPart terkait
+      parameters:
+      - description: SectionPart ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Steps baru
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateStepsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Update section part steps
+      tags:
+      - section-parts
+  /section-parts/{id}/sound-slots:
+    post:
+      consumes:
+      - application/json
+      description: Tambah SoundSlot (jenis bunyi) pada SectionPart — key unik per
+        SectionPart
+      parameters:
+      - description: SectionPart ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: SoundSlot details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateSoundSlotRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Create sound slot
+      tags:
+      - sound-slots
+  /sections/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Hapus Section beserta seluruh SectionPart (cascade)
+      parameters:
+      - description: Section ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Delete section
+      tags:
+      - sections
+    put:
+      consumes:
+      - application/json
+      description: Update nama dan/atau bpm_override (null untuk kembali mengikuti
+        BPM Song)
+      parameters:
+      - description: Section ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Section update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateSectionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Update section
+      tags:
+      - sections
+  /sections/{id}/duplicate:
+    post:
+      consumes:
+      - application/json
+      description: Duplikasi Section dalam Song yang sama (starting point variasi
+        baru)
+      parameters:
+      - description: Section ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Duplicate section
+      tags:
+      - sections
+  /sections/{id}/parts:
+    get:
+      consumes:
+      - application/json
+      description: Daftar 5 SectionPart milik Section beserta SoundSlots (nested).
+        Section Song Template dapat dilihat Guest.
+      parameters:
+      - description: Section ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: List section parts
+      tags:
+      - section-parts
+  /sections/{id}/reorder:
+    put:
+      consumes:
+      - application/json
+      description: Pindahkan Section ke posisi baru; seluruh order_index dinormalkan
+        ulang
+      parameters:
+      - description: Section ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Posisi baru
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ReorderSectionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Reorder section
+      tags:
+      - sections
+  /songs:
+    get:
+      consumes:
+      - application/json
+      description: Daftar Song milik user yang sedang login
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: List user songs
+      tags:
+      - songs
+    post:
+      consumes:
+      - application/json
+      description: Buat Song baru (nama, BPM) milik user yang login
+      parameters:
+      - description: Song details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateSongRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Create song
+      tags:
+      - songs
+  /songs/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Hapus Song beserta seluruh Section (cascade). Ditolak 403 untuk
+        Song Template System.
+      parameters:
+      - description: Song ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Delete song
+      tags:
+      - songs
+    get:
+      consumes:
+      - application/json
+      description: Detail Song. Song Template System dapat diakses Guest; Song milik
+        User hanya pemiliknya.
+      parameters:
+      - description: Song ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Get song by id
+      tags:
+      - songs
+    put:
+      consumes:
+      - application/json
+      description: Update nama/BPM Song milik user. Ditolak 403 untuk Song Template
+        System.
+      parameters:
+      - description: Song ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Song update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateSongRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Update song
+      tags:
+      - songs
+  /songs/{id}/duplicate:
+    post:
+      consumes:
+      - application/json
+      description: Duplikasi Song (deep copy Section/SectionPart/SoundSlot). Hasil
+        milik user login.
+      parameters:
+      - description: Song ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Duplicate song
+      tags:
+      - songs
+  /songs/{songId}/sections:
+    post:
+      consumes:
+      - application/json
+      description: Tambah Section baru (nama bebas) — otomatis dibuat 5 SectionPart
+        (satu per Part)
+      parameters:
+      - description: Song ID
+        in: path
+        name: songId
+        required: true
+        type: integer
+      - description: Section details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateSectionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Create section
+      tags:
+      - sections
+  /sound-slots/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Hapus SoundSlot. Ditolak 409 bila key masih dipakai di steps.
+      parameters:
+      - description: SoundSlot ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Delete sound slot
+      tags:
+      - sound-slots
+    put:
+      consumes:
+      - application/json
+      description: Update label/key/sample_id (sample_id null untuk melepas referensi).
+        Ubah key yang masih dipakai steps ditolak 400.
+      parameters:
+      - description: SoundSlot ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: SoundSlot update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateSoundSlotRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Update sound slot
+      tags:
+      - sound-slots
+  /users:
+    get:
+      consumes:
+      - application/json
+      description: Get current logged in user profile based on JWT token
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get user profile
+      tags:
+      - auth
 securityDefinitions:
   ApiKeyAuth:
     in: header
