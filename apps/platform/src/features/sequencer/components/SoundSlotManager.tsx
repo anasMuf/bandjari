@@ -141,7 +141,7 @@ export function SoundSlotManager({
     <section aria-label={`Jenis bunyi ${partId}`} className="mt-6 rounded-lg bg-white p-5 ring-1 ring-stone-900/5">
       <h2 className="text-sm font-semibold text-stone-900">Jenis Bunyi (SoundSlot) Part Ini</h2>
       <p className="mt-1 text-xs text-stone-500">
-        Setiap jenis bunyi punya label, key 1 karakter (dipakai di steps), dan satu sample.
+        Setiap jenis bunyi punya label, key 1–2 karakter (dipakai di steps), dan satu sample.
         Bunyi tanpa sample akan senyap saat dimainkan.
       </p>
 
@@ -170,9 +170,9 @@ export function SoundSlotManager({
                   <input
                     id={`edit-key-${slot.id}`}
                     value={editForm.key}
-                    onChange={(e) => setEditForm({ ...editForm, key: e.target.value.slice(0, 1) })}
+                    onChange={(e) => setEditForm({ ...editForm, key: e.target.value.slice(0, 2) })}
                     required
-                    maxLength={1}
+                    maxLength={2}
                     className="mt-2 block w-full rounded-md border-0 px-3 py-1.5 text-sm text-stone-900 ring-1 ring-stone-300 ring-inset focus:ring-2 focus:ring-brand-700"
                   />
                 </div>
@@ -247,10 +247,10 @@ export function SoundSlotManager({
           <input
             id="new-slot-key"
             value={form.key}
-            onChange={(e) => setForm({ ...form, key: e.target.value.slice(0, 1) })}
+            onChange={(e) => setForm({ ...form, key: e.target.value.slice(0, 2) })}
             placeholder="K"
             required
-            maxLength={1}
+            maxLength={2}
             className="mt-2 block w-full rounded-md border-0 px-3 py-1.5 text-sm text-stone-900 ring-1 ring-stone-300 ring-inset focus:ring-2 focus:ring-brand-700"
           />
         </div>

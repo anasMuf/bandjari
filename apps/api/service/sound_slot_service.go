@@ -4,6 +4,7 @@ import (
 	"api/dto"
 	"api/model"
 	"api/repository"
+	"api/utility"
 	"strings"
 
 	"gorm.io/gorm"
@@ -105,16 +106,28 @@ func (s *soundSlotService) validateSampleAccess(userID uint, sampleID uint) erro
 }
 
 // keyUsedInSteps mengecek apakah key masih dipakai di dalam steps SectionPart.
+// Format steps: key dipisah koma (mis. "T,D,KD") — cocokkan token utuh,
+// bukan per karakter, agar key 2 karakter tidak tertukar dengan key 1 karakter.
 func keyUsedInSteps(steps *string, key string) bool {
 	if steps == nil || *steps == "" {
 		return false
 	}
-	return strings.ContainsRune(*steps, rune(key[0]))
+	for _, token := range strings.Split(*steps, ",") {
+		if token == key {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *soundSlotService) Create(userID uint, sectionPartID uint, req dto.CreateSoundSlotRequest) (*dto.SoundSlotResponse, error) {
 	if _, err := s.loadGuardedPart(sectionPartID, userID); err != nil {
 		return nil, err
+	}
+
+	// Format key: 1–2 karakter alfanumerik, tanpa koma/spasi (FR-SLOT-02).
+	if err := utility.ValidateSoundSlotKey(req.Key); err != nil {
+		return nil, ErrBadRequest
 	}
 
 	// key unik dalam lingkup SectionPart yang sama (FR-SLOT-02) → 400
@@ -168,6 +181,10 @@ func (s *soundSlotService) Update(userID uint, slotID uint, req dto.UpdateSoundS
 	}
 
 	if req.Key != nil && *req.Key != slot.Key {
+		// format key baru harus valid 1–2 karakter alfanumerik
+		if err := utility.ValidateSoundSlotKey(*req.Key); err != nil {
+			return nil, ErrBadRequest
+		}
 		// tolak ubah key yang masih dipakai di steps (FR-SLOT-06) → 400
 		if keyUsedInSteps(part.Steps, slot.Key) {
 			return nil, ErrBadRequest

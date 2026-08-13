@@ -11,7 +11,7 @@ import { LoginPromptInline } from '../../auth/components/LoginPromptInline';
 import { SequencerGrid, previewSampleAudio, type GridSlot } from './SequencerGrid';
 import { SoundSlotManager, type SoundSlotData } from './SoundSlotManager';
 import { useSectionPreview } from '../hooks/useSectionPreview';
-import { padSteps, trimSteps, decodeSteps, removeColumn, encodeSteps, setStepExtending } from '../utils/steps-codec';
+import { padSteps, trimSteps, decodeSteps, removeColumn, encodeSteps, setStepExtending, stepCount } from '../../../lib/steps';
 import { PART_LABELS, PART_ORDER } from '../utils/parts';
 
 interface PartData {
@@ -277,7 +277,7 @@ export function SequencerView({ songId, sectionId, sectionName }: SequencerViewP
             {preview.isPlaying ? '■ Stop Preview' : '▶ Play Preview'}
           </Button>
           <span className="text-xs text-stone-500">
-            BPM {effectiveBpm} · {Math.max(...orderedParts.map((p) => stepsOf(p).length), 0)}{' '}
+            BPM {effectiveBpm} · {Math.max(...orderedParts.map((p) => stepCount(stepsOf(p))), 0)}{' '}
             step ditampilkan (panjang steps bebas, tanpa batas)
           </span>
         </div>

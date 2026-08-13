@@ -154,10 +154,10 @@ await step('chip section → Sequencer Mode (grid terpadu 5 Part, mulai kosong)'
 });
 await shot('08-sequencer');
 
-await step('tambah SoundSlot pertama (Tak/T) di Rebana 1', async () => {
+await step('tambah SoundSlot pertama (Tak/T1, key 2 karakter) di Rebana 1', async () => {
   await page.click('button:has-text("+ Tambah Bunyi untuk Rebana 1")');
   await page.fill('#new-slot-label', 'Tak');
-  await page.fill('#new-slot-key', 'T');
+  await page.fill('#new-slot-key', 'T1');
   await page.click('form button:has-text("+ Tambah Bunyi")');
   await page.waitForSelector('tbody button[aria-label^="Langkah "]', { timeout: 15000 });
 });

@@ -267,7 +267,7 @@ func TestSectionDuplicate_CopiesPartsAndSlots(t *testing.T) {
 		t.Fatal(err)
 	}
 	stored := sectionRepo.sections[sec.ID]
-	steps := "TD"
+	steps := "T,D"
 	stored.Parts[0].Steps = &steps
 	stored.Parts[0].SoundSlots = []model.SoundSlot{{Label: "Tak", Key: "T", SampleID: &sampleID, OrderIndex: 0}}
 	sectionRepo.Save(stored)
@@ -281,7 +281,7 @@ func TestSectionDuplicate_CopiesPartsAndSlots(t *testing.T) {
 		t.Fatalf("jumlah parts hasil duplikasi = %d, want 5", len(created.Parts))
 	}
 	part0 := created.Parts[0]
-	if part0.Steps == nil || *part0.Steps != "TD" {
+	if part0.Steps == nil || *part0.Steps != "T,D" {
 		t.Fatal("steps tidak ikut terduplikasi")
 	}
 	if len(part0.SoundSlots) != 1 || part0.SoundSlots[0].SampleID == nil || *part0.SoundSlots[0].SampleID != sampleID {

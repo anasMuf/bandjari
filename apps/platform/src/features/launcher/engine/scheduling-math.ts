@@ -1,4 +1,7 @@
 // Fungsi murni scheduling — dipisah agar dapat di-test tanpa AudioContext.
+// Format steps: key dipisah koma (mis. "T,D,KD") — lihat src/lib/steps.ts.
+
+import { keyAt, stepCount } from '../../../lib/steps';
 
 export interface ScheduledPart {
   /** Identitas Part (rebana1..bass) — dipakai filter Mute per Part (FR-PLAY-10). */
@@ -19,14 +22,14 @@ export function stepDurationSeconds(bpm: number): number {
  * Titik akhir siklus ini dipakai quantized trigger untuk berpindah Section.
  */
 export function cycleLength(parts: ScheduledPart[]): number {
-  return parts.reduce((max, p) => Math.max(max, p.steps.length), 0);
+  return parts.reduce((max, p) => Math.max(max, stepCount(p.steps)), 0);
 }
 
 /** Key tiap part pada indeks langkah global (tiap part loop sesuai panjangnya — AC-2). */
 export function stepKeysAt(parts: ScheduledPart[], index: number): Array<{ key: string; buffer: AudioBuffer | undefined }> {
   return parts.map((part) => {
-    if (part.steps.length === 0) return { key: '', buffer: undefined };
-    const key = part.steps[index % part.steps.length];
+    const key = keyAt(part.steps, index);
+    if (key === undefined) return { key: '', buffer: undefined };
     return { key, buffer: part.buffers.get(key) };
   });
 }

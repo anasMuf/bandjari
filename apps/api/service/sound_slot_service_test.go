@@ -160,6 +160,27 @@ func TestSlotCreate_Success(t *testing.T) {
 	}
 }
 
+func TestSlotCreate_TwoCharKey(t *testing.T) {
+	svc, _, partID := setupSlotEnv(t, nil)
+	res, err := svc.Create(5, partID, dto.CreateSoundSlotRequest{Label: "Duk Keras", Key: "KD"})
+	if err != nil {
+		t.Fatalf("Create key 2 karakter error = %v", err)
+	}
+	if res.Key != "KD" {
+		t.Fatalf("key = %q, want KD", res.Key)
+	}
+}
+
+func TestSlotCreate_InvalidKeyFormat(t *testing.T) {
+	svc, _, partID := setupSlotEnv(t, nil)
+	for _, bad := range []string{"", "ABC", "T,", "T D"} {
+		_, err := svc.Create(5, partID, dto.CreateSoundSlotRequest{Label: "Buruk", Key: bad})
+		if !errors.Is(err, ErrBadRequest) {
+			t.Fatalf("key %q err = %v, want ErrBadRequest", bad, err)
+		}
+	}
+}
+
 func TestSlotCreate_OtherUsersSampleForbidden(t *testing.T) {
 	svc, _, partID := setupSlotEnv(t, nil)
 	sampleRepo := svc.sampleRepo.(*fakeSampleRepo)
@@ -188,7 +209,7 @@ func TestSlotCreate_TemplateSampleAllowed(t *testing.T) {
 }
 
 func TestSlotUpdate_KeyChangeWhileUsedInSteps(t *testing.T) {
-	steps := "TDTD"
+	steps := "T,D,T,D"
 	svc, slotRepo, partID := setupSlotEnv(t, &steps)
 	slot := &model.SoundSlot{SectionPartID: partID, Label: "Tak", Key: "T"}
 	slot.ID = 1
@@ -220,7 +241,7 @@ func TestSlotUpdate_DetachSample(t *testing.T) {
 }
 
 func TestSlotDelete_KeyUsedInStepsConflict(t *testing.T) {
-	steps := "TDTD"
+	steps := "T,D,T,D"
 	svc, slotRepo, partID := setupSlotEnv(t, &steps)
 	slot := &model.SoundSlot{SectionPartID: partID, Label: "Tak", Key: "T"}
 	slot.ID = 1

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getSamplesIdPlaybackUrl } from '../../../api/endpoints/samples/samples';
+import { keyAt, stepCount } from '../../../lib/steps';
 
 export interface SectionPreviewPart {
   id: number;
@@ -56,12 +57,12 @@ export function useSectionPreview() {
         );
 
         const prepared = parts
-          .filter((p) => p.steps.length > 0)
+          .filter((p) => stepCount(p.steps) > 0)
           .map((part) => ({
             steps: part.steps,
             keys: new Map(part.slots.map((slot) => [slot.key, slot.sample_id])),
           }));
-        const totalLen = prepared.reduce((max, p) => Math.max(max, p.steps.length), 0);
+        const totalLen = prepared.reduce((max, p) => Math.max(max, stepCount(p.steps)), 0);
         if (totalLen === 0) {
           ctx.close();
           return;
@@ -73,7 +74,8 @@ export function useSectionPreview() {
 
         const tick = () => {
           for (const part of prepared) {
-            const key = part.steps[step % part.steps.length];
+            const key = keyAt(part.steps, step);
+            if (!key) continue;
             const sampleId = part.keys.get(key);
             if (sampleId == null) continue; // senyap (AC-5)
             const buffer = buffers.get(sampleId);

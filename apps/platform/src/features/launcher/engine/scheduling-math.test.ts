@@ -20,12 +20,13 @@ describe('scheduling-math', () => {
   });
 
   it('cycleLength = panjang steps terpanjang (AC-2)', () => {
-    expect(cycleLength([part('TDTD', ['T', 'D']), part('TDTDTDTDTDTDTDTDTDTDTDTD', ['T', 'D'])])).toBe(24);
+    const long = Array.from({ length: 24 }, (_, i) => (i % 2 === 0 ? 'T' : 'D')).join(','); // 24 langkah
+    expect(cycleLength([part('T,D,T,D', ['T', 'D']), part(long, ['T', 'D'])])).toBe(24);
     expect(cycleLength([])).toBe(0);
   });
 
   it('stepKeysAt loop tiap part sesuai panjangnya sendiri', () => {
-    const parts = [part('TDTD', ['T', 'D']), part('DD', ['D'])];
+    const parts = [part('T,D,T,D', ['T', 'D']), part('D,D', ['D'])];
     // part2 panjang 2 → pada index 2 kembali ke awal (D), part1 lanjut (T)
     expect(stepKeysAt(parts, 2)).toEqual([
       { key: 'T', buffer: expect.anything() },
@@ -34,8 +35,13 @@ describe('scheduling-math', () => {
   });
 
   it('stepKeysAt mengembalikan buffer undefined untuk key tak dikenal (senyap)', () => {
-    const parts = [part('TK', ['T'])];
+    const parts = [part('T,K', ['T'])];
     expect(stepKeysAt(parts, 1)).toEqual([{ key: 'K', buffer: undefined }]);
+  });
+
+  it('stepKeysAt mendukung key 2 karakter', () => {
+    const parts = [part('T,KD', ['T', 'KD'])];
+    expect(stepKeysAt(parts, 1)).toEqual([{ key: 'KD', buffer: expect.anything() }]);
   });
 
   it('stepKeysAt menangani steps kosong', () => {

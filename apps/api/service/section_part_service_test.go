@@ -22,7 +22,7 @@ func setupPartEnv(t *testing.T, isTemplate bool) (*sectionPartService, uint, *fa
 	sectionRepo.assignIDs(sec)
 	sectionRepo.sections[sec.ID] = sec
 
-	steps := "TDTD"
+	steps := "T,D,T,D"
 	part := &model.SectionPart{
 		SectionID: sec.ID,
 		Part:      model.PartRebana1,
@@ -42,19 +42,19 @@ func setupPartEnv(t *testing.T, isTemplate bool) (*sectionPartService, uint, *fa
 
 func TestUpdateSteps_Valid(t *testing.T) {
 	svc, partID, _ := setupPartEnv(t, false)
-	steps := "TTDD"
+	steps := "T,T,D,D"
 	res, err := svc.UpdateSteps(5, partID, dto.UpdateStepsRequest{Steps: &dto.NullableString{Set: true, Value: &steps}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Steps == nil || *res.Steps != "TTDD" {
-		t.Fatalf("steps = %v, want TTDD", res.Steps)
+	if res.Steps == nil || *res.Steps != "T,T,D,D" {
+		t.Fatalf("steps = %v, want T,T,D,D", res.Steps)
 	}
 }
 
 func TestUpdateSteps_InvalidCharRejected(t *testing.T) {
 	svc, partID, _ := setupPartEnv(t, false)
-	steps := "TKTK" // K tidak terdaftar
+	steps := "T,K,T,K" // K tidak terdaftar
 	_, err := svc.UpdateSteps(5, partID, dto.UpdateStepsRequest{Steps: &dto.NullableString{Set: true, Value: &steps}})
 	if !errors.Is(err, ErrBadRequest) {
 		t.Fatalf("err = %v, want ErrBadRequest (FR-SEQ-02)", err)
@@ -74,7 +74,7 @@ func TestUpdateSteps_NullClears(t *testing.T) {
 
 func TestUpdateSteps_TemplateSongForbidden(t *testing.T) {
 	svc, partID, _ := setupPartEnv(t, true)
-	steps := "TT"
+	steps := "T,T"
 	_, err := svc.UpdateSteps(5, partID, dto.UpdateStepsRequest{Steps: &dto.NullableString{Set: true, Value: &steps}})
 	if !errors.Is(err, ErrForbidden) {
 		t.Fatalf("err = %v, want ErrForbidden (FR-SONG-08)", err)

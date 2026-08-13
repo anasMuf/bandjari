@@ -1,6 +1,7 @@
 import { Fragment } from 'react';
 import { getSamplesIdPlaybackUrl } from '../../../api/endpoints/samples/samples';
 import { Badge } from '../../../components/atoms/Badge';
+import { decodeSteps, stepCount } from '../../../lib/steps';
 import { PART_LABELS, PART_ORDER } from '../utils/parts';
 
 export interface GridSlot {
@@ -61,7 +62,7 @@ export function SequencerGrid({
 
   const maxLen = Math.max(
     MIN_COLUMNS,
-    ...ordered.map((part) => (stepsByPart[part.id] ?? part.steps).length),
+    ...ordered.map((part) => stepCount(stepsByPart[part.id] ?? part.steps)),
   );
 
   const stepsOf = (part: GridPart) => stepsByPart[part.id] ?? part.steps;
@@ -97,6 +98,7 @@ export function SequencerGrid({
           {ordered.map((part) => {
             const partLabel = PART_LABELS[part.part] ?? part.part;
             const steps = stepsOf(part);
+            const cells = decodeSteps(steps);
             return (
               <Fragment key={part.id}>
                 {/* Subheader Part */}
@@ -108,7 +110,7 @@ export function SequencerGrid({
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="font-semibold text-stone-800">{partLabel}</span>
                       <span className="flex items-center gap-3">
-                        <span className="text-stone-500">{steps.length} step</span>
+                        <span className="text-stone-500">{cells.length} step</span>
                         {!readOnly && (
                           <button
                             type="button"
@@ -155,8 +157,8 @@ export function SequencerGrid({
                         </div>
                       </td>
                       {Array.from({ length: maxLen }, (_, colIndex) => {
-                        const beyond = colIndex >= steps.length;
-                        const active = !beyond && steps[colIndex] === slot.key;
+                        const beyond = colIndex >= cells.length;
+                        const active = !beyond && cells[colIndex] === slot.key;
                         const isBeat = colIndex % 4 === 0;
                         const isPlayhead = playheadIndex != null && colIndex === playheadIndex;
                         return (

@@ -163,7 +163,7 @@ func TestSongDelete_SystemTemplateForbidden(t *testing.T) {
 
 func TestSongDuplicate_DeepCopy(t *testing.T) {
 	sampleID := uint(77)
-	steps := "TDTD"
+	steps := "T,D,T,D"
 	src := &model.Song{
 		UserID: uptr(5),
 		Name:   "Asli",
