@@ -7,6 +7,7 @@ import { useToast } from '../../../components/molecules/Toast';
 import { ApiError } from '../../../api/mutator/custom-instance';
 import { StepGrid } from '../components/StepGrid';
 import { SoundSlotManager, type SoundSlotData } from '../components/SoundSlotManager';
+import { usePartPreview } from '../hooks/usePartPreview';
 
 interface PartData {
   id: number;
@@ -35,6 +36,7 @@ export function SequencerView({ songId, sectionId, sectionName }: SequencerViewP
   const partsQuery = useGetSectionsIdParts(sectionId);
   const songQuery = useGetSongsId(songId);
   const saveStepsMutation = usePutSectionPartsId();
+  const preview = usePartPreview();
 
   const [selectedPartId, setSelectedPartId] = useState<number | null>(null);
   const [steps, setSteps] = useState('');
@@ -100,6 +102,22 @@ export function SequencerView({ songId, sectionId, sectionName }: SequencerViewP
     );
   };
 
+  const handleTogglePreview = () => {
+    if (preview.isPlaying) {
+      preview.stop();
+      return;
+    }
+    preview
+      .play(selectedPart.sound_slots ?? [], steps || '', effectiveBpm)
+      .catch((error: unknown) => {
+        addToast({
+          variant: 'error',
+          title: 'Gagal memutar preview',
+          message: error instanceof ApiError ? error.message : 'Terjadi kesalahan tak terduga.',
+        });
+      });
+  };
+
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -109,6 +127,14 @@ export function SequencerView({ songId, sectionId, sectionName }: SequencerViewP
         </div>
         <div className="flex items-center gap-2">
           {isDirty && <span className="text-xs font-medium text-amber-600">Perubahan belum disimpan</span>}
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={handleTogglePreview}
+            aria-label={preview.isPlaying ? 'Hentikan preview' : 'Putar preview part ini'}
+          >
+            {preview.isPlaying ? '■ Hentikan' : '▶ Preview'}
+          </Button>
           <Button type="button" onClick={handleSaveSteps} disabled={!isDirty || saveStepsMutation.isPending}>
             Simpan Steps
           </Button>
