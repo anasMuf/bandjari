@@ -50,10 +50,32 @@ function LauncherPage() {
     return (
       <div className="mx-auto max-w-2xl p-6">
         <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
-          <p className="text-sm font-medium text-red-800">Lagu tidak ditemukan atau tidak dapat diakses.</p>
-          <Link to="/" className="mt-2 inline-block text-sm font-semibold text-indigo-600 hover:text-indigo-500">
-            Kembali ke beranda
-          </Link>
+          {isAuthenticated ? (
+            <>
+              <p className="text-sm font-medium text-red-800">Lagu tidak ditemukan atau tidak dapat diakses.</p>
+              <Link to="/songs" className="mt-2 inline-block text-sm font-semibold text-indigo-600 hover:text-indigo-500">
+                Kembali ke daftar lagu
+              </Link>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-medium text-red-800">Lagu ini milik pengguna lain.</p>
+              <p className="mt-1 text-xs text-red-700">
+                Lagu pribadi hanya bisa diakses pemiliknya. Masuk untuk membuka lagu Anda, atau jelajahi lagu bawaan.
+              </p>
+              <div className="mt-3 flex justify-center gap-2">
+                <Link
+                  to="/login"
+                  className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+                >
+                  Masuk
+                </Link>
+                <Link to="/" className="inline-flex items-center justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-gray-300 ring-inset hover:bg-gray-50">
+                  Lihat lagu bawaan
+                </Link>
+              </div>
+            </>
+          )}
         </div>
       </div>
     );

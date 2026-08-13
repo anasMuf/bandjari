@@ -69,7 +69,22 @@ export function SequencerView({ songId, sectionId, sectionName }: SequencerViewP
   if (partsQuery.isError) {
     return (
       <div role="status" className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
-        <p className="text-sm font-medium text-red-800">Section tidak ditemukan atau tidak dapat diakses.</p>
+        <p className="text-sm font-medium text-red-800">
+          Section tidak ditemukan atau tidak dapat diakses.
+        </p>
+        {!isAuthenticated && (
+          <>
+            <p className="mt-1 text-xs text-red-700">
+              Section lagu pribadi hanya bisa diakses pemiliknya — masuk untuk membuka lagu Anda.
+            </p>
+            <Link
+              to="/login"
+              className="mt-3 inline-flex items-center justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+            >
+              Masuk
+            </Link>
+          </>
+        )}
       </div>
     );
   }
