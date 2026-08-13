@@ -1,65 +1,77 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useAuth } from '../features/auth/AuthContext'
 import { SongTemplateList } from '../features/song/components/SongTemplateList'
+import { TopBar } from '../components/molecules/TopBar'
 
 export const Route = createFileRoute('/')({
   component: LandingPage,
 })
 
+/**
+ * Beranda (layar 0 wireframe) — entry point Guest (Flow 5.0): pengunjung tanpa
+ * login langsung disuguhi Song Template System yang siap dimainkan (AC-11).
+ * Login baru diperlukan untuk membuat/mengedit karya sendiri.
+ */
 function LandingPage() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate({ to: '/' });
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="border-b border-gray-200 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-          <h1 className="text-lg font-semibold text-gray-900">BandJari</h1>
-          <div className="flex items-center gap-3">
-            {isAuthenticated ? (
-              <>
-                <Link
-                  to="/songs"
-                  className="text-sm font-medium text-indigo-600 hover:text-indigo-500"
-                >
-                  Lagu Saya
-                </Link>
-                <Link
-                  to="/samples"
-                  className="text-sm font-medium text-indigo-600 hover:text-indigo-500"
-                >
-                  Sample
-                </Link>
-              </>
-            ) : (
-              <>
-                <Link to="/login" className="text-sm font-medium text-gray-600 hover:text-gray-900">
-                  Masuk
-                </Link>
-                <Link
-                  to="/register"
-                  className="inline-flex items-center justify-center rounded-md bg-gray-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-gray-700"
-                >
-                  Daftar
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </nav>
+    <div className="min-h-screen bg-stone-100">
+      <TopBar
+        variant={isAuthenticated ? 'app' : 'guest'}
+        userName={user?.name}
+        onLogout={isAuthenticated ? handleLogout : undefined}
+      />
 
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="max-w-2xl">
-          <h2 className="text-3xl font-bold tracking-tight text-gray-900">
-            Bermain musik selayaknya sebuah band, cukup dengan jari.
-          </h2>
-          <p className="mt-3 text-sm text-gray-600">
-            BandJari menghadirkan pola pukulan rebana Al-Banjari secara digital — susun section,
-            isi rumus pukulan per instrumen, dan mainkan secara live. Coba lagu bawaan di bawah
-            tanpa perlu mendaftar.
+          <h1 className="text-3xl font-bold tracking-tight text-stone-900">
+            Selamat Datang di BandJari
+          </h1>
+          <p className="mt-3 text-sm text-stone-600">
+            Bermain musik selayaknya sebuah band, cukup dengan jari — susun section, isi pola
+            pukulan rebana Al-Banjari per instrumen, dan mainkan secara live.
+          </p>
+          <p className="mt-4 rounded-md border border-stone-200 bg-white p-3 text-xs leading-relaxed text-stone-600">
+            <span className="font-semibold text-stone-800">Tanpa perlu login</span> — langsung
+            mainkan Song bawaan (Template System) di bawah. Login baru diperlukan saat mau
+            membuat atau mengedit karya sendiri.
           </p>
         </div>
 
         <SongTemplateList />
+
+        <div className="mt-10 rounded-lg border border-stone-200 bg-white p-5">
+          <h2 className="text-base font-semibold text-stone-900">Mau susun lagu sendiri?</h2>
+          <p className="mt-1 text-sm text-stone-600">
+            {isAuthenticated
+              ? 'Lanjutkan ke Lagu Saya untuk membuat Song baru, menambah Section, dan mengedit pola pukulan.'
+              : 'Login atau daftar untuk membuat Song sendiri, menambah Section, mengedit pola pukulan, dan mengunggah sample audio milikmu.'}
+          </p>
+          <div className="mt-4">
+            {isAuthenticated ? (
+              <Link
+                to="/songs"
+                className="inline-flex items-center justify-center rounded-md bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-brand-600"
+              >
+                Buka Lagu Saya →
+              </Link>
+            ) : (
+              <Link
+                to="/login"
+                className="inline-flex items-center justify-center rounded-md bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-brand-600"
+              >
+                Login / Daftar
+              </Link>
+            )}
+          </div>
+        </div>
       </main>
     </div>
   );

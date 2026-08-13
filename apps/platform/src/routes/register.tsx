@@ -16,23 +16,27 @@ function Register() {
   }, [isAuthenticated, navigate])
 
   return (
-    <div className="flex min-h-screen flex-col justify-center bg-gray-50 px-6 py-12 lg:px-8">
+    <div className="flex min-h-screen flex-col justify-center bg-stone-100 px-6 py-12 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="text-center text-2xl/9 font-bold tracking-tight text-gray-900">
-          Create your account
+        <h2 className="text-center text-2xl/9 font-bold tracking-tight text-stone-900">
+          Buat Akun BandJari
         </h2>
-        <p className="mt-2 text-center text-sm text-gray-500">
-          Fill in the details below to get started.
+        <p className="mt-2 text-center text-sm text-stone-500">
+          Lengkapi data di bawah untuk mulai menyusun karya sendiri.
         </p>
       </div>
 
       <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-md">
         <RegisterForm onSuccess={() => navigate({ to: '/login' })} />
 
-        <p className="mt-10 text-center text-sm/6 text-gray-500">
-          Already have an account?{' '}
-          <Link to="/login" className="font-semibold text-indigo-600 hover:text-indigo-500">
-            Sign in
+        <p className="mt-10 text-center text-sm/6 text-stone-500">
+          Sudah punya akun?{' '}
+          <Link to="/login" className="font-semibold text-brand-700 hover:text-brand-600">
+            Masuk
+          </Link>
+          {' · '}
+          <Link to="/" className="font-semibold text-brand-700 hover:text-brand-600">
+            ← Lihat Song Bawaan tanpa login
           </Link>
         </p>
       </div>
