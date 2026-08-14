@@ -98,9 +98,11 @@ func main() {
 	api.POST("/auth/register", userHandler.CreateUser)
 	api.POST("/auth/login", userHandler.LoginUser)
 
-	// Middleware untuk JWT
+	// Middleware untuk JWT — role disinkronkan dari DB agar perubahan role
+	// langsung berlaku (FR-ROLE).
+	jwtAuth := middleware.JWTAuth(userRepo)
 	auth := api.Group("")
-	auth.Use(middleware.JWTAuth)
+	auth.Use(jwtAuth)
 
 	// GET /api/v1/users
 	auth.GET("/users", userHandler.GetUser)
@@ -110,7 +112,7 @@ func main() {
 	api.GET("/songs/:id", songHandler.GetSong, middleware.OptionalAuth)
 
 	songs := api.Group("/songs")
-	songs.Use(middleware.JWTAuth)
+	songs.Use(jwtAuth)
 	songs.GET("", songHandler.ListSongs)
 	songs.POST("", songHandler.CreateSong)
 	songs.PUT("/:id", songHandler.UpdateSong)
@@ -119,23 +121,23 @@ func main() {
 
 	// Section (semua mutasi wajib login; akses diwarisi dari Song induk — TDD 6.8)
 	songs.POST("/:songId/sections", sectionHandler.CreateSection)
-	api.PUT("/sections/:id", sectionHandler.UpdateSection, middleware.JWTAuth)
-	api.PUT("/sections/:id/reorder", sectionHandler.ReorderSection, middleware.JWTAuth)
-	api.DELETE("/sections/:id", sectionHandler.DeleteSection, middleware.JWTAuth)
-	api.POST("/sections/:id/duplicate", sectionHandler.DuplicateSection, middleware.JWTAuth)
+	api.PUT("/sections/:id", sectionHandler.UpdateSection, jwtAuth)
+	api.PUT("/sections/:id/reorder", sectionHandler.ReorderSection, jwtAuth)
+	api.DELETE("/sections/:id", sectionHandler.DeleteSection, jwtAuth)
+	api.POST("/sections/:id/duplicate", sectionHandler.DuplicateSection, jwtAuth)
 
 	// SectionPart & SoundSlot (Sequencer)
 	api.GET("/sections/:id/parts", sectionPartHandler.ListSectionParts, middleware.OptionalAuth)
-	api.PUT("/section-parts/:id", sectionPartHandler.UpdateSteps, middleware.JWTAuth)
-	api.POST("/section-parts/:id/sound-slots", soundSlotHandler.CreateSoundSlot, middleware.JWTAuth)
-	api.PUT("/sound-slots/:id", soundSlotHandler.UpdateSoundSlot, middleware.JWTAuth)
-	api.DELETE("/sound-slots/:id", soundSlotHandler.DeleteSoundSlot, middleware.JWTAuth)
+	api.PUT("/section-parts/:id", sectionPartHandler.UpdateSteps, jwtAuth)
+	api.POST("/section-parts/:id/sound-slots", soundSlotHandler.CreateSoundSlot, jwtAuth)
+	api.PUT("/sound-slots/:id", soundSlotHandler.UpdateSoundSlot, jwtAuth)
+	api.DELETE("/sound-slots/:id", soundSlotHandler.DeleteSoundSlot, jwtAuth)
 
 	// Sample — playback URL auth opsional (Guest boleh putar Sample Template System)
 	api.GET("/samples/templates", sampleHandler.ListTemplates, middleware.OptionalAuth)
 	api.GET("/samples/:id/playback-url", sampleHandler.GetPlaybackURL, middleware.OptionalAuth)
 	samples := api.Group("/samples")
-	samples.Use(middleware.JWTAuth)
+	samples.Use(jwtAuth)
 	samples.GET("", sampleHandler.ListSamples)
 	samples.POST("", sampleHandler.UploadSample)
 	samples.PUT("/:id", sampleHandler.RenameSample)

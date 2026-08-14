@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"api/model"
+	"api/repository"
 	"net/http"
 	"os"
 	"strings"
@@ -51,18 +53,38 @@ func setUserContext(c echo.Context, claims jwt.MapClaims) {
 	}
 }
 
-// JWTAuth menolak request tanpa token valid (401) — untuk endpoint yang mewajibkan login.
-func JWTAuth(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		tokenString, ok := extractToken(c)
-		if !ok {
-			return echo.NewHTTPError(http.StatusUnauthorized, "Missing or invalid Authorization header")
+// JWTAuth menolak request tanpa token valid (401). Role pengguna disinkronkan
+// dari DATABASE (bukan klaim token) agar perubahan role langsung berlaku —
+// token lama tidak menyimpan kekuasaan admin (FR-ROLE).
+func JWTAuth(userRepo repository.UserRepository) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			tokenString, ok := extractToken(c)
+			if !ok {
+				return echo.NewHTTPError(http.StatusUnauthorized, "Missing or invalid Authorization header")
+			}
+			claims, err := parseToken(tokenString)
+			if err != nil {
+				return err
+			}
+			setUserContext(c, claims)
+
+			email, _ := c.Get("email").(string)
+			if email == "" {
+				return echo.NewHTTPError(http.StatusUnauthorized, "Invalid token claims")
+			}
+			user, err := userRepo.FindByEmail(email)
+			if err != nil {
+				return echo.NewHTTPError(http.StatusUnauthorized, "User tidak ditemukan")
+			}
+			role := user.Role
+			if role == "" {
+				role = string(model.RoleUser) // baris lama tanpa role → user biasa
+			}
+			c.Set("role", role)
+			c.Set("user_id", user.ID) // id dari DB — lebih tepercaya daripada klaim token
+
+			return next(c)
 		}
-		claims, err := parseToken(tokenString)
-		if err != nil {
-			return err
-		}
-		setUserContext(c, claims)
-		return next(c)
 	}
 }

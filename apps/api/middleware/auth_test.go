@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"api/model"
+	"api/repository"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -8,13 +10,42 @@ import (
 
 	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
+	"gorm.io/gorm"
 )
+
+// fakeUserRepo — implementasi repository.UserRepository untuk tes middleware.
+type fakeUserRepo struct {
+	users map[string]*model.User
+}
+
+func newFakeUserRepo() *fakeUserRepo {
+	return &fakeUserRepo{users: map[string]*model.User{}}
+}
+
+func (f *fakeUserRepo) FindByEmail(email string) (*model.User, error) {
+	if u, ok := f.users[email]; ok {
+		return u, nil
+	}
+	return nil, gorm.ErrRecordNotFound
+}
+
+func (f *fakeUserRepo) FindByID(id uint) (*model.User, error) {
+	return nil, gorm.ErrRecordNotFound
+}
+
+func (f *fakeUserRepo) Create(req *model.User) error {
+	f.users[req.Email] = req
+	return nil
+}
+
+var _ repository.UserRepository = (*fakeUserRepo)(nil)
 
 func makeToken(t *testing.T, userID uint, email string) string {
 	t.Helper()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": float64(userID),
 		"email":   email,
+		"role":    "user",
 		"exp":     time.Now().Add(time.Hour).Unix(),
 	})
 	s, err := token.SignedString([]byte("test-secret"))
@@ -46,7 +77,7 @@ func runMiddleware(t *testing.T, mw func(echo.HandlerFunc) echo.HandlerFunc, tok
 
 func TestJWTAuth_RejectsMissingToken(t *testing.T) {
 	t.Setenv("JWT_SECRET", "test-secret")
-	called, _ := runMiddleware(t, JWTAuth, "")
+	called, _ := runMiddleware(t, JWTAuth(newFakeUserRepo()), "")
 	if called {
 		t.Fatal("handler seharusnya tidak dipanggil tanpa token")
 	}
@@ -54,13 +85,57 @@ func TestJWTAuth_RejectsMissingToken(t *testing.T) {
 
 func TestJWTAuth_AcceptsValidToken(t *testing.T) {
 	t.Setenv("JWT_SECRET", "test-secret")
+	repo := newFakeUserRepo()
+	repo.users["user@mail.com"] = &model.User{Name: "U", Email: "user@mail.com", Role: "user"}
+	repo.users["user@mail.com"].ID = 42
 	token := makeToken(t, 42, "user@mail.com")
-	called, c := runMiddleware(t, JWTAuth, token)
+	called, c := runMiddleware(t, JWTAuth(repo), token)
 	if !called {
 		t.Fatal("handler seharusnya dipanggil dengan token valid")
 	}
 	if got := c.Get("user_id"); got != uint(42) {
 		t.Fatalf("user_id = %v, want 42", got)
+	}
+	if got := c.Get("role"); got != "user" {
+		t.Fatalf("role = %v, want user (dari DB)", got)
+	}
+}
+
+// TestJWTAuth_RoleSyncedFromDB — role di context mengikuti DATABASE, bukan
+// klaim token: demosi/promosi langsung berlaku tanpa menunggu token kedaluwarsa
+// (FR-ROLE).
+func TestJWTAuth_RoleSyncedFromDB(t *testing.T) {
+	t.Setenv("JWT_SECRET", "test-secret")
+	repo := newFakeUserRepo()
+	repo.users["a@mail.com"] = &model.User{Name: "A", Email: "a@mail.com", Role: "user"}
+	repo.users["a@mail.com"].ID = 1
+
+	token := makeToken(t, 1, "a@mail.com")
+	_, c := runMiddleware(t, JWTAuth(repo), token)
+	if got := c.Get("role"); got != "user" {
+		t.Fatalf("role = %v, want user (DB)", got)
+	}
+
+	// Promosi di DB → request berikutnya langsung admin, token TIDAK diubah.
+	repo.users["a@mail.com"].Role = "admin"
+	_, c2 := runMiddleware(t, JWTAuth(repo), token)
+	if got := c2.Get("role"); got != "admin" {
+		t.Fatalf("role = %v, want admin (DB) setelah promosi", got)
+	}
+
+	// Demosi kembali → token lama kehilangan kekuasaan admin seketika.
+	repo.users["a@mail.com"].Role = "user"
+	_, c3 := runMiddleware(t, JWTAuth(repo), token)
+	if got := c3.Get("role"); got != "user" {
+		t.Fatalf("role = %v, want user (DB) setelah demosi", got)
+	}
+}
+
+func TestJWTAuth_UnknownUserGets401(t *testing.T) {
+	t.Setenv("JWT_SECRET", "test-secret")
+	called, _ := runMiddleware(t, JWTAuth(newFakeUserRepo()), makeToken(t, 9, "hilang@mail.com"))
+	if called {
+		t.Fatal("handler seharusnya tidak dipanggil bila user tidak ada di DB")
 	}
 }
 
