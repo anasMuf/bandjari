@@ -51,14 +51,25 @@ export function LauncherGrid({
   const emptySampleCount = (section: LauncherSection) =>
     section.parts.filter((part) => part.sound_slots.every((slot) => slot.sample_id == null)).length;
 
+  const onceLabel = (section: LauncherSection) => {
+    if (section.loop !== false) return '';
+    if (section.next_mode === 'end') return ' · 1× · Ending';
+    if (section.next_mode === 'target') {
+      const target = sorted.find((s) => s.id === section.next_section_id);
+      return ` · 1× → ${target?.name ?? 'target'}`;
+    }
+    return ' · 1× → lanjut';
+  };
+
   const padSub = (section: LauncherSection) => {
     const star = hasOverride(section) ? ' ★' : '';
+    const once = onceLabel(section);
     const empty = emptySampleCount(section);
-    if (section.id === activeSectionId) return `sedang main · ${bpmOf(section)} BPM${star}`;
-    if (section.id === pendingSectionId) return `menunggu akhir siklus... · ${bpmOf(section)} BPM${star}`;
+    if (section.id === activeSectionId) return `sedang main · ${bpmOf(section)} BPM${star}${once}`;
+    if (section.id === pendingSectionId) return `menunggu akhir siklus... · ${bpmOf(section)} BPM${star}${once}`;
     return empty > 0
-      ? `${empty}/${section.parts.length} sample kosong · ${bpmOf(section)} BPM${star}`
-      : `siap · ${bpmOf(section)} BPM${star}`;
+      ? `${empty}/${section.parts.length} sample kosong · ${bpmOf(section)} BPM${star}${once}`
+      : `siap · ${bpmOf(section)} BPM${star}${once}`;
   };
 
   const shownStep = stepIndex % Math.max(cycleLength, 1);

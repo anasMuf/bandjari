@@ -15,6 +15,7 @@ import { PageHeader } from '../../../components/molecules/PageHeader';
 import { EmptyState } from '../../../components/molecules/EmptyState';
 import { useToast } from '../../../components/molecules/Toast';
 import { ApiError } from '../../../api/mutator/custom-instance';
+import { useAuth } from '../../auth/AuthContext';
 
 interface SongItem {
   id: number;
@@ -28,9 +29,11 @@ interface SongItem {
 interface SongFormData {
   name: string;
   bpm: number;
+  /** Admin: jadikan Song Template System (FR-ROLE). */
+  asTemplate: boolean;
 }
 
-const emptyForm: SongFormData = { name: '', bpm:90 };
+const emptyForm: SongFormData = { name: '', bpm: 90, asTemplate: false };
 
 /** "diubah 2 hari lalu" — meta relatif singkat untuk daftar Song. */
 function formatRelativeTime(iso?: string): string {
@@ -50,6 +53,7 @@ function formatRelativeTime(iso?: string): string {
 export function SongListView() {
   const { addToast } = useToast();
   const navigate = useNavigate();
+  const { isAdmin } = useAuth();
   const songsQuery = useGetSongs();
   const createMutation = usePostSongs();
   const updateMutation = usePutSongsId();
@@ -77,13 +81,17 @@ export function SongListView() {
 
   const openEdit = (song: SongItem) => {
     setEditing(song);
-    setForm({ name: song.name, bpm: song.bpm });
+    setForm({ name: song.name, bpm: song.bpm, asTemplate: song.is_system_template });
     setShowForm(true);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = { name: form.name, bpm: Number(form.bpm) };
+    const payload = {
+      name: form.name,
+      bpm: Number(form.bpm),
+      is_system_template: form.asTemplate || undefined,
+    };
     if (editing) {
       updateMutation.mutate(
         { id: editing.id, data: payload },
@@ -207,6 +215,17 @@ export function SongListView() {
               max={400}
             />
           </div>
+          {isAdmin && !editing && (
+            <label className="mt-4 flex items-center gap-2 text-sm text-stone-700 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.asTemplate}
+                onChange={(e) => setForm({ ...form, asTemplate: e.target.checked })}
+                className="size-4 rounded border-stone-300 accent-brand-700"
+              />
+              Jadikan Song Template System (dapat dilihat semua orang, hanya admin yang bisa mengelola)
+            </label>
+          )}
           <div className="mt-4 flex gap-2">
             <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
               {editing ? 'Simpan' : 'Simpan & Lanjut ke Section →'}

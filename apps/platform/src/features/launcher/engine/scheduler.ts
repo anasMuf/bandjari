@@ -67,7 +67,7 @@ export class Scheduler {
     const totalLen = cycleLength(this.parts);
     if (totalLen === 0) return;
 
-    while (this.nextNoteTime < this.ctx.currentTime + lookaheadSec) {
+    while (this.playing && this.nextNoteTime < this.ctx.currentTime + lookaheadSec) {
       // stepDur dihitung per iterasi — BPM bisa berubah di tengah loop saat
       // transisi quantized (hard cut) terjadi via onCycleComplete.
       const stepDur = stepDurationSeconds(this.bpm);
@@ -84,11 +84,15 @@ export class Scheduler {
     }
   }
 
-  /** Hentikan penjadwalan dan potong semua bunyi yang masih berbunyi. */
-  stop(): void {
+  /**
+   * Hentikan penjadwalan. `when` opsional: bila diberikan (akhir siklus),
+   * bunyi yang sedang berdering dipotong TEPAT di timestamp itu — bukan
+   * seketika — agar ketukan terakhir berbunyi penuh sampai batas siklus.
+   */
+  stop(when?: number): void {
     this.playing = false;
     this.parts = [];
-    this.chokeAll();
+    this.chokeAll(when);
   }
 
   /**

@@ -11,9 +11,9 @@ import (
 )
 
 type SoundSlotService interface {
-	Create(userID uint, sectionPartID uint, req dto.CreateSoundSlotRequest) (*dto.SoundSlotResponse, error)
-	Update(userID uint, slotID uint, req dto.UpdateSoundSlotRequest) (*dto.SoundSlotResponse, error)
-	Delete(userID uint, slotID uint) error
+	Create(userID uint, isAdmin bool, sectionPartID uint, req dto.CreateSoundSlotRequest) (*dto.SoundSlotResponse, error)
+	Update(userID uint, isAdmin bool, slotID uint, req dto.UpdateSoundSlotRequest) (*dto.SoundSlotResponse, error)
+	Delete(userID uint, isAdmin bool, slotID uint) error
 }
 
 type soundSlotService struct {
@@ -58,7 +58,7 @@ func toSoundSlotResponse(slot *model.SoundSlot) *dto.SoundSlotResponse {
 
 // loadGuardedPart memuat SectionPart beserta rantai Section → Song dan
 // menerapkan aturan akses (mutasi diwarisi dari Song induk — TDD 6.8).
-func (s *soundSlotService) loadGuardedPart(partID uint, userID uint) (*model.SectionPart, error) {
+func (s *soundSlotService) loadGuardedPart(partID uint, userID uint, isAdmin bool) (*model.SectionPart, error) {
 	part, err := s.partRepo.FindByID(partID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -80,7 +80,8 @@ func (s *soundSlotService) loadGuardedPart(partID uint, userID uint) (*model.Sec
 		}
 		return nil, err
 	}
-	if song.IsSystemTemplate || song.UserID == nil || *song.UserID != userID {
+	// Template → hanya admin; song user → hanya pemiliknya (FR-ROLE).
+	if !canMutateSong(song, userID, isAdmin) {
 		return nil, ErrForbidden
 	}
 	return part, nil
@@ -123,8 +124,8 @@ func keyUsedInSteps(steps *string, key string) bool {
 	return false
 }
 
-func (s *soundSlotService) Create(userID uint, sectionPartID uint, req dto.CreateSoundSlotRequest) (*dto.SoundSlotResponse, error) {
-	if _, err := s.loadGuardedPart(sectionPartID, userID); err != nil {
+func (s *soundSlotService) Create(userID uint, isAdmin bool, sectionPartID uint, req dto.CreateSoundSlotRequest) (*dto.SoundSlotResponse, error) {
+	if _, err := s.loadGuardedPart(sectionPartID, userID, isAdmin); err != nil {
 		return nil, err
 	}
 
@@ -166,7 +167,7 @@ func (s *soundSlotService) Create(userID uint, sectionPartID uint, req dto.Creat
 	return toSoundSlotResponse(slot), nil
 }
 
-func (s *soundSlotService) Update(userID uint, slotID uint, req dto.UpdateSoundSlotRequest) (*dto.SoundSlotResponse, error) {
+func (s *soundSlotService) Update(userID uint, isAdmin bool, slotID uint, req dto.UpdateSoundSlotRequest) (*dto.SoundSlotResponse, error) {
 	slot, err := s.slotRepo.FindByID(slotID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -174,7 +175,7 @@ func (s *soundSlotService) Update(userID uint, slotID uint, req dto.UpdateSoundS
 		}
 		return nil, err
 	}
-	part, err := s.loadGuardedPart(slot.SectionPartID, userID)
+	part, err := s.loadGuardedPart(slot.SectionPartID, userID, isAdmin)
 	if err != nil {
 		return nil, err
 	}
@@ -221,7 +222,7 @@ func (s *soundSlotService) Update(userID uint, slotID uint, req dto.UpdateSoundS
 }
 
 // Delete menolak (409) bila key SoundSlot masih dipakai di steps (FR-SLOT-05/06).
-func (s *soundSlotService) Delete(userID uint, slotID uint) error {
+func (s *soundSlotService) Delete(userID uint, isAdmin bool, slotID uint) error {
 	slot, err := s.slotRepo.FindByID(slotID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -229,7 +230,7 @@ func (s *soundSlotService) Delete(userID uint, slotID uint) error {
 		}
 		return err
 	}
-	part, err := s.loadGuardedPart(slot.SectionPartID, userID)
+	part, err := s.loadGuardedPart(slot.SectionPartID, userID, isAdmin)
 	if err != nil {
 		return err
 	}

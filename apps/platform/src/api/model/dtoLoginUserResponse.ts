@@ -7,5 +7,7 @@
  */
 
 export interface DtoLoginUserResponse {
+  /** Role dipakai frontend untuk menampilkan kontrol admin tanpa menunggu /users. */
+  role?: string;
   token?: string;
 }

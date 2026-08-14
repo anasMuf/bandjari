@@ -67,7 +67,8 @@ export function SongDetailView({ song, back, banner, readOnly, onEditAttempt, on
 
       {sorted.length > 0 && (
         <p className="mt-1 text-xs text-stone-400">
-          ★ = Section ini punya BPM override, berbeda dari BPM dasar Song ({song.bpm})
+          ★ = BPM override (berbeda dari BPM dasar {song.bpm}) · 1× = dimainkan sekali lalu lanjut
+          sesuai tujuan (berikutnya / section terpilih / Ending)
         </p>
       )}
 
@@ -78,6 +79,7 @@ export function SongDetailView({ song, back, banner, readOnly, onEditAttempt, on
             songId={song.id}
             songBpm={song.bpm}
             section={selected}
+            sections={sorted}
             onChanged={onChanged}
             readOnly={readOnly}
             onEditAttempt={onEditAttempt}

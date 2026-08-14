@@ -105,6 +105,7 @@ func (h *UserHandler) LoginUser(c echo.Context) error {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": user.ID,
 		"email":   user.Email,
+		"role":    user.Role,
 		"exp":     time.Now().Add(time.Hour * 24).Unix(), // token berlaku selama 24 jam
 	})
 	tokenString, err := token.SignedString([]byte(jwtSecret))
@@ -114,5 +115,6 @@ func (h *UserHandler) LoginUser(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, dto.LoginUserResponse{
 		Token: tokenString,
+		Role:  user.Role,
 	})
 }

@@ -66,7 +66,7 @@ func (h *SectionPartHandler) UpdateSteps(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid JSON")
 	}
 	userID := utility.GetCurrentUserID(c)
-	part, err := h.partService.UpdateSteps(*userID, partID, req)
+	part, err := h.partService.UpdateSteps(*userID, utility.IsAdmin(c), partID, req)
 	if err != nil {
 		return mapServiceError(err)
 	}

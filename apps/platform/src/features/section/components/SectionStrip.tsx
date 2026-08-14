@@ -14,6 +14,12 @@ export interface SectionItem {
   name: string;
   order_index: number;
   bpm_override: number | null;
+  /** false = mainkan sekali, lalu lanjut sesuai next_mode. */
+  loop: boolean;
+  /** 'order' (lanjut berikutnya) | 'target' (ke next_section_id) | 'end' (berhenti). */
+  next_mode: string;
+  /** Tujuan saat next_mode='target'. */
+  next_section_id: number | null;
 }
 
 interface SectionStripProps {
@@ -114,6 +120,17 @@ export function SectionStrip({
     setDragged(null);
   };
 
+  const onceTooltip = (sec: SectionItem): string => {
+    if (sec.next_mode === 'target') {
+      const target = sections.find((s) => s.id === sec.next_section_id);
+      return `Sekali — lanjut ke section "${target?.name ?? 'terpilih'}"`;
+    }
+    if (sec.next_mode === 'end') {
+      return 'Sekali — Ending: berhenti di akhir (penutup)';
+    }
+    return 'Sekali — lanjut otomatis ke Section berikutnya';
+  };
+
   return (
     <section aria-label="Section" className="mt-6">
       <div className="flex items-center justify-between">
@@ -167,6 +184,11 @@ export function SectionStrip({
                 </span>
               ) : (
                 <span className="text-xs text-stone-500">{songBpm} BPM</span>
+              )}
+              {sec.loop === false && (
+                <span title={onceTooltip(sec)}>
+                  <Badge variant="system">1×</Badge>
+                </span>
               )}
               {!readOnly && (
                 <span className="ml-1 flex items-center gap-0.5">

@@ -45,7 +45,7 @@ func (h *SectionHandler) CreateSection(c echo.Context) error {
 		return err
 	}
 	userID := utility.GetCurrentUserID(c)
-	section, err := h.sectionService.Create(*userID, songID, req)
+	section, err := h.sectionService.Create(*userID, utility.IsAdmin(c), songID, req)
 	if err != nil {
 		return mapServiceError(err)
 	}
@@ -80,7 +80,7 @@ func (h *SectionHandler) UpdateSection(c echo.Context) error {
 		return err
 	}
 	userID := utility.GetCurrentUserID(c)
-	section, err := h.sectionService.Update(*userID, sectionID, req)
+	section, err := h.sectionService.Update(*userID, utility.IsAdmin(c), sectionID, req)
 	if err != nil {
 		return mapServiceError(err)
 	}
@@ -115,7 +115,7 @@ func (h *SectionHandler) ReorderSection(c echo.Context) error {
 		return err
 	}
 	userID := utility.GetCurrentUserID(c)
-	sections, err := h.sectionService.Reorder(*userID, sectionID, req.OrderIndex)
+	sections, err := h.sectionService.Reorder(*userID, utility.IsAdmin(c), sectionID, req.OrderIndex)
 	if err != nil {
 		return mapServiceError(err)
 	}
@@ -141,7 +141,7 @@ func (h *SectionHandler) DeleteSection(c echo.Context) error {
 		return err
 	}
 	userID := utility.GetCurrentUserID(c)
-	if err := h.sectionService.Delete(*userID, sectionID); err != nil {
+	if err := h.sectionService.Delete(*userID, utility.IsAdmin(c), sectionID); err != nil {
 		return mapServiceError(err)
 	}
 	return c.JSON(http.StatusOK, dto.SuccessResponse{Message: "Section deleted successfully"})
@@ -166,7 +166,7 @@ func (h *SectionHandler) DuplicateSection(c echo.Context) error {
 		return err
 	}
 	userID := utility.GetCurrentUserID(c)
-	section, err := h.sectionService.Duplicate(*userID, sectionID)
+	section, err := h.sectionService.Duplicate(*userID, utility.IsAdmin(c), sectionID)
 	if err != nil {
 		return mapServiceError(err)
 	}

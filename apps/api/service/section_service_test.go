@@ -92,6 +92,24 @@ func (f *fakeSectionRepo) UpdateOrderIndex(id uint, orderIndex int) error {
 	return gorm.ErrRecordNotFound
 }
 
+func (f *fakeSectionRepo) ClearNextTarget(targetID uint) error {
+	for _, s := range f.sections {
+		if s.NextSectionID != nil && *s.NextSectionID == targetID {
+			s.NextMode = string(model.NextModeOrder)
+			s.NextSectionID = nil
+		}
+	}
+	return nil
+}
+
+func (f *fakeSectionRepo) UpdateLoop(id uint, loop bool) error {
+	if s, ok := f.sections[id]; ok {
+		s.Loop = loop
+		return nil
+	}
+	return gorm.ErrRecordNotFound
+}
+
 func (f *fakeSectionRepo) Delete(id uint) error {
 	if _, ok := f.sections[id]; !ok {
 		return gorm.ErrRecordNotFound
@@ -109,7 +127,7 @@ func TestSectionCreate_AutoCreatesFiveParts(t *testing.T) {
 	sectionRepo := newFakeSectionRepo()
 	svc := NewSectionService(sectionRepo, songRepo, newFakeSampleRepo())
 
-	sec, err := svc.Create(5, 1, dto.CreateSectionRequest{Name: "Awalan"})
+	sec, err := svc.Create(5, false, 1, dto.CreateSectionRequest{Name: "Awalan"})
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
@@ -145,7 +163,7 @@ func TestSectionCreate_PartsStartWithoutSlots(t *testing.T) {
 
 	svc := NewSectionService(sectionRepo, songRepo, sampleRepo)
 
-	sec, err := svc.Create(5, 1, dto.CreateSectionRequest{Name: "Awalan"})
+	sec, err := svc.Create(5, false, 1, dto.CreateSectionRequest{Name: "Awalan"})
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
@@ -163,9 +181,37 @@ func TestSectionCreate_TemplateSongForbidden(t *testing.T) {
 	sectionRepo := newFakeSectionRepo()
 	svc := NewSectionService(sectionRepo, songRepo, newFakeSampleRepo())
 
-	_, err := svc.Create(5, 1, dto.CreateSectionRequest{Name: "Awalan"})
+	_, err := svc.Create(5, false, 1, dto.CreateSectionRequest{Name: "Awalan"})
 	if !errors.Is(err, ErrForbidden) {
 		t.Fatalf("err = %v, want ErrForbidden (FR-SONG-08)", err)
+	}
+}
+
+// TestSectionRole_AdminCanMutateTemplateSong — admin boleh menambah section di
+// Song Template System (FR-ROLE).
+func TestSectionRole_AdminCanMutateTemplateSong(t *testing.T) {
+	songRepo := newFakeSongRepo(&model.Song{IsSystemTemplate: true, Name: "Template", Bpm: 90})
+	sectionRepo := newFakeSectionRepo()
+	svc := NewSectionService(sectionRepo, songRepo, newFakeSampleRepo())
+
+	sec, err := svc.Create(5, true, 1, dto.CreateSectionRequest{Name: "Bagian Baru"})
+	if err != nil {
+		t.Fatalf("admin Create() error = %v", err)
+	}
+	if sec.Name != "Bagian Baru" {
+		t.Fatalf("nama = %q, want Bagian Baru", sec.Name)
+	}
+
+	// admin juga bisa update & hapus section template
+	updated, err := svc.Update(5, true, sec.ID, dto.UpdateSectionRequest{Name: strptr("Bagian Baru 2")})
+	if err != nil {
+		t.Fatalf("admin Update() error = %v", err)
+	}
+	if updated.Name != "Bagian Baru 2" {
+		t.Fatalf("nama = %q, want Bagian Baru 2", updated.Name)
+	}
+	if err := svc.Delete(5, true, sec.ID); err != nil {
+		t.Fatalf("admin Delete() error = %v", err)
 	}
 }
 
@@ -174,14 +220,14 @@ func TestSectionUpdate_BpmOverrideTriState(t *testing.T) {
 	sectionRepo := newFakeSectionRepo()
 	svc := NewSectionService(sectionRepo, songRepo, newFakeSampleRepo())
 
-	sec, err := svc.Create(5, 1, dto.CreateSectionRequest{Name: "Dasar"})
+	sec, err := svc.Create(5, false, 1, dto.CreateSectionRequest{Name: "Dasar"})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// set nilai
 	val := int16(70)
-	updated, err := svc.Update(5, sec.ID, dto.UpdateSectionRequest{BpmOverride: &dto.NullableInt16{Set: true, Value: &val}})
+	updated, err := svc.Update(5, false, sec.ID, dto.UpdateSectionRequest{BpmOverride: &dto.NullableInt16{Set: true, Value: &val}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +236,7 @@ func TestSectionUpdate_BpmOverrideTriState(t *testing.T) {
 	}
 
 	// set null (kembali ikut BPM Song)
-	cleared, err := svc.Update(5, sec.ID, dto.UpdateSectionRequest{BpmOverride: &dto.NullableInt16{Set: true, Value: nil}})
+	cleared, err := svc.Update(5, false, sec.ID, dto.UpdateSectionRequest{BpmOverride: &dto.NullableInt16{Set: true, Value: nil}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -199,7 +245,7 @@ func TestSectionUpdate_BpmOverrideTriState(t *testing.T) {
 	}
 
 	// tidak dikirim → tidak berubah (masih nil)
-	unchanged, err := svc.Update(5, sec.ID, dto.UpdateSectionRequest{Name: strptr("Dasar Baru")})
+	unchanged, err := svc.Update(5, false, sec.ID, dto.UpdateSectionRequest{Name: strptr("Dasar Baru")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -208,17 +254,64 @@ func TestSectionUpdate_BpmOverrideTriState(t *testing.T) {
 	}
 }
 
+// TestSectionLoop_Lifecycle memastikan: default loop=true, bisa diset false
+// (sekali → lanjut otomatis), dan duplikasi membawa nilai loop-nya.
+func TestSectionLoop_Lifecycle(t *testing.T) {
+	songRepo := newFakeSongRepo(&model.Song{UserID: uptr(5), Name: "Lagu", Bpm: 90})
+	sectionRepo := newFakeSectionRepo()
+	svc := NewSectionService(sectionRepo, songRepo, newFakeSampleRepo())
+
+	sec, err := svc.Create(5, false, 1, dto.CreateSectionRequest{Name: "Awalan"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !sec.Loop {
+		t.Fatal("loop default harus true (diulang)")
+	}
+
+	loopFalse := false
+	updated, err := svc.Update(5, false, sec.ID, dto.UpdateSectionRequest{Loop: &loopFalse})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.Loop {
+		t.Fatal("loop harus bisa diset false (sekali)")
+	}
+
+	loopTrue := true
+	back, err := svc.Update(5, false, sec.ID, dto.UpdateSectionRequest{Loop: &loopTrue})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !back.Loop {
+		t.Fatal("loop harus bisa kembali true")
+	}
+
+	// duplikasi membawa nilai loop
+	loopFalse = false
+	if _, err := svc.Update(5, false, sec.ID, dto.UpdateSectionRequest{Loop: &loopFalse}); err != nil {
+		t.Fatal(err)
+	}
+	dup, err := svc.Duplicate(5, false, sec.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if dup.Loop {
+		t.Fatal("duplikasi harus membawa loop=false")
+	}
+}
+
 func TestSectionUpdate_BpmOverrideOutOfRange(t *testing.T) {
 	songRepo := newFakeSongRepo(&model.Song{UserID: uptr(5), Name: "Lagu", Bpm: 90})
 	sectionRepo := newFakeSectionRepo()
 	svc := NewSectionService(sectionRepo, songRepo, newFakeSampleRepo())
 
-	sec, err := svc.Create(5, 1, dto.CreateSectionRequest{Name: "Dasar"})
+	sec, err := svc.Create(5, false, 1, dto.CreateSectionRequest{Name: "Dasar"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	val := int16(500)
-	_, err = svc.Update(5, sec.ID, dto.UpdateSectionRequest{BpmOverride: &dto.NullableInt16{Set: true, Value: &val}})
+	_, err = svc.Update(5, false, sec.ID, dto.UpdateSectionRequest{BpmOverride: &dto.NullableInt16{Set: true, Value: &val}})
 	if !errors.Is(err, ErrBadRequest) {
 		t.Fatalf("err = %v, want ErrBadRequest", err)
 	}
@@ -231,7 +324,7 @@ func TestSectionReorder_NormalizesOrder(t *testing.T) {
 
 	var ids []uint
 	for _, name := range []string{"A", "B", "C"} {
-		sec, err := svc.Create(5, 1, dto.CreateSectionRequest{Name: name})
+		sec, err := svc.Create(5, false, 1, dto.CreateSectionRequest{Name: name})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -239,7 +332,7 @@ func TestSectionReorder_NormalizesOrder(t *testing.T) {
 	}
 
 	// pindahkan C (ids[2]) ke posisi 0
-	res, err := svc.Reorder(5, ids[2], 0)
+	res, err := svc.Reorder(5, false, ids[2], 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,7 +355,7 @@ func TestSectionDuplicate_CopiesPartsAndSlots(t *testing.T) {
 	svc := NewSectionService(sectionRepo, songRepo, newFakeSampleRepo())
 
 	sampleID := uint(9)
-	sec, err := svc.Create(5, 1, dto.CreateSectionRequest{Name: "Naik"})
+	sec, err := svc.Create(5, false, 1, dto.CreateSectionRequest{Name: "Naik"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -272,7 +365,7 @@ func TestSectionDuplicate_CopiesPartsAndSlots(t *testing.T) {
 	stored.Parts[0].SoundSlots = []model.SoundSlot{{Label: "Tak", Key: "T", SampleID: &sampleID, OrderIndex: 0}}
 	sectionRepo.Save(stored)
 
-	copied, err := svc.Duplicate(5, sec.ID)
+	copied, err := svc.Duplicate(5, false, sec.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -299,9 +392,95 @@ func TestSectionDelete_TemplateSongForbidden(t *testing.T) {
 	sectionRepo.assignIDs(sec)
 	sectionRepo.sections[sec.ID] = sec
 
-	err := svc.Delete(5, sec.ID)
+	err := svc.Delete(5, false, sec.ID)
 	if !errors.Is(err, ErrForbidden) {
 		t.Fatalf("err = %v, want ErrForbidden", err)
+	}
+}
+
+// TestSectionNextMode_Lifecycle memverifikasi opsi tujuan setelah Section
+// "sekali": default order, target (ke section tertentu), end (penutup), plus
+// aturan validasi & pembersihan saat target dihapus.
+func TestSectionNextMode_Lifecycle(t *testing.T) {
+	songRepo := newFakeSongRepo(&model.Song{UserID: uptr(5), Name: "Lagu", Bpm: 90})
+	sectionRepo := newFakeSectionRepo()
+	svc := NewSectionService(sectionRepo, songRepo, newFakeSampleRepo())
+
+	var ids []uint
+	for _, name := range []string{"Awalan", "Dasar", "Penutup"} {
+		sec, err := svc.Create(5, false, 1, dto.CreateSectionRequest{Name: name})
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids = append(ids, sec.ID)
+	}
+
+	// default: next_mode = order, tanpa target
+	first := sectionRepo.sections[ids[0]]
+	if first.NextMode != string(model.NextModeOrder) || first.NextSectionID != nil {
+		t.Fatalf("default next_mode = %s, id = %v — want order/nil", first.NextMode, first.NextSectionID)
+	}
+
+	// next_mode=target → harus menyimpan target yang valid di song yang sama
+	loopFalse := false
+	targetMode := string(model.NextModeTarget)
+	updated, err := svc.Update(5, false, ids[0], dto.UpdateSectionRequest{Loop: &loopFalse, NextMode: &targetMode, NextSectionID: &ids[2]})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.NextMode != string(model.NextModeTarget) || updated.NextSectionID == nil || *updated.NextSectionID != ids[2] {
+		t.Fatalf("target tidak tersimpan: mode=%s id=%v", updated.NextMode, updated.NextSectionID)
+	}
+
+	// next_mode=end → target dikosongkan
+	endMode := string(model.NextModeEnd)
+	ended, err := svc.Update(5, false, ids[0], dto.UpdateSectionRequest{NextMode: &endMode})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ended.NextMode != string(model.NextModeEnd) || ended.NextSectionID != nil {
+		t.Fatalf("mode end harus mengosongkan target: mode=%s id=%v", ended.NextMode, ended.NextSectionID)
+	}
+
+	// next_mode=order → target dikosongkan
+	orderMode := string(model.NextModeOrder)
+	ordered, err := svc.Update(5, false, ids[0], dto.UpdateSectionRequest{NextMode: &orderMode, NextSectionID: &ids[1]})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ordered.NextMode != string(model.NextModeOrder) || ordered.NextSectionID != nil {
+		t.Fatalf("mode order harus mengosongkan target: mode=%s id=%v", ordered.NextMode, ordered.NextSectionID)
+	}
+
+	// target = section sendiri → ditolak
+	_, err = svc.Update(5, false, ids[0], dto.UpdateSectionRequest{NextMode: &targetMode, NextSectionID: &ids[0]})
+	if !errors.Is(err, ErrBadRequest) {
+		t.Fatalf("self-target: err = %v, want ErrBadRequest", err)
+	}
+
+	// target tidak ada → ditolak
+	ghost := uint(9999)
+	_, err = svc.Update(5, false, ids[0], dto.UpdateSectionRequest{NextMode: &targetMode, NextSectionID: &ghost})
+	if !errors.Is(err, ErrBadRequest) {
+		t.Fatalf("target ghost: err = %v, want ErrBadRequest", err)
+	}
+
+	// next_section_id tanpa next_mode → ditolak (ambigu)
+	_, err = svc.Update(5, false, ids[0], dto.UpdateSectionRequest{NextSectionID: &ids[1]})
+	if !errors.Is(err, ErrBadRequest) {
+		t.Fatalf("id tanpa mode: err = %v, want ErrBadRequest", err)
+	}
+
+	// hapus section yang menjadi target → referensi dibersihkan ke order
+	if _, err := svc.Update(5, false, ids[0], dto.UpdateSectionRequest{NextMode: &targetMode, NextSectionID: &ids[1]}); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Delete(5, false, ids[1]); err != nil {
+		t.Fatal(err)
+	}
+	after := sectionRepo.sections[ids[0]]
+	if after.NextMode != string(model.NextModeOrder) || after.NextSectionID != nil {
+		t.Fatalf("setelah target dihapus: mode=%s id=%v — want order/nil", after.NextMode, after.NextSectionID)
 	}
 }
 

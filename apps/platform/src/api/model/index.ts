@@ -20,6 +20,7 @@ export * from './dtoRenameSampleRequest';
 export * from './dtoReorderSectionRequest';
 export * from './dtoSuccessResponse';
 export * from './dtoUpdateSectionRequest';
+export * from './dtoUpdateSectionRequestNextMode';
 export * from './dtoUpdateSongRequest';
 export * from './dtoUpdateSoundSlotRequest';
 export * from './dtoUpdateStepsRequest';

@@ -15,6 +15,11 @@ definitions:
         maximum: 400
         minimum: 20
         type: integer
+      is_system_template:
+        description: |-
+          IsSystemTemplate opsional: true = buat sebagai Song Template System.
+          Hanya boleh dipakai admin (FR-ROLE).
+        type: boolean
       name:
         maxLength: 255
         minLength: 1
@@ -26,6 +31,8 @@ definitions:
   dto.CreateSoundSlotRequest:
     properties:
       key:
+        maxLength: 2
+        minLength: 1
         type: string
       label:
         maxLength: 64
@@ -77,6 +84,10 @@ definitions:
     type: object
   dto.LoginUserResponse:
     properties:
+      role:
+        description: Role dipakai frontend untuk menampilkan kontrol admin tanpa menunggu
+          /users.
+        type: string
       token:
         type: string
     type: object
@@ -129,10 +140,28 @@ definitions:
     properties:
       bpm_override:
         $ref: '#/definitions/dto.NullableInt16'
+      loop:
+        description: Loop=nil → tidak berubah; pointer bool membedakan true/false
+          (sekali vs diulang).
+        type: boolean
       name:
         maxLength: 255
         minLength: 1
         type: string
+      next_mode:
+        description: |-
+          NextMode=nil → tidak berubah. Nilai valid: "order" (lanjut ke section
+          berikutnya), "target" (lanjut ke next_section_id), "end" (ending/berhenti).
+        enum:
+        - order
+        - target
+        - end
+        type: string
+      next_section_id:
+        description: |-
+          NextSectionID wajib diisi saat next_mode=target; diabaikan/dikosongkan untuk
+          mode lain.
+        type: integer
     type: object
   dto.UpdateSongRequest:
     properties:
@@ -148,6 +177,8 @@ definitions:
   dto.UpdateSoundSlotRequest:
     properties:
       key:
+        maxLength: 2
+        minLength: 1
         type: string
       label:
         maxLength: 64
@@ -268,7 +299,8 @@ paths:
     post:
       consumes:
       - multipart/form-data
-      description: Upload file audio .wav (maks 5MB) sebagai Sample milik user
+      description: Upload file audio .wav (maks 5MB). Admin boleh set is_system_template=true
+        untuk membuat Sample Template System.
       parameters:
       - description: File audio .wav
         in: formData
@@ -285,6 +317,10 @@ paths:
         name: part
         required: true
         type: string
+      - description: true = Sample Template System (hanya admin)
+        in: formData
+        name: is_system_template
+        type: boolean
       produces:
       - application/json
       responses:
@@ -298,6 +334,10 @@ paths:
             $ref: '#/definitions/dto.ErrorResponse'
         "401":
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
         "413":

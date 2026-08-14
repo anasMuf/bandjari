@@ -45,7 +45,7 @@ func (h *SoundSlotHandler) CreateSoundSlot(c echo.Context) error {
 		return err
 	}
 	userID := utility.GetCurrentUserID(c)
-	slot, err := h.slotService.Create(*userID, partID, req)
+	slot, err := h.slotService.Create(*userID, utility.IsAdmin(c), partID, req)
 	if err != nil {
 		return mapServiceError(err)
 	}
@@ -80,7 +80,7 @@ func (h *SoundSlotHandler) UpdateSoundSlot(c echo.Context) error {
 		return err
 	}
 	userID := utility.GetCurrentUserID(c)
-	slot, err := h.slotService.Update(*userID, slotID, req)
+	slot, err := h.slotService.Update(*userID, utility.IsAdmin(c), slotID, req)
 	if err != nil {
 		return mapServiceError(err)
 	}
@@ -107,7 +107,7 @@ func (h *SoundSlotHandler) DeleteSoundSlot(c echo.Context) error {
 		return err
 	}
 	userID := utility.GetCurrentUserID(c)
-	if err := h.slotService.Delete(*userID, slotID); err != nil {
+	if err := h.slotService.Delete(*userID, utility.IsAdmin(c), slotID); err != nil {
 		return mapServiceError(err)
 	}
 	return c.JSON(http.StatusOK, dto.SuccessResponse{Message: "SoundSlot deleted successfully"})

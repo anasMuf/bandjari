@@ -165,7 +165,7 @@ func TestSampleUpload_ValidWav(t *testing.T) {
 	storage := newFakeStorage()
 	svc := NewSampleService(repo, storage)
 
-	res, err := svc.Upload(5, model.PartRebana1, "Tak Keras", wavBytes())
+	res, err := svc.Upload(5, false, false, model.PartRebana1, "Tak Keras", wavBytes())
 	if err != nil {
 		t.Fatalf("Upload() error = %v", err)
 	}
@@ -181,7 +181,7 @@ func TestSampleUpload_RejectsNonWav(t *testing.T) {
 	repo := newFakeSampleRepo()
 	svc := NewSampleService(repo, newFakeStorage())
 
-	_, err := svc.Upload(5, model.PartRebana1, "Bukan WAV", []byte("ID3 not-a-wav-data"))
+	_, err := svc.Upload(5, false, false, model.PartRebana1, "Bukan WAV", []byte("ID3 not-a-wav-data"))
 	if !errors.Is(err, utility.ErrUnsupportedFormat) {
 		t.Fatalf("err = %v, want ErrUnsupportedFormat (FR-SAMP-06)", err)
 	}
@@ -193,7 +193,7 @@ func TestSampleUpload_RejectsTooLarge(t *testing.T) {
 
 	big := wavBytes()
 	big = append(big, bytes.Repeat([]byte{0}, utility.MaxSampleSizeBytes)...)
-	_, err := svc.Upload(5, model.PartRebana1, "Gede", big)
+	_, err := svc.Upload(5, false, false, model.PartRebana1, "Gede", big)
 	if !errors.Is(err, utility.ErrFileTooLarge) {
 		t.Fatalf("err = %v, want ErrFileTooLarge (FR-SAMP-06)", err)
 	}
@@ -203,7 +203,7 @@ func TestSampleUpload_RejectsInvalidPart(t *testing.T) {
 	repo := newFakeSampleRepo()
 	svc := NewSampleService(repo, newFakeStorage())
 
-	_, err := svc.Upload(5, model.Part("dumbuk"), "X", wavBytes())
+	_, err := svc.Upload(5, false, false, model.Part("dumbuk"), "X", wavBytes())
 	if !errors.Is(err, ErrBadRequest) {
 		t.Fatalf("err = %v, want ErrBadRequest (FR-SAMP-02)", err)
 	}
@@ -216,7 +216,7 @@ func TestSampleDelete_ReferencedGetsConflict(t *testing.T) {
 	repo.refs[1] = 2 // direferensikan 2 SoundSlot
 	svc := NewSampleService(repo, newFakeStorage())
 
-	err := svc.Delete(5, 1)
+	err := svc.Delete(5, false, 1)
 	if !errors.Is(err, ErrConflict) {
 		t.Fatalf("err = %v, want ErrConflict (FR-SAMP-08)", err)
 	}
@@ -229,7 +229,7 @@ func TestSampleDelete_Success(t *testing.T) {
 	storage := newFakeStorage()
 	svc := NewSampleService(repo, storage)
 
-	if err := svc.Delete(5, 1); err != nil {
+	if err := svc.Delete(5, false, 1); err != nil {
 		t.Fatalf("Delete() error = %v", err)
 	}
 	if _, ok := repo.samples[1]; ok {
@@ -246,7 +246,7 @@ func TestSampleDelete_TemplateForbidden(t *testing.T) {
 	repo.nextID = 2
 	svc := NewSampleService(repo, newFakeStorage())
 
-	err := svc.Delete(5, 1)
+	err := svc.Delete(5, false, 1)
 	if !errors.Is(err, ErrForbidden) {
 		t.Fatalf("err = %v, want ErrForbidden (FR-SAMP-12)", err)
 	}
@@ -258,9 +258,51 @@ func TestSampleRename_TemplateForbidden(t *testing.T) {
 	repo.nextID = 2
 	svc := NewSampleService(repo, newFakeStorage())
 
-	_, err := svc.Rename(5, 1, "Baru")
+	_, err := svc.Rename(5, false, 1, "Baru")
 	if !errors.Is(err, ErrForbidden) {
 		t.Fatalf("err = %v, want ErrForbidden (FR-SAMP-12)", err)
+	}
+}
+
+// TestSampleRole_AdminManagesTemplate — admin boleh rename/hapus/upload Sample
+// Template System; user biasa tetap ditolak (FR-ROLE).
+func TestSampleRole_AdminManagesTemplate(t *testing.T) {
+	repo := newFakeSampleRepo()
+	repo.samples[1] = &model.Sample{IsSystemTemplate: true, Name: "Bawaan", Part: model.PartRebana1, ObjectKey: "k"}
+	repo.nextID = 2
+	svc := NewSampleService(repo, newFakeStorage())
+
+	// admin rename template
+	renamed, err := svc.Rename(5, true, 1, "Bawaan Baru")
+	if err != nil {
+		t.Fatalf("admin Rename() error = %v", err)
+	}
+	if renamed.Name != "Bawaan Baru" {
+		t.Fatalf("nama = %q, want Bawaan Baru", renamed.Name)
+	}
+
+	// admin upload template sample
+	uploaded, err := svc.Upload(5, true, true, model.PartRebana1, "Tpl Baru", wavBytes())
+	if err != nil {
+		t.Fatalf("admin Upload template error = %v", err)
+	}
+	if !uploaded.IsSystemTemplate || uploaded.UserID != nil {
+		t.Fatalf("harus template tanpa pemilik: %+v", uploaded)
+	}
+
+	// admin hapus template
+	if err := svc.Delete(5, true, 1); err != nil {
+		t.Fatalf("admin Delete() error = %v", err)
+	}
+}
+
+// TestSampleRole_UserCannotUploadTemplate — user biasa dilarang upload template.
+func TestSampleRole_UserCannotUploadTemplate(t *testing.T) {
+	svc := NewSampleService(newFakeSampleRepo(), newFakeStorage())
+
+	_, err := svc.Upload(5, false, true, model.PartRebana1, "X", wavBytes())
+	if !errors.Is(err, ErrForbidden) {
+		t.Fatalf("err = %v, want ErrForbidden (FR-ROLE)", err)
 	}
 }
 

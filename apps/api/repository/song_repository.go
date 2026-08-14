@@ -13,6 +13,12 @@ type SongRepository interface {
 	ListByUserID(userID uint) ([]model.Song, error)
 	ListTemplates() ([]model.Song, error)
 	CountSectionsBySongIDs(songIDs []uint) (map[uint]int64, error)
+	// UpdateSectionNextTarget menimpa mode lanjut & target satu Section — dipakai
+	// remap next_section_id saat duplikasi Song.
+	UpdateSectionNextTarget(sectionID uint, mode string, targetID *uint) error
+	// UpdateSectionLoop menimpa nilai loop satu Section — GORM melewatkan nilai
+	// zero (false) saat INSERT (kolom punya default true).
+	UpdateSectionLoop(sectionID uint, loop bool) error
 	Save(song *model.Song) error
 	Delete(id uint) error
 }
@@ -79,6 +85,15 @@ func (r *songRepository) CountSectionsBySongIDs(songIDs []uint) (map[uint]int64,
 		result[r.SongID] = r.Count
 	}
 	return result, nil
+}
+
+func (r *songRepository) UpdateSectionNextTarget(sectionID uint, mode string, targetID *uint) error {
+	return r.db.Model(&model.Section{}).Where("id = ?", sectionID).
+		Updates(map[string]interface{}{"next_mode": mode, "next_section_id": targetID}).Error
+}
+
+func (r *songRepository) UpdateSectionLoop(sectionID uint, loop bool) error {
+	return r.db.Model(&model.Section{}).Where("id = ?", sectionID).Update("loop", loop).Error
 }
 
 func (r *songRepository) Save(song *model.Song) error {

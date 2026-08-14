@@ -26,6 +26,8 @@ interface SequencerGridProps {
   onPreviewSlot: (slot: GridSlot) => void;
   onManagePart: (partId: number) => void;
   onAddSlot: (partId: number) => void;
+  /** Bersihkan seluruh kotak step satu Part. */
+  onClearPart: (partId: number) => void;
   readOnly?: boolean;
   onEditAttempt?: () => void;
   /** Kolom yang sedang disorot playhead saat Play Preview aktif. */
@@ -47,6 +49,7 @@ export function SequencerGrid({
   onPreviewSlot,
   onManagePart,
   onAddSlot,
+  onClearPart,
   readOnly = false,
   onEditAttempt,
   playheadIndex = null,
@@ -146,6 +149,22 @@ export function SequencerGrid({
                             className="rounded px-1.5 py-0.5 text-brand-700 underline-offset-2 hover:underline cursor-pointer"
                           >
                             Kelola bunyi
+                          </button>
+                        )}
+                        {!readOnly && (
+                          <button
+                            type="button"
+                            onClick={() => onClearPart(part.id)}
+                            disabled={cells.length === 0}
+                            title={
+                              cells.length === 0
+                                ? `${partLabel} belum punya langkah`
+                                : `Bersihkan semua kotak step ${partLabel}`
+                            }
+                            aria-label={`Bersihkan semua kotak step ${partLabel}`}
+                            className="rounded px-1.5 py-0.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                          >
+                            🗑 Bersihkan step
                           </button>
                         )}
                       </span>

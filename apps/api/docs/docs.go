@@ -169,7 +169,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Upload file audio .wav (maks 5MB) sebagai Sample milik user",
+                "description": "Upload file audio .wav (maks 5MB). Admin boleh set is_system_template=true untuk membuat Sample Template System.",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -201,6 +201,12 @@ const docTemplate = `{
                         "name": "part",
                         "in": "formData",
                         "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "true = Sample Template System (hanya admin)",
+                        "name": "is_system_template",
+                        "in": "formData"
                     }
                 ],
                 "responses": {
@@ -218,6 +224,12 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
@@ -1471,6 +1483,10 @@ const docTemplate = `{
                     "maximum": 400,
                     "minimum": 20
                 },
+                "is_system_template": {
+                    "description": "IsSystemTemplate opsional: true = buat sebagai Song Template System.\nHanya boleh dipakai admin (FR-ROLE).",
+                    "type": "boolean"
+                },
                 "name": {
                     "type": "string",
                     "maxLength": 255,
@@ -1486,7 +1502,9 @@ const docTemplate = `{
             ],
             "properties": {
                 "key": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 2,
+                    "minLength": 1
                 },
                 "label": {
                     "type": "string",
@@ -1555,6 +1573,10 @@ const docTemplate = `{
         "dto.LoginUserResponse": {
             "type": "object",
             "properties": {
+                "role": {
+                    "description": "Role dipakai frontend untuk menampilkan kontrol admin tanpa menunggu /users.",
+                    "type": "string"
+                },
                 "token": {
                     "type": "string"
                 }
@@ -1634,10 +1656,27 @@ const docTemplate = `{
                 "bpm_override": {
                     "$ref": "#/definitions/dto.NullableInt16"
                 },
+                "loop": {
+                    "description": "Loop=nil → tidak berubah; pointer bool membedakan true/false (sekali vs diulang).",
+                    "type": "boolean"
+                },
                 "name": {
                     "type": "string",
                     "maxLength": 255,
                     "minLength": 1
+                },
+                "next_mode": {
+                    "description": "NextMode=nil → tidak berubah. Nilai valid: \"order\" (lanjut ke section\nberikutnya), \"target\" (lanjut ke next_section_id), \"end\" (ending/berhenti).",
+                    "type": "string",
+                    "enum": [
+                        "order",
+                        "target",
+                        "end"
+                    ]
+                },
+                "next_section_id": {
+                    "description": "NextSectionID wajib diisi saat next_mode=target; diabaikan/dikosongkan untuk\nmode lain.",
+                    "type": "integer"
                 }
             }
         },
@@ -1660,7 +1699,9 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "key": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 2,
+                    "minLength": 1
                 },
                 "label": {
                     "type": "string",

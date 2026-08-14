@@ -49,6 +49,14 @@ type CreateSectionRequest struct {
 type UpdateSectionRequest struct {
 	Name        *string        `json:"name" validate:"omitempty,min=1,max=255"`
 	BpmOverride *NullableInt16 `json:"bpm_override"`
+	// Loop=nil → tidak berubah; pointer bool membedakan true/false (sekali vs diulang).
+	Loop *bool `json:"loop"`
+	// NextMode=nil → tidak berubah. Nilai valid: "order" (lanjut ke section
+	// berikutnya), "target" (lanjut ke next_section_id), "end" (ending/berhenti).
+	NextMode *string `json:"next_mode" validate:"omitempty,oneof=order target end"`
+	// NextSectionID wajib diisi saat next_mode=target; diabaikan/dikosongkan untuk
+	// mode lain.
+	NextSectionID *uint `json:"next_section_id"`
 }
 
 type ReorderSectionRequest struct {
@@ -56,10 +64,16 @@ type ReorderSectionRequest struct {
 }
 
 type SectionResponse struct {
-	ID          uint                  `json:"id"`
-	SongID      uint                  `json:"song_id"`
-	Name        string                `json:"name"`
-	OrderIndex  int                   `json:"order_index"`
-	BpmOverride *int16                `json:"bpm_override"`
-	Parts       []SectionPartResponse `json:"parts,omitempty"`
+	ID          uint   `json:"id"`
+	SongID      uint   `json:"song_id"`
+	Name        string `json:"name"`
+	OrderIndex  int    `json:"order_index"`
+	BpmOverride *int16 `json:"bpm_override"`
+	// Loop=false berarti section dimainkan sekali lalu lanjut sesuai next_mode.
+	Loop bool `json:"loop"`
+	// NextMode: "order" (lanjut berikutnya) | "target" (ke next_section_id) | "end" (berhenti).
+	NextMode string `json:"next_mode"`
+	// NextSectionID = tujuan saat next_mode=target; nil selain itu.
+	NextSectionID *uint                 `json:"next_section_id"`
+	Parts         []SectionPartResponse `json:"parts,omitempty"`
 }

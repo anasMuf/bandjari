@@ -11,7 +11,7 @@ import (
 
 type SectionPartService interface {
 	ListBySection(currentUserID *uint, sectionID uint) ([]dto.SectionPartResponse, error)
-	UpdateSteps(userID uint, partID uint, req dto.UpdateStepsRequest) (*dto.SectionPartResponse, error)
+	UpdateSteps(userID uint, isAdmin bool, partID uint, req dto.UpdateStepsRequest) (*dto.SectionPartResponse, error)
 }
 
 type sectionPartService struct {
@@ -80,7 +80,7 @@ func (s *sectionPartService) ListBySection(currentUserID *uint, sectionID uint) 
 
 // UpdateSteps menyimpan rumus pukulan — setiap karakter divalidasi merujuk ke
 // key SoundSlot yang terdaftar pada SectionPart terkait (FR-SEQ-02, NFR-05).
-func (s *sectionPartService) UpdateSteps(userID uint, partID uint, req dto.UpdateStepsRequest) (*dto.SectionPartResponse, error) {
+func (s *sectionPartService) UpdateSteps(userID uint, isAdmin bool, partID uint, req dto.UpdateStepsRequest) (*dto.SectionPartResponse, error) {
 	part, err := s.partRepo.FindByIDWithSlots(partID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -102,8 +102,9 @@ func (s *sectionPartService) UpdateSteps(userID uint, partID uint, req dto.Updat
 		}
 		return nil, err
 	}
-	if song.IsSystemTemplate || song.UserID == nil || *song.UserID != userID {
-		return nil, ErrForbidden // mutasi template/user lain dilarang
+	// Template → hanya admin; song user → hanya pemiliknya (FR-ROLE).
+	if !canMutateSong(song, userID, isAdmin) {
+		return nil, ErrForbidden
 	}
 
 	if req.Steps != nil && req.Steps.Set {

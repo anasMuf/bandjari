@@ -30,24 +30,25 @@ type seedEntry struct {
 	part model.Part
 }
 
-// Pemetaan file → part — mengikuti konvensi pemilik produk (dikonfirmasi dari upload):
-// REBANA1=WEDOK, REBANA2=LANANG, REBANA3=GOLONG WEDOK (GL), REBANA4=GOLONG LANANG (GW).
-// Nama mengandung "Tak"/"Dung" agar auto-attach SoundSlot default (FR-SLOT-09)
-// menemukannya via pencocokan part+label.
+// Pemetaan file → part — susunan asli pemilik produk untuk Song Template
+// "Standar Banjari" (song id 35): REBANA1=WEDOK, REBANA2=LANANG,
+// REBANA3=GW (GOLONG WEDOK), REBANA4=GL (GOLONG LANANG), BASS=DER/DUNG/DUK.
+// Nama sample sama persis dengan label yang dipakai di SoundSlot song template
+// agar seeder song menemukannya via pencocokan nama+part.
 var sampleEntries = []seedEntry{
-	{"WEDOK TEK.wav", "Rebana1 Tak", model.PartRebana1},
-	{"WEDOK DUK.wav", "Rebana1 Duk", model.PartRebana1},
-	{"WEDOK DEP.wav", "Rebana1 Dep", model.PartRebana1},
-	{"LANANG TEK.wav", "Rebana2 Tak", model.PartRebana2},
-	{"LANANG DUK.wav", "Rebana2 Duk", model.PartRebana2},
-	{"LANANG DEP.wav", "Rebana2 Dep", model.PartRebana2},
-	{"GL TEK.wav", "Rebana3 Tak", model.PartRebana3},
-	{"GL DUK.wav", "Rebana3 Duk", model.PartRebana3},
-	{"GW TEK.wav", "Rebana4 Tak", model.PartRebana4},
-	{"GW DUK.wav", "Rebana4 Duk", model.PartRebana4},
-	{"BASS DER.wav", "Bass Tak", model.PartBass},
-	{"BASS DUNG.wav", "Bass Dung", model.PartBass},
-	{"BASS DUK.wav", "Bass Duk", model.PartBass},
+	{"WEDOK TEK.wav", "WEDOK TEK", model.PartRebana1},
+	{"WEDOK DUK.wav", "WEDOK DUK", model.PartRebana1},
+	{"WEDOK DEP.wav", "WEDOK DEP", model.PartRebana1},
+	{"LANANG TEK.wav", "LANANG TEK", model.PartRebana2},
+	{"LANANG DUK.wav", "LANANG DUK", model.PartRebana2},
+	{"LANANG DEP.wav", "LANANG DEP", model.PartRebana2},
+	{"GW TEK.wav", "GW TEK", model.PartRebana3},
+	{"GW DUK.wav", "GW DUK", model.PartRebana3},
+	{"GL TEK.wav", "GL TEK", model.PartRebana4},
+	{"GL DUK.wav", "GL DUK", model.PartRebana4},
+	{"BASS DER.wav", "BASS DER", model.PartBass},
+	{"BASS DUNG.wav", "BASS DUNG", model.PartBass},
+	{"BASS DUK.wav", "BASS DUK", model.PartBass},
 }
 
 func main() {
@@ -56,6 +57,17 @@ func main() {
 
 	config.LoadEnv()
 	db := config.DBInit()
+	// DB baru mungkin belum punya tabel — samakan dengan AutoMigrate main app.
+	if err := db.AutoMigrate(
+		&model.User{},
+		&model.Sample{},
+		&model.Song{},
+		&model.Section{},
+		&model.SectionPart{},
+		&model.SoundSlot{},
+	); err != nil {
+		log.Fatalf("migrate: %v", err)
+	}
 	if err := config.EnsureConstraints(db); err != nil {
 		log.Fatalf("constraint: %v", err)
 	}

@@ -14,6 +14,12 @@ type SectionRepository interface {
 	CountBySongID(songID uint) (int64, error)
 	Save(section *model.Section) error
 	UpdateOrderIndex(id uint, orderIndex int) error
+	// UpdateLoop menimpa nilai loop — diperlukan karena GORM melewatkan nilai
+	// zero (false) saat INSERT (kolom punya default true).
+	UpdateLoop(id uint, loop bool) error
+	// ClearNextTarget mereset section-section yang menjadikan targetID sebagai
+	// tujuan lanjut (next_mode=target) kembali ke mode default (order).
+	ClearNextTarget(targetID uint) error
 	Delete(id uint) error
 	WithTransaction(fn func(repo SectionRepository) error) error
 }
@@ -60,6 +66,16 @@ func (r *sectionRepository) Save(section *model.Section) error {
 
 func (r *sectionRepository) UpdateOrderIndex(id uint, orderIndex int) error {
 	return r.db.Model(&model.Section{}).Where("id = ?", id).Update("order_index", orderIndex).Error
+}
+
+func (r *sectionRepository) ClearNextTarget(targetID uint) error {
+	return r.db.Model(&model.Section{}).
+		Where("next_section_id = ?", targetID).
+		Updates(map[string]interface{}{"next_mode": "order", "next_section_id": nil}).Error
+}
+
+func (r *sectionRepository) UpdateLoop(id uint, loop bool) error {
+	return r.db.Model(&model.Section{}).Where("id = ?", id).Update("loop", loop).Error
 }
 
 func (r *sectionRepository) Delete(id uint) error {

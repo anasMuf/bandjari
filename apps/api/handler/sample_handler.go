@@ -70,17 +70,19 @@ func (h *SampleHandler) ListTemplates(c echo.Context) error {
 
 // UploadSample godoc
 // @Summary      Upload sample
-// @Description  Upload file audio .wav (maks 5MB) sebagai Sample milik user
+// @Description  Upload file audio .wav (maks 5MB). Admin boleh set is_system_template=true untuk membuat Sample Template System.
 // @Tags         samples
 // @Accept       multipart/form-data
 // @Produce      json
 // @Security     ApiKeyAuth
-// @Param        file  formData  file    true  "File audio .wav"
-// @Param        name  formData  string  true  "Nama sample"
-// @Param        part  formData  string  true  "Part (rebana1-4, bass)"
+// @Param        file                formData  file    true  "File audio .wav"
+// @Param        name                formData  string  true  "Nama sample"
+// @Param        part                formData  string  true  "Part (rebana1-4, bass)"
+// @Param        is_system_template  formData  bool    false "true = Sample Template System (hanya admin)"
 // @Success      201   {object}  dto.SuccessResponse
 // @Failure      400   {object}  dto.ErrorResponse
 // @Failure      401   {object}  dto.ErrorResponse
+// @Failure      403   {object}  dto.ErrorResponse
 // @Failure      413   {object}  dto.ErrorResponse
 // @Failure      415   {object}  dto.ErrorResponse
 // @Router       /samples [post]
@@ -108,7 +110,7 @@ func (h *SampleHandler) UploadSample(c echo.Context) error {
 	}
 
 	userID := utility.GetCurrentUserID(c)
-	sample, err := h.sampleService.Upload(*userID, part, name, data)
+	sample, err := h.sampleService.Upload(*userID, utility.IsAdmin(c), c.FormValue("is_system_template") == "true", part, name, data)
 	if err != nil {
 		return mapServiceError(err)
 	}
@@ -143,7 +145,7 @@ func (h *SampleHandler) RenameSample(c echo.Context) error {
 		return err
 	}
 	userID := utility.GetCurrentUserID(c)
-	sample, err := h.sampleService.Rename(*userID, sampleID, req.Name)
+	sample, err := h.sampleService.Rename(*userID, utility.IsAdmin(c), sampleID, req.Name)
 	if err != nil {
 		return mapServiceError(err)
 	}
@@ -170,7 +172,7 @@ func (h *SampleHandler) DeleteSample(c echo.Context) error {
 		return err
 	}
 	userID := utility.GetCurrentUserID(c)
-	if err := h.sampleService.Delete(*userID, sampleID); err != nil {
+	if err := h.sampleService.Delete(*userID, utility.IsAdmin(c), sampleID); err != nil {
 		return mapServiceError(err)
 	}
 	return c.JSON(http.StatusOK, dto.SuccessResponse{Message: "Sample deleted successfully"})

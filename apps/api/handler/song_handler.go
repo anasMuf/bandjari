@@ -82,7 +82,7 @@ func (h *SongHandler) CreateSong(c echo.Context) error {
 		return err
 	}
 	userID := utility.GetCurrentUserID(c)
-	song, err := h.songService.Create(*userID, req)
+	song, err := h.songService.Create(*userID, utility.IsAdmin(c), req)
 	if err != nil {
 		return mapServiceError(err)
 	}
@@ -141,7 +141,7 @@ func (h *SongHandler) UpdateSong(c echo.Context) error {
 		return err
 	}
 	userID := utility.GetCurrentUserID(c)
-	song, err := h.songService.Update(*userID, songID, req)
+	song, err := h.songService.Update(*userID, utility.IsAdmin(c), songID, req)
 	if err != nil {
 		return mapServiceError(err)
 	}
@@ -167,7 +167,7 @@ func (h *SongHandler) DeleteSong(c echo.Context) error {
 		return err
 	}
 	userID := utility.GetCurrentUserID(c)
-	if err := h.songService.Delete(*userID, songID); err != nil {
+	if err := h.songService.Delete(*userID, utility.IsAdmin(c), songID); err != nil {
 		return mapServiceError(err)
 	}
 	return c.JSON(http.StatusOK, dto.SuccessResponse{Message: "Song deleted successfully"})

@@ -10,11 +10,11 @@ import (
 )
 
 type SectionService interface {
-	Create(userID uint, songID uint, req dto.CreateSectionRequest) (*dto.SectionResponse, error)
-	Update(userID uint, sectionID uint, req dto.UpdateSectionRequest) (*dto.SectionResponse, error)
-	Reorder(userID uint, sectionID uint, newIndex int) ([]dto.SectionResponse, error)
-	Delete(userID uint, sectionID uint) error
-	Duplicate(userID uint, sectionID uint) (*dto.SectionResponse, error)
+	Create(userID uint, isAdmin bool, songID uint, req dto.CreateSectionRequest) (*dto.SectionResponse, error)
+	Update(userID uint, isAdmin bool, sectionID uint, req dto.UpdateSectionRequest) (*dto.SectionResponse, error)
+	Reorder(userID uint, isAdmin bool, sectionID uint, newIndex int) ([]dto.SectionResponse, error)
+	Delete(userID uint, isAdmin bool, sectionID uint) error
+	Duplicate(userID uint, isAdmin bool, sectionID uint) (*dto.SectionResponse, error)
 }
 
 type sectionService struct {
@@ -31,11 +31,14 @@ func NewSectionService(sectionRepo repository.SectionRepository, songRepo reposi
 
 func toSectionResponse(section *model.Section) *dto.SectionResponse {
 	res := &dto.SectionResponse{
-		ID:          section.ID,
-		SongID:      section.SongID,
-		Name:        section.Name,
-		OrderIndex:  section.OrderIndex,
-		BpmOverride: section.BpmOverride,
+		ID:            section.ID,
+		SongID:        section.SongID,
+		Name:          section.Name,
+		OrderIndex:    section.OrderIndex,
+		BpmOverride:   section.BpmOverride,
+		Loop:          section.Loop,
+		NextMode:      section.NextMode,
+		NextSectionID: section.NextSectionID,
 		// Selalu [] (bukan null) — konsisten dengan kontrak SoundSlots.
 		Parts: make([]dto.SectionPartResponse, 0),
 	}
@@ -45,16 +48,17 @@ func toSectionResponse(section *model.Section) *dto.SectionResponse {
 	return res
 }
 
-// guardSongMutation menerapkan aturan akses TDD 6.8: resource bertingkat
-// (Section) mewarisi status akses dari Song induknya.
-func (s *sectionService) guardSongMutation(song *model.Song, userID uint) error {
-	if song.IsSystemTemplate || song.UserID == nil || *song.UserID != userID {
+// guardSongMutation menerapkan aturan akses TDD 6.8 + FR-ROLE: resource
+// bertingkat (Section) mewarisi status akses dari Song induknya — template
+// hanya admin, song user hanya pemiliknya.
+func (s *sectionService) guardSongMutation(song *model.Song, userID uint, isAdmin bool) error {
+	if !canMutateSong(song, userID, isAdmin) {
 		return ErrForbidden
 	}
 	return nil
 }
 
-func (s *sectionService) loadGuardedSection(sectionID uint, userID uint) (*model.Section, error) {
+func (s *sectionService) loadGuardedSection(sectionID uint, userID uint, isAdmin bool) (*model.Section, error) {
 	section, err := s.sectionRepo.FindByID(sectionID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -69,7 +73,7 @@ func (s *sectionService) loadGuardedSection(sectionID uint, userID uint) (*model
 		}
 		return nil, err
 	}
-	if err := s.guardSongMutation(song, userID); err != nil {
+	if err := s.guardSongMutation(song, userID, isAdmin); err != nil {
 		return nil, err
 	}
 	return section, nil
@@ -82,7 +86,7 @@ func (s *sectionService) loadGuardedSection(sectionID uint, userID uint) (*model
 // jenis bunyi (SoundSlot) dibuat manual oleh user lewat "+ Tambah Bunyi"
 // (FR-SLOT-01). Pembuatan slot default + auto-attach Sample Template System
 // (FR-SLOT-09 / AC-10) ditunda sampai susunan standar final.
-func (s *sectionService) Create(userID uint, songID uint, req dto.CreateSectionRequest) (*dto.SectionResponse, error) {
+func (s *sectionService) Create(userID uint, isAdmin bool, songID uint, req dto.CreateSectionRequest) (*dto.SectionResponse, error) {
 	song, err := s.songRepo.FindByID(songID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -90,7 +94,7 @@ func (s *sectionService) Create(userID uint, songID uint, req dto.CreateSectionR
 		}
 		return nil, err
 	}
-	if err := s.guardSongMutation(song, userID); err != nil {
+	if err := s.guardSongMutation(song, userID, isAdmin); err != nil {
 		return nil, err
 	}
 
@@ -103,6 +107,10 @@ func (s *sectionService) Create(userID uint, songID uint, req dto.CreateSectionR
 		SongID:     songID,
 		Name:       req.Name,
 		OrderIndex: int(count),
+		// Default: section diulang terus. User bisa set Loop=false (sekali lalu
+		// lanjut otomatis) lewat Update.
+		Loop:     true,
+		NextMode: string(model.NextModeOrder),
 	}
 	for _, part := range model.AllParts {
 		section.Parts = append(section.Parts, model.SectionPart{Part: part})
@@ -114,8 +122,8 @@ func (s *sectionService) Create(userID uint, songID uint, req dto.CreateSectionR
 	return toSectionResponse(section), nil
 }
 
-func (s *sectionService) Update(userID uint, sectionID uint, req dto.UpdateSectionRequest) (*dto.SectionResponse, error) {
-	section, err := s.loadGuardedSection(sectionID, userID)
+func (s *sectionService) Update(userID uint, isAdmin bool, sectionID uint, req dto.UpdateSectionRequest) (*dto.SectionResponse, error) {
+	section, err := s.loadGuardedSection(sectionID, userID, isAdmin)
 	if err != nil {
 		return nil, err
 	}
@@ -129,6 +137,34 @@ func (s *sectionService) Update(userID uint, sectionID uint, req dto.UpdateSecti
 		}
 		section.BpmOverride = req.BpmOverride.Value
 	}
+	if req.Loop != nil {
+		// false = mainkan sekali lalu lanjut sesuai next_mode.
+		section.Loop = *req.Loop
+	}
+	if req.NextSectionID != nil && req.NextMode == nil {
+		// next_section_id hanya bermakna bersama next_mode=target.
+		return nil, ErrBadRequest
+	}
+	if req.NextMode != nil {
+		switch model.NextMode(*req.NextMode) {
+		case model.NextModeOrder, model.NextModeEnd:
+			// Mode ini tidak butuh target; kosongkan target bila ada.
+			section.NextMode = *req.NextMode
+			section.NextSectionID = nil
+		case model.NextModeTarget:
+			if req.NextSectionID == nil || *req.NextSectionID == sectionID {
+				return nil, ErrBadRequest
+			}
+			target, err := s.sectionRepo.FindByID(*req.NextSectionID)
+			if err != nil || target.SongID != section.SongID {
+				return nil, ErrBadRequest
+			}
+			section.NextMode = *req.NextMode
+			section.NextSectionID = req.NextSectionID
+		default:
+			return nil, ErrBadRequest
+		}
+	}
 
 	if err := s.sectionRepo.Save(section); err != nil {
 		return nil, err
@@ -138,8 +174,8 @@ func (s *sectionService) Update(userID uint, sectionID uint, req dto.UpdateSecti
 
 // Reorder memindahkan Section ke posisi baru dan menormalkan ulang
 // order_index seluruh Section dalam Song (transaksional) — FR-SEC-04.
-func (s *sectionService) Reorder(userID uint, sectionID uint, newIndex int) ([]dto.SectionResponse, error) {
-	section, err := s.loadGuardedSection(sectionID, userID)
+func (s *sectionService) Reorder(userID uint, isAdmin bool, sectionID uint, newIndex int) ([]dto.SectionResponse, error) {
+	section, err := s.loadGuardedSection(sectionID, userID, isAdmin)
 	if err != nil {
 		return nil, err
 	}
@@ -197,8 +233,13 @@ func (s *sectionService) Reorder(userID uint, sectionID uint, newIndex int) ([]d
 	return res, nil
 }
 
-func (s *sectionService) Delete(userID uint, sectionID uint) error {
-	if _, err := s.loadGuardedSection(sectionID, userID); err != nil {
+func (s *sectionService) Delete(userID uint, isAdmin bool, sectionID uint) error {
+	if _, err := s.loadGuardedSection(sectionID, userID, isAdmin); err != nil {
+		return err
+	}
+	// Section lain yang menjadikan section ini tujuan lanjut (next_mode=target)
+	// dikembalikan ke mode default "order" agar tidak menunjuk section terhapus.
+	if err := s.sectionRepo.ClearNextTarget(sectionID); err != nil {
 		return err
 	}
 	return s.sectionRepo.Delete(sectionID)
@@ -206,8 +247,8 @@ func (s *sectionService) Delete(userID uint, sectionID uint) error {
 
 // Duplicate menyalin Section (beserta SectionPart & SoundSlot) di akhir
 // urutan Song yang sama — FR-SEC-07.
-func (s *sectionService) Duplicate(userID uint, sectionID uint) (*dto.SectionResponse, error) {
-	section, err := s.loadGuardedSection(sectionID, userID)
+func (s *sectionService) Duplicate(userID uint, isAdmin bool, sectionID uint) (*dto.SectionResponse, error) {
+	section, err := s.loadGuardedSection(sectionID, userID, isAdmin)
 	if err != nil {
 		return nil, err
 	}
@@ -223,10 +264,13 @@ func (s *sectionService) Duplicate(userID uint, sectionID uint) (*dto.SectionRes
 	}
 
 	copied := &model.Section{
-		SongID:      section.SongID,
-		Name:        fmt.Sprintf("%s (Salinan)", section.Name),
-		OrderIndex:  int(count),
-		BpmOverride: section.BpmOverride,
+		SongID:        section.SongID,
+		Name:          fmt.Sprintf("%s (Salinan)", section.Name),
+		OrderIndex:    int(count),
+		BpmOverride:   section.BpmOverride,
+		Loop:          section.Loop,
+		NextMode:      section.NextMode,
+		NextSectionID: section.NextSectionID, // target tetap valid (song yang sama)
 	}
 	for _, part := range source.Parts {
 		newPart := model.SectionPart{
@@ -246,6 +290,13 @@ func (s *sectionService) Duplicate(userID uint, sectionID uint) (*dto.SectionRes
 
 	if err := s.sectionRepo.Create(copied); err != nil {
 		return nil, err
+	}
+	if !copied.Loop {
+		// GORM melewatkan nilai zero (false) saat INSERT — pastikan loop=false
+		// benar-benar tersimpan (kolom punya default true).
+		if err := s.sectionRepo.UpdateLoop(copied.ID, false); err != nil {
+			return nil, err
+		}
 	}
 	return toSectionResponse(copied), nil
 }

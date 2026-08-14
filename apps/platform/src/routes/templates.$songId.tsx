@@ -30,7 +30,7 @@ function PublicSongViewPage() {
   const { songId } = Route.useParams()
   const id = Number(songId)
   const songQuery = useGetSongsId(id)
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, isAdmin } = useAuth()
   const { addToast } = useToast()
   const duplicateMutation = usePostSongsIdDuplicate()
   const [showPrompt, setShowPrompt] = useState(false)
@@ -106,27 +106,23 @@ function PublicSongViewPage() {
         banner={
           <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm">
             <p className="flex flex-wrap items-center gap-2">
-              <span className="font-semibold text-amber-800">🔒 Mode Lihat Saja</span>
-              <span className="text-amber-800">
-                — Kamu sedang melihat Song Template System{' '}
-                <span className="font-semibold">{song.name}</span>. Kontrol edit dinonaktifkan.
+              <span className="font-semibold text-amber-800">
+                {isAdmin ? '🛠 Mode Admin' : '🔒 Mode Lihat Saja'}
               </span>
-              {isAuthenticated ? (
+              <span className="text-amber-800">
+                {isAdmin
+                  ? `— Kamu mengelola Song Template System ${song.name}. Perubahan langsung tersimpan ke template.`
+                  : `— Kamu sedang melihat Song Template System ${song.name}. Kontrol edit dinonaktifkan.`}
+              </span>
+              {isAuthenticated && (
                 <Button type="button" size="sm" onClick={handleDuplicate} disabled={duplicateMutation.isPending}>
                   Duplikasi ke Song Saya
                 </Button>
-              ) : (
-                <Link
-                  to="/login"
-                  className="inline-flex items-center justify-center rounded-md bg-brand-700 px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-brand-600"
-                >
-                  Login untuk Edit
-                </Link>
               )}
             </p>
           </div>
         }
-        readOnly
+        readOnly={!isAdmin}
         onEditAttempt={() => setShowPrompt(true)}
         onChanged={() => songQuery.refetch()}
       />

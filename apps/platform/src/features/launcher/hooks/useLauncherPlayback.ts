@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { getSamplesIdPlaybackUrl } from '../../../api/endpoints/samples/samples';
 import { AudioBufferCache } from '../engine/audio-buffer-cache';
 import { Scheduler } from '../engine/scheduler';
-import { SectionPlayer } from '../engine/section-player';
+import { SectionPlayer, type NextMode, type SectionDefinition } from '../engine/section-player';
 import { excludeMutedParts, type ScheduledPart } from '../engine/scheduling-math';
 import { normalizeStepsToGrid } from '../../../lib/steps';
 
@@ -23,6 +23,12 @@ export interface LauncherSection {
   name: string;
   order_index: number;
   bpm_override: number | null;
+  /** false = mainkan sekali, lalu lanjut sesuai next_mode. */
+  loop: boolean;
+  /** 'order' (default) | 'target' (ke next_section_id) | 'end' (berhenti/penutup). */
+  next_mode?: string;
+  /** Tujuan saat next_mode='target'. */
+  next_section_id?: number | null;
   parts: LauncherPart[];
 }
 
@@ -45,6 +51,7 @@ export function useLauncherPlayback(songBpm: number) {
   const workerRef = useRef<Worker | null>(null);
   const buffersBySection = useRef<Map<number, ScheduledPart[]>>(new Map());
   const activeSectionRef = useRef<LauncherSection | null>(null);
+  const sectionsRef = useRef<LauncherSection[]>([]);
   const mutedRef = useRef<Set<string>>(mutedParts);
 
   const syncState = useCallback(() => {
@@ -65,6 +72,22 @@ export function useLauncherPlayback(songBpm: number) {
     const base = buffersBySection.current.get(section.id) ?? [];
     return excludeMutedParts(base, muted);
   }, []);
+
+  /** Normalisasi nilai next_mode dari API menjadi union NextMode engine. */
+  const toNextMode = (mode: string | undefined): NextMode =>
+    mode === 'target' || mode === 'end' ? mode : 'order';
+
+  /** Bangun definisi playback satu section (parts + bpm + perilaku loop). */
+  const buildDefinition = useCallback(
+    (section: LauncherSection, muted: Set<string>): SectionDefinition => ({
+      parts: buildParts(section, muted),
+      bpm: section.bpm_override ?? songBpm,
+      loop: section.loop !== false, // data lama tanpa field loop → diulang
+      nextMode: toNextMode(section.next_mode),
+      nextTargetId: section.next_section_id ?? undefined,
+    }),
+    [buildParts, songBpm],
+  );
 
   /** Prefetch + decode seluruh sample yang direferensikan song (FR-PLAY-02). */
   const prepare = useCallback(
@@ -115,6 +138,15 @@ export function useLauncherPlayback(songBpm: number) {
         schedulerRef.current = scheduler;
         playerRef.current = player;
 
+        // Urutan + definisi seluruh section — diperlukan untuk auto-lanjut
+        // section "sekali" (loop=false) dan trigger pad.
+        sectionsRef.current = sections;
+        const ordered = [...sections].sort((a, b) => a.order_index - b.order_index);
+        player.setPlaylist(ordered.map((s) => s.id));
+        for (const section of ordered) {
+          player.registerDefinition(section.id, buildDefinition(section, mutedRef.current));
+        }
+
         const worker = new Worker(new URL('../engine/clock.worker.ts', import.meta.url), {
           type: 'module',
         });
@@ -132,7 +164,7 @@ export function useLauncherPlayback(songBpm: number) {
         setError(err instanceof Error ? err.message : 'Gagal menyiapkan playback.');
       }
     },
-    [syncState],
+    [syncState, buildDefinition],
   );
 
   /** Trigger pad Section (quantized bila section lain sedang aktif — FR-PLAY-04). */
@@ -142,13 +174,13 @@ export function useLauncherPlayback(songBpm: number) {
       const ctx = ctxRef.current;
       if (!player || !ctx) return;
       activeSectionRef.current = section;
-      const parts = buildParts(section, mutedRef.current);
-      const bpm = section.bpm_override ?? songBpm;
+      player.registerDefinition(section.id, buildDefinition(section, mutedRef.current));
+      const definition = buildDefinition(section, mutedRef.current);
       void ctx.resume(); // AudioContext boleh dibuat suspended — resume pada gesture
-      player.trigger(section.id, { parts, bpm });
+      player.trigger(section.id, definition);
       syncState();
     },
-    [songBpm, buildParts, syncState],
+    [buildDefinition, syncState],
   );
 
   const stop = useCallback(() => {
@@ -157,7 +189,7 @@ export function useLauncherPlayback(songBpm: number) {
     syncState();
   }, [syncState]);
 
-  /** Mute/unmute satu Part; bila Section aktif, terapkan ulang seketika. */
+  /** Mute/unmute satu Part; definisi semua section diperbarui & section aktif diterapkan ulang. */
   const toggleMute = useCallback(
     (partKey: string) => {
       const next = new Set(mutedRef.current);
@@ -167,14 +199,19 @@ export function useLauncherPlayback(songBpm: number) {
       setMutedParts(next);
 
       const player = playerRef.current;
-      const active = activeSectionRef.current;
-      if (player && active && player.activeSectionId === active.id) {
-        const parts = buildParts(active, next);
-        player.trigger(active.id, { parts, bpm: active.bpm_override ?? songBpm });
+      if (player) {
+        // Perbarui definisi semua section dengan filter mute terbaru.
+        for (const section of sectionsRef.current) {
+          player.registerDefinition(section.id, buildDefinition(section, next));
+        }
+        const active = activeSectionRef.current;
+        if (active && player.activeSectionId === active.id) {
+          player.trigger(active.id, buildDefinition(active, next));
+        }
       }
       syncState();
     },
-    [songBpm, buildParts, syncState],
+    [buildDefinition, syncState],
   );
 
   // Bersihkan worker & context saat unmount.

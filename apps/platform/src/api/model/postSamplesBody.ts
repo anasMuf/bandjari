@@ -13,4 +13,6 @@ export type PostSamplesBody = {
   name: string;
   /** Part (rebana1-4, bass) */
   part: string;
+  /** true = Sample Template System (hanya admin) */
+  is_system_template?: boolean;
 };

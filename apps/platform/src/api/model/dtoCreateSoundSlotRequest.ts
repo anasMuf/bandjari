@@ -7,6 +7,10 @@
  */
 
 export interface DtoCreateSoundSlotRequest {
+  /**
+     * @minLength 1
+     * @maxLength 2
+     */
   key: string;
   /**
      * @minLength 1

@@ -4,6 +4,8 @@ type UserResponse struct {
 	ID    uint   `json:"id"`
 	Name  string `json:"name"`
 	Email string `json:"email"`
+	// Role: "admin" | "user" — admin boleh mengelola data System Template.
+	Role string `json:"role"`
 }
 
 type CreateUserRequest struct {
@@ -19,4 +21,6 @@ type LoginUserRequest struct {
 
 type LoginUserResponse struct {
 	Token string `json:"token"`
+	// Role dipakai frontend untuk menampilkan kontrol admin tanpa menunggu /users.
+	Role string `json:"role"`
 }

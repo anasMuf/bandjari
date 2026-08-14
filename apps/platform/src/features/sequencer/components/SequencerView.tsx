@@ -33,11 +33,11 @@ interface SequencerViewProps {
 }
 
 /** Jumlah langkah yang ditambah/dikurangi lewat kontrol ±8 step (FR-SEQ-03). */
-const STEP_BATCH = 8;
+const STEP_BATCH = 4;
 
 export function SequencerView({ songId, sectionId, sectionName, songBpm, bpmOverride }: SequencerViewProps) {
   const { addToast } = useToast();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isAdmin } = useAuth();
   const partsQuery = useGetSectionsIdParts(sectionId);
   const songQuery = useGetSongsId(songId);
   const saveStepsMutation = usePutSectionPartsId();
@@ -120,8 +120,10 @@ export function SequencerView({ songId, sectionId, sectionName, songBpm, bpmOver
     songResp && 'data' in songResp ? (songResp.data as { bpm?: number; is_system_template?: boolean }) : undefined;
   // Tempo efektif = BPM override Section (AC-9) atau BPM dasar Song.
   const effectiveBpm = bpmOverride ?? songBpm;
-  // Song Template System read-only bagi siapapun (FR-SONG-08); Guest read-only semua (FR-AUTH-06).
-  const readOnly = !isAuthenticated || songData?.is_system_template === true;
+  const isTemplate = songData?.is_system_template === true;
+  // Song Template System read-only bagi non-admin (FR-SONG-08); Guest read-only
+  // semua (FR-AUTH-06); admin boleh mengedit template (FR-ROLE).
+  const readOnly = !isAuthenticated || (isTemplate && !isAdmin);
 
   const dirtyParts = orderedParts.filter((part) => stepsOf(part) !== (part.steps ?? ''));
   const allPartsEmpty = orderedParts.every((part) => part.sound_slots.length === 0);
@@ -166,6 +168,21 @@ export function SequencerView({ songId, sectionId, sectionName, songBpm, bpmOver
         next[part.id] = delta > 0 ? padSteps(current, delta) : trimSteps(current, -delta);
       }
       return next;
+    });
+  };
+
+  /** Bersihkan seluruh kotak step satu Part (termasuk bass) — edit lokal sampai Simpan. */
+  const handleClearPart = (partId: number) => {
+    if (readOnly) {
+      setEditPromptZone('grid');
+      return;
+    }
+    const part = orderedParts.find((p) => p.id === partId);
+    setStepsByPart((prev) => ({ ...prev, [partId]: '' }));
+    addToast({
+      variant: 'info',
+      title: 'Pola dibersihkan',
+      message: `Semua kotak step ${part ? PART_LABELS[part.part] ?? part.part : ''} dikosongkan — klik “Simpan Perubahan” untuk menyimpan.`,
     });
   };
 
@@ -245,11 +262,11 @@ export function SequencerView({ songId, sectionId, sectionName, songBpm, bpmOver
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <Link
-            to={readOnly ? '/templates/$songId' : '/songs/$songId'}
+            to={isTemplate ? '/templates/$songId' : '/songs/$songId'}
             params={{ songId: String(songId) }}
             className="text-sm text-stone-500 hover:text-stone-700"
           >
-            {readOnly ? '← Kembali ke lagu' : '← Kembali ke Section'}
+            {isTemplate ? '← Kembali ke Template' : '← Kembali ke Section'}
           </Link>
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-stone-900">
             Sequencer — Section: {sectionName}
@@ -314,10 +331,10 @@ export function SequencerView({ songId, sectionId, sectionName, songBpm, bpmOver
         </div>
         <div className="flex items-center gap-2">
           <Button type="button" size="sm" variant="secondary" onClick={() => handleBatchSteps(STEP_BATCH)}>
-            + 8 Step
+            + 4 Step
           </Button>
           <Button type="button" size="sm" variant="ghost" onClick={() => handleBatchSteps(-STEP_BATCH)}>
-            − 8 Step
+            − 4 Step
           </Button>
         </div>
       </div>
@@ -357,6 +374,7 @@ export function SequencerView({ songId, sectionId, sectionName, songBpm, bpmOver
           setFocusCreateSignal((n) => n + 1);
           managerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }}
+        onClearPart={handleClearPart}
         readOnly={readOnly}
         onEditAttempt={() => setEditPromptZone('grid')}
         playheadIndex={preview.isPlaying ? preview.stepIndex : null}
@@ -382,7 +400,7 @@ export function SequencerView({ songId, sectionId, sectionName, songBpm, bpmOver
           ▶ Preview Section Ini (Semua Part)
         </Button>
         <Link
-          to={readOnly ? '/templates/$songId' : '/songs/$songId'}
+          to={isTemplate ? '/templates/$songId' : '/songs/$songId'}
           params={{ songId: String(songId) }}
           className="inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-semibold text-stone-700 transition-colors hover:bg-stone-100"
         >

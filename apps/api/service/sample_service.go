@@ -18,11 +18,12 @@ import (
 const sampleSignedURLTTL = 60 * time.Minute
 
 type SampleService interface {
-	Upload(userID uint, part model.Part, name string, data []byte) (*dto.SampleResponse, error)
+	// Upload: isTemplate=true hanya boleh admin (upload Sample Template System).
+	Upload(userID uint, isAdmin bool, isTemplate bool, part model.Part, name string, data []byte) (*dto.SampleResponse, error)
 	List(userID uint, part *model.Part) ([]dto.SampleResponse, error)
 	ListTemplates(part *model.Part) ([]dto.SampleResponse, error)
-	Rename(userID uint, sampleID uint, name string) (*dto.SampleResponse, error)
-	Delete(userID uint, sampleID uint) error
+	Rename(userID uint, isAdmin bool, sampleID uint, name string) (*dto.SampleResponse, error)
+	Delete(userID uint, isAdmin bool, sampleID uint) error
 	PlaybackURL(currentUserID *uint, sampleID uint) (string, error)
 }
 
@@ -47,9 +48,12 @@ func toSampleResponse(sample *model.Sample) *dto.SampleResponse {
 }
 
 // Upload memvalidasi file (.wav ≤5MB — FR-SAMP-06), menyimpannya ke object
-// storage, lalu mencatat metadata sebagai Sample independen milik user
-// (FR-SAMP-01/02/03).
-func (s *sampleService) Upload(userID uint, part model.Part, name string, data []byte) (*dto.SampleResponse, error) {
+// storage, lalu mencatat metadata. isTemplate=true membuat Sample Template
+// System — hanya boleh admin (FR-ROLE).
+func (s *sampleService) Upload(userID uint, isAdmin bool, isTemplate bool, part model.Part, name string, data []byte) (*dto.SampleResponse, error) {
+	if isTemplate && !isAdmin {
+		return nil, ErrForbidden
+	}
 	if !model.IsValidPart(part) {
 		return nil, ErrBadRequest
 	}
@@ -60,18 +64,25 @@ func (s *sampleService) Upload(userID uint, part model.Part, name string, data [
 		return nil, fmt.Errorf("object storage belum dikonfigurasi (STORAGE_ENDPOINT/STORAGE_BUCKET)")
 	}
 
-	key := fmt.Sprintf("samples/%d/%s.wav", userID, uuid.NewString())
+	// Template disimpan di prefix samples/system — konsisten dengan seeder.
+	prefix := fmt.Sprintf("samples/%d", userID)
+	if isTemplate {
+		prefix = "samples/system"
+	}
+	key := fmt.Sprintf("%s/%s.wav", prefix, uuid.NewString())
 	if err := s.storage.Upload(context.Background(), key, bytes.NewReader(data), int64(len(data)), "audio/wav"); err != nil {
 		return nil, err
 	}
 
 	sample := &model.Sample{
-		UserID:           &userID,
-		IsSystemTemplate: false,
+		IsSystemTemplate: isTemplate,
 		Name:             name,
 		ObjectKey:        key,
 		FileSizeBytes:    len(data),
 		Part:             part,
+	}
+	if !isTemplate {
+		sample.UserID = &userID
 	}
 	if err := s.sampleRepo.Create(sample); err != nil {
 		return nil, err
@@ -128,7 +139,7 @@ func fillUsageCounts(sampleRepo repository.SampleRepository, res []dto.SampleRes
 	return res
 }
 
-func (s *sampleService) Rename(userID uint, sampleID uint, name string) (*dto.SampleResponse, error) {
+func (s *sampleService) Rename(userID uint, isAdmin bool, sampleID uint, name string) (*dto.SampleResponse, error) {
 	sample, err := s.sampleRepo.FindByID(sampleID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -136,8 +147,9 @@ func (s *sampleService) Rename(userID uint, sampleID uint, name string) (*dto.Sa
 		}
 		return nil, err
 	}
-	if sample.IsSystemTemplate || sample.UserID == nil || *sample.UserID != userID {
-		return nil, ErrForbidden // FR-SAMP-12 + FR-AUTH-02
+	// Template → hanya admin; sample user → hanya pemiliknya (FR-SAMP-12 + FR-ROLE).
+	if !canMutateSample(sample, userID, isAdmin) {
+		return nil, ErrForbidden
 	}
 	sample.Name = name
 	if err := s.sampleRepo.Save(sample); err != nil {
@@ -147,8 +159,8 @@ func (s *sampleService) Rename(userID uint, sampleID uint, name string) (*dto.Sa
 }
 
 // Delete menolak (409) selama Sample masih direferensikan SoundSlot manapun
-// (FR-SAMP-08), dan menolak (403) Sample Template System (FR-SAMP-12).
-func (s *sampleService) Delete(userID uint, sampleID uint) error {
+// (FR-SAMP-08). Template hanya boleh dihapus admin (FR-SAMP-12 + FR-ROLE).
+func (s *sampleService) Delete(userID uint, isAdmin bool, sampleID uint) error {
 	sample, err := s.sampleRepo.FindByID(sampleID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -156,10 +168,7 @@ func (s *sampleService) Delete(userID uint, sampleID uint) error {
 		}
 		return err
 	}
-	if sample.IsSystemTemplate {
-		return ErrForbidden
-	}
-	if sample.UserID == nil || *sample.UserID != userID {
+	if !canMutateSample(sample, userID, isAdmin) {
 		return ErrForbidden
 	}
 

@@ -5,6 +5,9 @@ import "time"
 type CreateSongRequest struct {
 	Name string `json:"name" validate:"required,min=1,max=255"`
 	Bpm  int16  `json:"bpm" validate:"required,min=20,max=400"`
+	// IsSystemTemplate opsional: true = buat sebagai Song Template System.
+	// Hanya boleh dipakai admin (FR-ROLE).
+	IsSystemTemplate *bool `json:"is_system_template"`
 }
 
 type UpdateSongRequest struct {

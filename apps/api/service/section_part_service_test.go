@@ -43,7 +43,7 @@ func setupPartEnv(t *testing.T, isTemplate bool) (*sectionPartService, uint, *fa
 func TestUpdateSteps_Valid(t *testing.T) {
 	svc, partID, _ := setupPartEnv(t, false)
 	steps := "T,T,D,D"
-	res, err := svc.UpdateSteps(5, partID, dto.UpdateStepsRequest{Steps: &dto.NullableString{Set: true, Value: &steps}})
+	res, err := svc.UpdateSteps(5, false, partID, dto.UpdateStepsRequest{Steps: &dto.NullableString{Set: true, Value: &steps}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +55,7 @@ func TestUpdateSteps_Valid(t *testing.T) {
 func TestUpdateSteps_InvalidCharRejected(t *testing.T) {
 	svc, partID, _ := setupPartEnv(t, false)
 	steps := "T,K,T,K" // K tidak terdaftar
-	_, err := svc.UpdateSteps(5, partID, dto.UpdateStepsRequest{Steps: &dto.NullableString{Set: true, Value: &steps}})
+	_, err := svc.UpdateSteps(5, false, partID, dto.UpdateStepsRequest{Steps: &dto.NullableString{Set: true, Value: &steps}})
 	if !errors.Is(err, ErrBadRequest) {
 		t.Fatalf("err = %v, want ErrBadRequest (FR-SEQ-02)", err)
 	}
@@ -63,7 +63,7 @@ func TestUpdateSteps_InvalidCharRejected(t *testing.T) {
 
 func TestUpdateSteps_NullClears(t *testing.T) {
 	svc, partID, _ := setupPartEnv(t, false)
-	res, err := svc.UpdateSteps(5, partID, dto.UpdateStepsRequest{Steps: &dto.NullableString{Set: true, Value: nil}})
+	res, err := svc.UpdateSteps(5, false, partID, dto.UpdateStepsRequest{Steps: &dto.NullableString{Set: true, Value: nil}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func TestUpdateSteps_NullClears(t *testing.T) {
 func TestUpdateSteps_TemplateSongForbidden(t *testing.T) {
 	svc, partID, _ := setupPartEnv(t, true)
 	steps := "T,T"
-	_, err := svc.UpdateSteps(5, partID, dto.UpdateStepsRequest{Steps: &dto.NullableString{Set: true, Value: &steps}})
+	_, err := svc.UpdateSteps(5, false, partID, dto.UpdateStepsRequest{Steps: &dto.NullableString{Set: true, Value: &steps}})
 	if !errors.Is(err, ErrForbidden) {
 		t.Fatalf("err = %v, want ErrForbidden (FR-SONG-08)", err)
 	}

@@ -17,6 +17,7 @@ import { SectionHeader } from '../../../components/molecules/SectionHeader';
 import { EmptyState } from '../../../components/molecules/EmptyState';
 import { useToast } from '../../../components/molecules/Toast';
 import { ApiError } from '../../../api/mutator/custom-instance';
+import { useAuth } from '../../auth/AuthContext';
 import { PART_LABELS } from '../../sequencer/utils/parts';
 import { sampleNameFromFileName } from '../sample-name';
 
@@ -37,6 +38,7 @@ function partLabel(part: string): string {
 
 export function SampleLibraryView() {
   const { addToast } = useToast();
+  const { isAdmin } = useAuth();
   const [partFilter, setPartFilter] = useState('');
   const samplesQuery = useGetSamples(partFilter ? { part: partFilter } : undefined);
   const templatesQuery = useGetSamplesTemplates(partFilter ? { part: partFilter } : undefined);
@@ -47,6 +49,8 @@ export function SampleLibraryView() {
   const [uploadOpen, setUploadOpen] = useState(false);
   // Satu baris per file: nama prefill dari nama file (tetap bisa diedit) + Part per file.
   const [pending, setPending] = useState<Array<{ file: File; name: string; part: string }>>([]);
+  // Admin: seluruh batch diunggah sebagai Sample Template System (FR-ROLE).
+  const [asTemplate, setAsTemplate] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
   const [renaming, setRenaming] = useState<SampleItem | null>(null);
   const [renameValue, setRenameValue] = useState('');
@@ -86,7 +90,12 @@ export function SampleLibraryView() {
       const name = item.name.trim() || sampleNameFromFileName(item.file.name);
       try {
         await uploadMutation.mutateAsync({
-          data: { file: item.file, name, part: item.part },
+          data: {
+            file: item.file,
+            name,
+            part: item.part,
+            is_system_template: asTemplate || undefined,
+          },
         });
         ok++;
       } catch (error) {
@@ -98,7 +107,12 @@ export function SampleLibraryView() {
     }
 
     if (failed.length === 0) {
-      notify('Sample diunggah', `${ok} file berhasil disimpan sebagai Sample Saya.`);
+      notify(
+        'Sample diunggah',
+        asTemplate
+          ? `${ok} file berhasil disimpan sebagai Sample Template System.`
+          : `${ok} file berhasil disimpan sebagai Sample Saya.`,
+      );
     } else {
       addToast({
         variant: 'error',
@@ -292,6 +306,17 @@ export function SampleLibraryView() {
             Jenis bunyi (Tak/Dung/Duk/dst) tidak ditentukan di sini — akan dipilih saat Sample ini
             dipasangkan ke sebuah SoundSlot di Sequencer Mode.
           </p>
+          {isAdmin && (
+            <label className="mt-3 flex items-center gap-2 text-sm text-stone-700 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={asTemplate}
+                onChange={(e) => setAsTemplate(e.target.checked)}
+                className="size-4 rounded border-stone-300 accent-brand-700"
+              />
+              Unggah sebagai Sample Template System (bawaan platform — hanya admin yang bisa mengelola)
+            </label>
+          )}
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <Button
               type="submit"
@@ -351,7 +376,11 @@ export function SampleLibraryView() {
               Sample Bawaan (Template System)
             </span>
           }
-          subtitle="Disediakan platform, tersedia untuk semua pengguna. Read-only — tidak bisa diedit/dihapus. Otomatis terpasang sebagai default saat kamu membuat Section baru."
+          subtitle={
+            isAdmin
+              ? 'Disediakan platform, tersedia untuk semua pengguna. Sebagai admin, kamu bisa mengubah nama & menghapus sample bawaan.'
+              : 'Disediakan platform, tersedia untuk semua pengguna. Read-only — tidak bisa diedit/dihapus.'
+          }
         />
 
         {templatesQuery.isLoading ? (
@@ -380,6 +409,29 @@ export function SampleLibraryView() {
                   <Button type="button" variant="secondary" size="sm" onClick={() => handlePreview(sample)}>
                     ▶ Preview
                   </Button>
+                  {isAdmin && (
+                    <>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setRenaming(sample);
+                          setRenameValue(sample.name);
+                        }}
+                      >
+                        Ubah Nama
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="danger"
+                        size="sm"
+                        onClick={() => setDeleting(sample)}
+                      >
+                        Hapus
+                      </Button>
+                    </>
+                  )}
                 </div>
               </article>
             ))}

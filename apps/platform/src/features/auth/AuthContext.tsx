@@ -6,12 +6,16 @@ export interface User {
   id: number;
   name: string;
   email: string;
+  /** Role: "admin" | "user" — admin boleh mengelola System Template. */
+  role: string;
 }
 
 interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   user: User | null;
+  /** true bila user ber-role admin (FR-ROLE). */
+  isAdmin: boolean;
   login: (token: string) => void;
   logout: () => void;
 }
@@ -72,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!token && !!user && !isError,
         isLoading: !!token && isLoading,
         user,
+        isAdmin: user?.role === 'admin',
         login,
         logout,
       }}

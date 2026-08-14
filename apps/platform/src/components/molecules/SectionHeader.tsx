@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 interface SectionHeaderProps {
-  title: string;
+  title: ReactNode;
   subtitle?: string;
   /** Elemen tambahan di kanan (badge, hint, aksi kecil). */
   aside?: ReactNode;

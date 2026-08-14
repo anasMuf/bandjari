@@ -12,6 +12,9 @@ export interface DtoCreateSongRequest {
      * @maximum 400
      */
   bpm: number;
+  /** IsSystemTemplate opsional: true = buat sebagai Song Template System.
+  Hanya boleh dipakai admin (FR-ROLE). */
+  is_system_template?: boolean;
   /**
      * @minLength 1
      * @maxLength 255

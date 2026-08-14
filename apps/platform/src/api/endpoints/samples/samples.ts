@@ -187,6 +187,11 @@ export type postSamplesResponse401 = {
   status: 401
 }
 
+export type postSamplesResponse403 = {
+  data: DtoErrorResponse
+  status: 403
+}
+
 export type postSamplesResponse413 = {
   data: DtoErrorResponse
   status: 413
@@ -200,7 +205,7 @@ export type postSamplesResponse415 = {
 export type postSamplesResponseSuccess = (postSamplesResponse201) & {
   headers: Headers;
 };
-export type postSamplesResponseError = (postSamplesResponse400 | postSamplesResponse401 | postSamplesResponse413 | postSamplesResponse415) & {
+export type postSamplesResponseError = (postSamplesResponse400 | postSamplesResponse401 | postSamplesResponse403 | postSamplesResponse413 | postSamplesResponse415) & {
   headers: Headers;
 };
 
@@ -215,7 +220,7 @@ export const getPostSamplesUrl = () => {
 }
 
 /**
- * Upload file audio .wav (maks 5MB) sebagai Sample milik user
+ * Upload file audio .wav (maks 5MB). Admin boleh set is_system_template=true untuk membuat Sample Template System.
  * @summary Upload sample
  */
 export const postSamples = async (postSamplesBody?: PostSamplesBody, options?: RequestInit): Promise<postSamplesResponse> => {
@@ -228,6 +233,9 @@ if(postSamplesBody?.name !== undefined) {
  }
 if(postSamplesBody?.part !== undefined) {
  formData.append(`part`, postSamplesBody.part);
+ }
+if(postSamplesBody?.is_system_template !== undefined) {
+ formData.append(`is_system_template`, postSamplesBody.is_system_template.toString())
  }
 
   return customInstance<postSamplesResponse>(getPostSamplesUrl(),

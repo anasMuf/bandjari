@@ -38,13 +38,16 @@ func extractToken(c echo.Context) (string, bool) {
 	return strings.TrimPrefix(authHeader, "Bearer "), true
 }
 
-// setUserContext menulis user_id & email dari claims ke context echo.
+// setUserContext menulis user_id, email & role dari claims ke context echo.
 func setUserContext(c echo.Context, claims jwt.MapClaims) {
 	if raw, ok := claims["user_id"].(float64); ok && raw > 0 { // numeric JSON decode jadi float64
 		c.Set("user_id", uint(raw))
 	}
 	if email, ok := claims["email"].(string); ok {
 		c.Set("email", email)
+	}
+	if role, ok := claims["role"].(string); ok {
+		c.Set("role", role)
 	}
 }
 

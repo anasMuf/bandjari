@@ -15,6 +15,8 @@ interface SectionDetailPanelProps {
   songId: number;
   songBpm: number;
   section: SectionItem;
+  /** Seluruh Section dalam Song (terurut) — untuk memilih tujuan lanjut (next target). */
+  sections: SectionItem[];
   onChanged: () => void;
   /** Mode lihat-saja (Guest / Song Template): aksi edit memicu onEditAttempt. */
   readOnly?: boolean;
@@ -29,6 +31,7 @@ export function SectionDetailPanel({
   songId,
   songBpm,
   section,
+  sections,
   onChanged,
   readOnly = false,
   onEditAttempt,
@@ -98,6 +101,52 @@ export function SectionDetailPanel({
           onChanged();
         },
         onError: (error) => showError(error, 'Gagal menyimpan BPM override'),
+      },
+    );
+  };
+
+  /** Atur perilaku pemutaran Section di Launcher: diulang (loop) atau sekali (auto-lanjut). */
+  const applyLoop = (loop: boolean) => {
+    if (!guardEdit()) return;
+    updateMutation.mutate(
+      { id: section.id, data: { loop } },
+      {
+        onSuccess: () => {
+          addToast({
+            variant: 'success',
+            title: loop ? 'Section akan diulang' : 'Section dimainkan sekali',
+            message: loop
+              ? 'Section terus diulang (loop) saat diputar di Launcher Mode.'
+              : 'Section dimainkan sekali, lalu lanjut sesuai tujuan yang dipilih di bawah.',
+          });
+          onChanged();
+        },
+        onError: (error) => showError(error, 'Gagal menyimpan perilaku pemutaran'),
+      },
+    );
+  };
+
+  /** Atur tujuan lanjut setelah Section "sekali" selesai. */
+  const applyNextMode = (mode: 'order' | 'target' | 'end', targetId?: number) => {
+    if (!guardEdit()) return;
+    const data: { next_mode: 'order' | 'target' | 'end'; next_section_id?: number } = {
+      next_mode: mode,
+    };
+    if (mode === 'target') data.next_section_id = targetId;
+    const message =
+      mode === 'end'
+        ? 'Section ini menjadi penutup — playback berhenti setelah section selesai.'
+        : mode === 'target'
+          ? 'Setelah selesai, playback lanjut ke Section yang kamu pilih.'
+          : 'Setelah selesai, playback lanjut ke Section berikutnya dalam urutan.';
+    updateMutation.mutate(
+      { id: section.id, data },
+      {
+        onSuccess: () => {
+          addToast({ variant: 'success', title: 'Tujuan lanjut diperbarui', message });
+          onChanged();
+        },
+        onError: (error) => showError(error, 'Gagal menyimpan tujuan lanjut'),
       },
     );
   };
@@ -221,6 +270,140 @@ export function SectionDetailPanel({
           </span>
         </div>
       </div>
+
+      <div className="mt-4 rounded-md bg-stone-50 p-4">
+        <h3 className="text-sm font-semibold text-stone-900">Perilaku Pemutaran (Launcher Mode)</h3>
+        <fieldset className="mt-2 flex flex-wrap items-center gap-2">
+          <legend className="sr-only">Perilaku pemutaran section</legend>
+          <button
+            type="button"
+            aria-pressed={section.loop}
+            onClick={() => applyLoop(true)}
+            disabled={updateMutation.isPending}
+            className={[
+              'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ring-1 ring-inset transition-colors cursor-pointer',
+              section.loop
+                ? 'bg-brand-700 text-white ring-brand-700'
+                : 'bg-white text-stone-700 ring-stone-300 hover:bg-stone-50',
+              updateMutation.isPending && 'opacity-60 cursor-not-allowed',
+            ].join(' ')}
+          >
+            ⟳ Diulang (loop)
+          </button>
+          <button
+            type="button"
+            aria-pressed={!section.loop}
+            onClick={() => applyLoop(false)}
+            disabled={updateMutation.isPending}
+            className={[
+              'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ring-1 ring-inset transition-colors cursor-pointer',
+              !section.loop
+                ? 'bg-brand-700 text-white ring-brand-700'
+                : 'bg-white text-stone-700 ring-stone-300 hover:bg-stone-50',
+              updateMutation.isPending && 'opacity-60 cursor-not-allowed',
+            ].join(' ')}
+          >
+            → Sekali (lanjut otomatis)
+          </button>
+        </fieldset>
+        <p className="mt-2 text-xs text-stone-500">
+          {section.loop
+            ? 'Section terus diulang saat diputar di Launcher Mode — cocok untuk pola dasar yang ingin dimainkan berulang.'
+            : 'Section dimainkan sekali, lalu lanjut sesuai tujuan yang kamu pilih di bawah.'}
+        </p>
+      </div>
+
+      {!section.loop && (
+        <div className="mt-4 rounded-md bg-stone-50 p-4">
+          <h3 className="text-sm font-semibold text-stone-900">Tujuan Lanjut (setelah Section selesai)</h3>
+          <p className="mt-1 text-xs text-stone-500">
+            Berlaku saat Section ini dimainkan di Launcher Mode. Belum dipilih = lanjut ke Section berikutnya.
+          </p>
+          <fieldset className="mt-2 flex flex-wrap items-center gap-2">
+            <legend className="sr-only">Tujuan lanjut section</legend>
+            <button
+              type="button"
+              aria-pressed={(section.next_mode ?? 'order') === 'order'}
+              onClick={() => applyNextMode('order')}
+              disabled={updateMutation.isPending}
+              className={[
+                'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ring-1 ring-inset transition-colors cursor-pointer',
+                (section.next_mode ?? 'order') === 'order'
+                  ? 'bg-brand-700 text-white ring-brand-700'
+                  : 'bg-white text-stone-700 ring-stone-300 hover:bg-stone-50',
+                updateMutation.isPending && 'opacity-60 cursor-not-allowed',
+              ].join(' ')}
+            >
+              ↓ Berikutnya (urutan)
+            </button>
+            <button
+              type="button"
+              aria-pressed={(section.next_mode ?? 'order') === 'target'}
+              onClick={() => {
+                const other = sections.find((s) => s.id !== section.id);
+                if (!other) return;
+                applyNextMode('target', section.next_section_id ?? other.id);
+              }}
+              disabled={updateMutation.isPending || sections.length < 2}
+              className={[
+                'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ring-1 ring-inset transition-colors cursor-pointer',
+                (section.next_mode ?? 'order') === 'target'
+                  ? 'bg-brand-700 text-white ring-brand-700'
+                  : 'bg-white text-stone-700 ring-stone-300 hover:bg-stone-50',
+                (updateMutation.isPending || sections.length < 2) && 'opacity-60 cursor-not-allowed',
+              ].join(' ')}
+            >
+              → Section terpilih
+            </button>
+            <button
+              type="button"
+              aria-pressed={(section.next_mode ?? 'order') === 'end'}
+              onClick={() => applyNextMode('end')}
+              disabled={updateMutation.isPending}
+              className={[
+                'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ring-1 ring-inset transition-colors cursor-pointer',
+                (section.next_mode ?? 'order') === 'end'
+                  ? 'bg-brand-700 text-white ring-brand-700'
+                  : 'bg-white text-stone-700 ring-stone-300 hover:bg-stone-50',
+                updateMutation.isPending && 'opacity-60 cursor-not-allowed',
+              ].join(' ')}
+            >
+              ■ Ending (berhenti)
+            </button>
+          </fieldset>
+
+          {(section.next_mode ?? 'order') === 'target' && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <label htmlFor="next-target" className="text-sm font-medium text-stone-900">
+                Lanjut ke:
+              </label>
+              <select
+                id="next-target"
+                value={section.next_section_id ?? undefined}
+                onChange={(e) => applyNextMode('target', Number(e.target.value))}
+                disabled={updateMutation.isPending}
+                className="rounded-md border-0 bg-white px-3 py-2 text-sm text-stone-900 outline-1 -outline-offset-1 outline-stone-300 focus:outline-2 focus:-outline-offset-2 focus:outline-brand-700"
+              >
+                {sections
+                  .filter((s) => s.id !== section.id)
+                  .map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          )}
+
+          <p className="mt-2 text-xs text-stone-500">
+            {(section.next_mode ?? 'order') === 'end'
+              ? 'Ending: Section ini menjadi penutup — setelah selesai, playback berhenti.'
+              : (section.next_mode ?? 'order') === 'target'
+                ? 'Setelah selesai, playback langsung pindah ke Section terpilih (melewati urutan).'
+                : 'Setelah selesai, playback lanjut ke Section berikutnya dalam urutan strip.'}
+          </p>
+        </div>
+      )}
 
       <ConfirmDialog
         open={deleting}

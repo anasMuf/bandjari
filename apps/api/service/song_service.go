@@ -10,12 +10,12 @@ import (
 )
 
 type SongService interface {
-	Create(userID uint, req dto.CreateSongRequest) (*dto.SongResponse, error)
+	Create(userID uint, isAdmin bool, req dto.CreateSongRequest) (*dto.SongResponse, error)
 	List(userID uint) ([]dto.SongResponse, error)
 	ListTemplates() ([]dto.SongResponse, error)
 	GetByID(songID uint, currentUserID *uint) (*dto.SongResponse, error)
-	Update(userID uint, songID uint, req dto.UpdateSongRequest) (*dto.SongResponse, error)
-	Delete(userID uint, songID uint) error
+	Update(userID uint, isAdmin bool, songID uint, req dto.UpdateSongRequest) (*dto.SongResponse, error)
+	Delete(userID uint, isAdmin bool, songID uint) error
 	Duplicate(userID uint, songID uint) (*dto.SongResponse, error)
 }
 
@@ -43,12 +43,20 @@ func toSongResponse(song *model.Song) *dto.SongResponse {
 	return res
 }
 
-func (s *songService) Create(userID uint, req dto.CreateSongRequest) (*dto.SongResponse, error) {
+// Create membuat Song baru. Admin boleh membuat Song Template System lewat
+// req.IsSystemTemplate=true; user biasa selalu membuat Song miliknya.
+func (s *songService) Create(userID uint, isAdmin bool, req dto.CreateSongRequest) (*dto.SongResponse, error) {
+	asTemplate := req.IsSystemTemplate != nil && *req.IsSystemTemplate
+	if asTemplate && !isAdmin {
+		return nil, ErrForbidden // hanya admin yang boleh membuat template (FR-ROLE)
+	}
 	song := &model.Song{
-		UserID:           &userID,
-		IsSystemTemplate: false,
+		IsSystemTemplate: asTemplate,
 		Name:             req.Name,
 		Bpm:              req.Bpm,
+	}
+	if !asTemplate {
+		song.UserID = &userID
 	}
 	if err := s.songRepo.Create(song); err != nil {
 		return nil, err
@@ -123,7 +131,7 @@ func (s *songService) GetByID(songID uint, currentUserID *uint) (*dto.SongRespon
 	return toSongResponse(song), nil
 }
 
-func (s *songService) Update(userID uint, songID uint, req dto.UpdateSongRequest) (*dto.SongResponse, error) {
+func (s *songService) Update(userID uint, isAdmin bool, songID uint, req dto.UpdateSongRequest) (*dto.SongResponse, error) {
 	song, err := s.songRepo.FindByID(songID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -131,8 +139,9 @@ func (s *songService) Update(userID uint, songID uint, req dto.UpdateSongRequest
 		}
 		return nil, err
 	}
-	if song.IsSystemTemplate || song.UserID == nil || *song.UserID != userID {
-		return nil, ErrForbidden // FR-SONG-08 + FR-AUTH-02
+	// Template → hanya admin; song user → hanya pemiliknya (FR-SONG-08 + FR-ROLE).
+	if !canMutateSong(song, userID, isAdmin) {
+		return nil, ErrForbidden
 	}
 	if req.Name != nil {
 		song.Name = *req.Name
@@ -146,7 +155,7 @@ func (s *songService) Update(userID uint, songID uint, req dto.UpdateSongRequest
 	return toSongResponse(song), nil
 }
 
-func (s *songService) Delete(userID uint, songID uint) error {
+func (s *songService) Delete(userID uint, isAdmin bool, songID uint) error {
 	song, err := s.songRepo.FindByID(songID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -154,8 +163,9 @@ func (s *songService) Delete(userID uint, songID uint) error {
 		}
 		return err
 	}
-	if song.IsSystemTemplate || song.UserID == nil || *song.UserID != userID {
-		return ErrForbidden // FR-SONG-08 + FR-AUTH-02
+	// Template → hanya admin; song user → hanya pemiliknya (FR-SONG-08 + FR-ROLE).
+	if !canMutateSong(song, userID, isAdmin) {
+		return ErrForbidden
 	}
 	return s.songRepo.Delete(songID)
 }
@@ -181,11 +191,17 @@ func (s *songService) Duplicate(userID uint, songID uint) (*dto.SongResponse, er
 		Name:             fmt.Sprintf("%s (Salinan)", song.Name),
 		Bpm:              song.Bpm,
 	}
+	oldIDs := make([]uint, 0, len(song.Sections))
 	for _, sec := range song.Sections {
+		oldIDs = append(oldIDs, sec.ID)
 		newSec := model.Section{
 			Name:        sec.Name,
 			OrderIndex:  sec.OrderIndex,
 			BpmOverride: sec.BpmOverride,
+			Loop:        sec.Loop,
+			NextMode:    sec.NextMode,
+			// NextSectionID di-remap setelah seluruh Section dibuat — ID baru
+			// belum diketahui saat ini.
 		}
 		for _, part := range sec.Parts {
 			newPart := model.SectionPart{
@@ -208,5 +224,43 @@ func (s *songService) Duplicate(userID uint, songID uint) (*dto.SongResponse, er
 	if err := s.songRepo.Create(copied); err != nil {
 		return nil, err
 	}
+
+	// Remap next_section_id: section hasil duplikasi yang menunjuk target
+	// tertentu harus menunjuk salinan targetnya (bukan section asal).
+	idMap := make(map[uint]uint, len(oldIDs))
+	for i := range copied.Sections {
+		if i < len(oldIDs) {
+			idMap[oldIDs[i]] = copied.Sections[i].ID
+		}
+	}
+	for i, sec := range song.Sections {
+		// GORM melewatkan nilai zero (false) saat INSERT — pastikan loop=false
+		// benar-benar tersimpan pada section salinan (kolom punya default true).
+		if !sec.Loop {
+			if err := s.songRepo.UpdateSectionLoop(copied.Sections[i].ID, false); err != nil {
+				return nil, err
+			}
+		}
+
+		if sec.NextMode != string(model.NextModeTarget) || sec.NextSectionID == nil {
+			continue
+		}
+		newTarget, ok := idMap[*sec.NextSectionID]
+		if !ok {
+			// Target tidak ikut terduplikasi → kembalikan ke mode default.
+			if err := s.songRepo.UpdateSectionNextTarget(copied.Sections[i].ID, string(model.NextModeOrder), nil); err != nil {
+				return nil, err
+			}
+			copied.Sections[i].NextMode = string(model.NextModeOrder)
+			copied.Sections[i].NextSectionID = nil
+			continue
+		}
+		if err := s.songRepo.UpdateSectionNextTarget(copied.Sections[i].ID, string(model.NextModeTarget), &newTarget); err != nil {
+			return nil, err
+		}
+		copied.Sections[i].NextMode = string(model.NextModeTarget)
+		copied.Sections[i].NextSectionID = &newTarget
+	}
+
 	return toSongResponse(copied), nil
 }

@@ -32,10 +32,15 @@ func NewUserService(userRepository repository.UserRepository) UserService {
 }
 
 func toUserResponse(user *model.User) *dto.UserResponse {
+	role := user.Role
+	if role == "" {
+		role = string(model.RoleUser) // baris lama tanpa role → user biasa
+	}
 	return &dto.UserResponse{
 		ID:    user.ID,
 		Name:  user.Name,
 		Email: user.Email,
+		Role:  role,
 	}
 }
 
@@ -62,6 +67,7 @@ func (s *userService) CreateUser(req dto.CreateUserRequest) (*dto.UserResponse, 
 		Name:         req.Name,
 		Email:        req.Email,
 		PasswordHash: string(hash),
+		Role:         string(model.RoleUser),
 	}
 	if err := s.userRepository.Create(user); err != nil {
 		return nil, err

@@ -6,12 +6,21 @@
  * OpenAPI spec version: 1.0
  */
 import type { DtoNullableInt16 } from './dtoNullableInt16';
+import type { DtoUpdateSectionRequestNextMode } from './dtoUpdateSectionRequestNextMode';
 
 export interface DtoUpdateSectionRequest {
   bpm_override?: DtoNullableInt16;
+  /** Loop=nil → tidak berubah; pointer bool membedakan true/false (sekali vs diulang). */
+  loop?: boolean;
   /**
      * @minLength 1
      * @maxLength 255
      */
   name?: string;
+  /** NextMode=nil → tidak berubah. Nilai valid: "order" (lanjut ke section
+  berikutnya), "target" (lanjut ke next_section_id), "end" (ending/berhenti). */
+  next_mode?: DtoUpdateSectionRequestNextMode;
+  /** NextSectionID wajib diisi saat next_mode=target; diabaikan/dikosongkan untuk
+  mode lain. */
+  next_section_id?: number;
 }

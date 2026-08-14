@@ -122,7 +122,7 @@ func setupSlotEnv(t *testing.T, steps *string) (*soundSlotService, *fakeSlotRepo
 	t.Helper()
 	songRepo := newFakeSongRepo(&model.Song{UserID: uptr(5), Name: "Lagu", Bpm: 90})
 	sectionRepo := newFakeSectionRepo()
-	sec, err := NewSectionService(sectionRepo, songRepo, newFakeSampleRepo()).Create(5, 1, dto.CreateSectionRequest{Name: "Dasar"})
+	sec, err := NewSectionService(sectionRepo, songRepo, newFakeSampleRepo()).Create(5, false, 1, dto.CreateSectionRequest{Name: "Dasar"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +143,7 @@ func TestSlotCreate_DuplicateKeyBadRequest(t *testing.T) {
 	slotRepo.slots[1] = &model.SoundSlot{SectionPartID: partID, Label: "Tak", Key: "T"}
 	slotRepo.nextID = 2
 
-	_, err := svc.Create(5, partID, dto.CreateSoundSlotRequest{Label: "Tak Lain", Key: "T"})
+	_, err := svc.Create(5, false, partID, dto.CreateSoundSlotRequest{Label: "Tak Lain", Key: "T"})
 	if !errors.Is(err, ErrBadRequest) {
 		t.Fatalf("err = %v, want ErrBadRequest (FR-SLOT-02)", err)
 	}
@@ -151,7 +151,7 @@ func TestSlotCreate_DuplicateKeyBadRequest(t *testing.T) {
 
 func TestSlotCreate_Success(t *testing.T) {
 	svc, _, partID := setupSlotEnv(t, nil)
-	res, err := svc.Create(5, partID, dto.CreateSoundSlotRequest{Label: "Duk", Key: "K"})
+	res, err := svc.Create(5, false, partID, dto.CreateSoundSlotRequest{Label: "Duk", Key: "K"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -162,7 +162,7 @@ func TestSlotCreate_Success(t *testing.T) {
 
 func TestSlotCreate_TwoCharKey(t *testing.T) {
 	svc, _, partID := setupSlotEnv(t, nil)
-	res, err := svc.Create(5, partID, dto.CreateSoundSlotRequest{Label: "Duk Keras", Key: "KD"})
+	res, err := svc.Create(5, false, partID, dto.CreateSoundSlotRequest{Label: "Duk Keras", Key: "KD"})
 	if err != nil {
 		t.Fatalf("Create key 2 karakter error = %v", err)
 	}
@@ -174,7 +174,7 @@ func TestSlotCreate_TwoCharKey(t *testing.T) {
 func TestSlotCreate_InvalidKeyFormat(t *testing.T) {
 	svc, _, partID := setupSlotEnv(t, nil)
 	for _, bad := range []string{"", "ABC", "T,", "T D"} {
-		_, err := svc.Create(5, partID, dto.CreateSoundSlotRequest{Label: "Buruk", Key: bad})
+		_, err := svc.Create(5, false, partID, dto.CreateSoundSlotRequest{Label: "Buruk", Key: bad})
 		if !errors.Is(err, ErrBadRequest) {
 			t.Fatalf("key %q err = %v, want ErrBadRequest", bad, err)
 		}
@@ -187,7 +187,7 @@ func TestSlotCreate_OtherUsersSampleForbidden(t *testing.T) {
 	sampleRepo.samples[9] = &model.Sample{UserID: uptr(99), Name: "Punya Orang", Part: model.PartRebana1}
 	sampleRepo.nextID = 10
 
-	_, err := svc.Create(5, partID, dto.CreateSoundSlotRequest{Label: "Duk", Key: "K", SampleID: uptr(9)})
+	_, err := svc.Create(5, false, partID, dto.CreateSoundSlotRequest{Label: "Duk", Key: "K", SampleID: uptr(9)})
 	if !errors.Is(err, ErrForbidden) {
 		t.Fatalf("err = %v, want ErrForbidden (FR-AUTH-02)", err)
 	}
@@ -199,7 +199,7 @@ func TestSlotCreate_TemplateSampleAllowed(t *testing.T) {
 	sampleRepo.samples[9] = &model.Sample{IsSystemTemplate: true, Name: "Rebana1 Tak", Part: model.PartRebana1}
 	sampleRepo.nextID = 10
 
-	res, err := svc.Create(5, partID, dto.CreateSoundSlotRequest{Label: "Tak 2", Key: "X", SampleID: uptr(9)})
+	res, err := svc.Create(5, false, partID, dto.CreateSoundSlotRequest{Label: "Tak 2", Key: "X", SampleID: uptr(9)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -217,7 +217,7 @@ func TestSlotUpdate_KeyChangeWhileUsedInSteps(t *testing.T) {
 	slotRepo.nextID = 2
 
 	newKey := "X"
-	_, err := svc.Update(5, 1, dto.UpdateSoundSlotRequest{Key: &newKey})
+	_, err := svc.Update(5, false, 1, dto.UpdateSoundSlotRequest{Key: &newKey})
 	if !errors.Is(err, ErrBadRequest) {
 		t.Fatalf("err = %v, want ErrBadRequest (FR-SLOT-06)", err)
 	}
@@ -231,7 +231,7 @@ func TestSlotUpdate_DetachSample(t *testing.T) {
 	slotRepo.slots[1] = slot
 	slotRepo.nextID = 2
 
-	res, err := svc.Update(5, 1, dto.UpdateSoundSlotRequest{SampleID: &dto.NullableUint{Set: true, Value: nil}})
+	res, err := svc.Update(5, false, 1, dto.UpdateSoundSlotRequest{SampleID: &dto.NullableUint{Set: true, Value: nil}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -248,7 +248,7 @@ func TestSlotDelete_KeyUsedInStepsConflict(t *testing.T) {
 	slotRepo.slots[1] = slot
 	slotRepo.nextID = 2
 
-	err := svc.Delete(5, 1)
+	err := svc.Delete(5, false, 1)
 	if !errors.Is(err, ErrConflict) {
 		t.Fatalf("err = %v, want ErrConflict (FR-SLOT-05)", err)
 	}
@@ -261,7 +261,7 @@ func TestSlotDelete_Success(t *testing.T) {
 	slotRepo.slots[1] = slot
 	slotRepo.nextID = 2
 
-	if err := svc.Delete(5, 1); err != nil {
+	if err := svc.Delete(5, false, 1); err != nil {
 		t.Fatalf("Delete() error = %v", err)
 	}
 	if _, ok := slotRepo.slots[1]; ok {
