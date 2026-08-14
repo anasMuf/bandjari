@@ -26,7 +26,7 @@ function SongDetailPage() {
   const { songId } = Route.useParams()
   const id = Number(songId)
   const songQuery = useGetSongsId(id)
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, isAdmin } = useAuth()
   const [showPrompt, setShowPrompt] = useState(false)
 
   if (songQuery.isLoading) {
@@ -80,7 +80,9 @@ function SongDetailPage() {
             ← Semua lagu
           </Link>
         }
-        readOnly={false}
+        // Song Template System hanya bisa diedit admin (FR-ROLE); non-admin
+        // yang sampai ke rute ini (mis. lewat URL langsung) melihat mode lihat-saja.
+        readOnly={song.is_system_template && !isAdmin}
         onEditAttempt={() => setShowPrompt(true)}
         onChanged={() => songQuery.refetch()}
       />

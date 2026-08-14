@@ -7,7 +7,7 @@ export interface User {
   name: string;
   email: string;
   /** Role: "admin" | "user" — admin boleh mengelola System Template. */
-  role: string;
+  role?: string;
 }
 
 interface AuthContextType {
@@ -16,7 +16,8 @@ interface AuthContextType {
   user: User | null;
   /** true bila user ber-role admin (FR-ROLE). */
   isAdmin: boolean;
-  login: (token: string) => void;
+  /** role opsional dari respons login — langsung dipakai sebelum profile selesai dimuat. */
+  login: (token: string, role?: string) => void;
   logout: () => void;
 }
 
@@ -33,6 +34,9 @@ export function hasToken(): boolean {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'));
+  // Role dari respons login (optimistik) — ditimpa oleh role dari profile
+  // begitu fetch /users selesai.
+  const [roleOverride, setRoleOverride] = useState<string | null>(() => localStorage.getItem('role'));
   const queryClient = useQueryClient();
 
   // Fetch user profile when token is available
@@ -42,7 +46,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     localStorage.removeItem('token');
+    localStorage.removeItem('role');
     setToken(null);
+    setRoleOverride(null);
     // Clear all React Query cache so stale user data doesn't persist
     queryClient.removeQueries({ queryKey: getGetUsersQueryKey() });
   }, [queryClient]);
@@ -54,8 +60,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [isError, logout]);
 
-  const login = useCallback((newToken: string) => {
+  const login = useCallback((newToken: string, newRole?: string) => {
     localStorage.setItem('token', newToken);
+    if (newRole) {
+      localStorage.setItem('role', newRole);
+      setRoleOverride(newRole);
+    }
     setToken(newToken);
     // Invalidate the user query so it refetches with the new token
     queryClient.invalidateQueries({ queryKey: getGetUsersQueryKey() });
@@ -76,7 +86,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!token && !!user && !isError,
         isLoading: !!token && isLoading,
         user,
-        isAdmin: user?.role === 'admin',
+        // Profile (sumber utama) bila sudah dimuat; sebelum itu pakai role dari
+        // respons login yang tersimpan — UI admin langsung aktif setelah login.
+        isAdmin: (user?.role ?? roleOverride) === 'admin',
         login,
         logout,
       }}

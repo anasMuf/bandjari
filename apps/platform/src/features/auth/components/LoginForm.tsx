@@ -19,7 +19,9 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
     mutation: {
       onSuccess: (response: postAuthLoginResponse) => {
         if (response.status === 200 && response.data.token) {
-          login(response.data.token);
+          // Role dari respons login dipakai optimistik — UI admin langsung
+          // aktif tanpa menunggu fetch profile (FR-ROLE).
+          login(response.data.token, response.data.role);
           addToast({ variant: 'success', title: 'Selamat datang!', message: 'Anda berhasil masuk.' });
           onSuccess();
         }

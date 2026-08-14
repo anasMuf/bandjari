@@ -332,6 +332,7 @@ export function SampleLibraryView() {
               onClick={() => {
                 setUploadOpen(false);
                 setPending([]);
+                setAsTemplate(false);
               }}
               disabled={uploadProgress !== null}
             >

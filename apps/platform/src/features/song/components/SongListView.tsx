@@ -116,7 +116,12 @@ export function SongListView() {
             notify('Lagu dibuat', 'Lagu baru berhasil ditambahkan — lanjut susun Section.');
             setShowForm(false);
             if (created?.id) {
-              navigate({ to: '/songs/$songId', params: { songId: String(created.id) } });
+              // Template dikelola lewat halaman template (banner Mode Admin);
+              // song biasa langsung ke halaman kelola section.
+              navigate({
+                to: payload.is_system_template ? '/templates/$songId' : '/songs/$songId',
+                params: { songId: String(created.id) },
+              });
             } else {
               refresh();
             }
