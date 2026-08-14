@@ -75,6 +75,7 @@ users
 | `email` | `VARCHAR(255)` | UNIQUE, NOT NULL | |
 | `password_hash` | `VARCHAR(255)` | NOT NULL | Bcrypt hash |
 | `name` | `VARCHAR(255)` | NOT NULL | |
+| `role` | `VARCHAR(16)` | NOT NULL, DEFAULT `'user'` | `'admin'` \| `'user'` — lihat Bagian 6.9 (FR-ROLE) |
 | `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT now() | |
 | `updated_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT now() | |
 | `deleted_at` | `TIMESTAMPTZ` | NULLABLE, INDEX | GORM soft delete |
@@ -287,10 +288,10 @@ Base path: `/api/v1`. Semua endpoint (kecuali auth) memerlukan header `Authoriza
 |---|---|---|---|---|
 | GET | `/songs` | Wajib | Daftar Song milik user login | FR-SONG-05 |
 | GET | `/songs/templates` | **Opsional** | Daftar Song Template System (`is_system_template = true`) — dapat diakses Guest maupun User login | FR-SONG-07, FR-SONG-09, FR-AUTH-04 |
-| POST | `/songs` | Wajib | Buat Song baru (`name`, `bpm`), otomatis `user_id` = user login, `is_system_template` = false | FR-SONG-01, FR-SONG-02 |
+| POST | `/songs` | Wajib | Buat Song baru (`name`, `bpm`), otomatis `user_id` = user login, `is_system_template` = false. **Admin** boleh set `is_system_template: true` untuk membuat Song Template System (FR-ROLE) | FR-SONG-01, FR-SONG-02 |
 | GET | `/songs/:id` | **Opsional*** | Detail Song beserta Section & SectionPart (nested). *Wajib login apabila Song target bukan Song Template System — lihat aturan akses di Bagian 6.8 | FR-SONG-05, FR-AUTH-04, FR-AUTH-05 |
-| PUT | `/songs/:id` | Wajib | Update `name`/`bpm` — **ditolak (403)** apabila target adalah Song Template System | FR-SONG-03, FR-SONG-08 |
-| DELETE | `/songs/:id` | Wajib | Hapus Song (cascade) — **ditolak (403)** apabila target adalah Song Template System | FR-SONG-04, FR-SONG-08 |
+| PUT | `/songs/:id` | Wajib | Update `name`/`bpm` — **ditolak (403)** apabila target adalah Song Template System dan user bukan admin | FR-SONG-03, FR-SONG-08, FR-ROLE |
+| DELETE | `/songs/:id` | Wajib | Hapus Song (cascade) — **ditolak (403)** apabila target adalah Song Template System dan user bukan admin | FR-SONG-04, FR-SONG-08, FR-ROLE |
 | POST | `/songs/:id/duplicate` | Wajib | Duplikasi Song beserta seluruh Section/SectionPart — berlaku untuk Song milik User maupun Song Template System (hasil duplikasi selalu menjadi milik User yang login, `is_system_template = false`) | FR-SONG-06, FR-SONG-10 |
 
 ### 6.3 Sections
@@ -376,7 +377,7 @@ Base path: `/api/v1`. Semua endpoint (kecuali auth) memerlukan header `Authoriza
 |---|---|---|
 | 400 | Validasi gagal (mis. karakter `steps` tidak merujuk ke `key` SoundSlot manapun pada SectionPart tsb; `key` SoundSlot duplikat dalam SectionPart yang sama) | FR-SEQ-02, FR-SLOT-02 |
 | 401 | Token tidak valid/tidak ada, pada endpoint yang mewajibkan login | FR-AUTH-01 |
-| 403 | Mengakses resource milik user lain; **atau** mencoba mengubah/menghapus Sample/Song Template System (`is_system_template = true`); **atau** Guest mencoba melakukan aksi apapun yang mengubah data | FR-AUTH-02, FR-AUTH-06, FR-SAMP-12, FR-SONG-08 |
+| 403 | Mengakses resource milik user lain; **atau** mencoba mengubah/menghapus Sample/Song Template System (`is_system_template = true`) oleh non-admin; **atau** Guest mencoba melakukan aksi apapun yang mengubah data | FR-AUTH-02, FR-AUTH-06, FR-SAMP-12, FR-SONG-08, FR-ROLE |
 | 404 | Resource tidak ditemukan; **atau** Guest mencoba mengakses Song milik User (bukan Song Template System) — dikembalikan sebagai 404, bukan 403, untuk tidak mengonfirmasi keberadaan resource ke pihak tak terautentikasi | FR-AUTH-05 |
 | 409 | Hapus Sample yang masih direferensikan; **atau** hapus/ubah key SoundSlot yang masih dipakai di `steps` | FR-SAMP-08, FR-SLOT-06 |
 | 413 | File upload melebihi 5MB | FR-SAMP-06 |
@@ -439,6 +440,34 @@ func (s *SongService) GetByID(ctx context.Context, songID uint, currentUserID *u
 ```
 
 > Pola yang sama (cek `IsSystemTemplate` lalu cek kepemilikan) diterapkan konsisten di seluruh service yang menangani resource bertingkat di bawah Song (Section, SectionPart, SoundSlot) — mewarisi status akses dari Song induknya, bukan dicek ulang per level secara independen.
+
+### 6.9 Sistem Role: Admin & User *(baru — FR-ROLE)*
+
+Setiap user punya `role`: **`admin`** atau **`user`** (default `user`). Penugasan role saat ini dilakukan **manual lewat database** (belum ada API/UI pengelolaan role).
+
+#### Sumber kebenaran role
+
+Role dibaca **dari tabel `users` di middleware JWT** (`JWTAuth`) — bukan dari klaim token — sehingga promosi/demosi role berlaku **seketika** pada request berikutnya; token lama tidak menyimpan kekuasaan admin (mencegah hak tertinggal sampai token kedaluwarsa). Klaim `role` di token tetap disertakan untuk kenyamanan klien, namun selalu ditimpa oleh nilai DB.
+
+#### Matriks akses (mutasi)
+
+| Resource | Admin | User (non-admin) | Guest |
+|---|---|---|---|
+| Song Template System (buat, edit nama/BPM, hapus, section, steps, SoundSlot) | ✅ | ❌ 403 | ❌ 401/403 |
+| Sample Template System (upload, rename, hapus) | ✅ | ❌ 403 | ❌ 401/403 |
+| Song/Sample milik User lain | ❌ 403 (aturan kepemilikan tetap) | ❌ 403 | ❌ 401/403/404 |
+| Song/Sample milik sendiri | ✅ | ✅ | ❌ |
+
+Catatan penting: admin **tidak** otomatis mendapat akses ke data pribadi user lain — aturan kepemilikan FR-AUTH-02 tidak berubah.
+
+#### Endpoint & payload
+
+- `POST /songs` — field opsional `is_system_template: true` hanya dihormati untuk admin (membuat Song Template System); user biasa dikembalikan 403.
+- `POST /samples` (multipart) — form field opsional `is_system_template: true` hanya untuk admin; file template disimpan di prefix `samples/system/`.
+- `PUT/DELETE /songs/:id` dan `PUT/DELETE /samples/:id` — template dapat dimutasi admin.
+- Login response & `GET /users` menyertakan `role` agar frontend dapat menampilkan kontrol admin.
+
+Implementasi guard terpusat di `service/access.go` (`canMutateSong` / `canMutateSample`), dipakai seluruh service mutasi (Song, Section, SectionPart, SoundSlot, Sample).
 
 ---
 
