@@ -1,104 +1,105 @@
-# 🚀 GOTS Monorepo Starter Kit
+# 🥁 BandJari
 
-> **Go + TypeScript** full-stack monorepo starter kit — production-ready architecture with authentication, API documentation, and modern frontend tooling.
+**Penyusun & pemutar pola pukulan rebana Al-Banjari** — web app untuk menyusun pola pukulan (steps) 4 rebana + 1 bass per *Section*, dan memainkannya live lewat *Pattern Launcher*.
+
+> Fase 1 (MVP) — status: fitur inti selesai & teruji. Detail produk & teknis ada di [`docs/core/`](docs/core/).
 
 ---
 
-## Overview
+## Fitur Utama
 
-Starter kit untuk membangun aplikasi full-stack menggunakan arsitektur monorepo. Backend menggunakan **Go (Echo)** dan frontend menggunakan **React (TanStack)**, dikelola dalam satu repository dengan **pnpm workspaces** dan **Nx** sebagai build orchestrator.
-
-```
-monorepo_gots_starterkit/
-├── apps/
-│   ├── api/           ← Go REST API (Echo + GORM + PostgreSQL)
-│   └── platform/      ← React SPA (TanStack Router + Vite + Tailwind v4)
-├── docs/              ← Dokumentasi pengembangan produk
-├── nx.json            ← Nx build orchestrator config
-├── pnpm-workspace.yaml
-├── package.json
-└── .env               ← Shared environment variables
-```
+- **Manajemen Song & Section dinamis** — section bebas nama & jumlah; tiap section punya 5 part (rebana1–4, bass), BPM override opsional, perilaku **Diulang / Sekali**, dan **tujuan lanjut** (`berikutnya` / `section terpilih` / `Ending`).
+- **Sequencer Mode** — grid step dengan multi-bunyi per kolom (`T+D`), langkah istirahat (`.`), kelipatan 4 kolom per ketukan, mute per part, bersihkan step per part, dan preview audio real-time.
+- **SoundSlot & Library Sample** — jenis bunyi dinamis per part (key 1–2 karakter), bulk upload `.wav`, proteksi hapus sample yang masih dipakai.
+- **Launcher Mode** — grid pad dinamis, quantized trigger antar section, hard cut BPM, mute per part, dan auto-lanjut section "sekali".
+- **Playback engine 100% client-side** — Web Worker + lookahead scheduling berbasis AudioContext; 1 step = 1/16 ketukan (`60000/bpm/4` ms).
+- **Template System** — Song & Sample template bisa dimainkan Guest, diduplikasi ke "Song Saya", dan dikelola **admin**.
+- **Role admin/user** — admin boleh mengelola (buat/edit/hapus) Song Template System & Sample Template System; role dibaca dari DB per-request sehingga perubahan langsung berlaku.
 
 ---
 
 ## Tech Stack
 
-### Backend (`apps/api`)
-
-| Kategori       | Teknologi                                                          |
-|----------------|--------------------------------------------------------------------|
-| Language       | Go 1.25                                                            |
-| Framework      | [Echo v4](https://echo.labstack.com/)                              |
-| ORM            | [GORM](https://gorm.io/) + PostgreSQL                             |
-| Object Storage | S3-compatible ([MinIO](https://min.io/) dev / Cloudflare R2 prod) via AWS SDK Go v2 |
-| Authentication | JWT (`golang-jwt/jwt`) + custom middleware                         |
-| Validation     | [go-playground/validator](https://github.com/go-playground/validator) |
-| API Docs       | [Swagger](https://github.com/swaggo/swag) (auto-generated)        |
-| Hot Reload     | [Air](https://github.com/air-verse/air)                            |
-| Logging        | [Logrus](https://github.com/sirupsen/logrus)                      |
-
-### Frontend (`apps/platform`)
-
-| Kategori       | Teknologi                                                          |
-|----------------|--------------------------------------------------------------------|
-| Language       | TypeScript 6.x                                                     |
-| Framework      | React 19                                                           |
-| Build Tool     | [Vite 8](https://vite.dev/)                                       |
-| Routing        | [TanStack Router](https://tanstack.com/router) (file-based)       |
-| Data Fetching  | [TanStack Query](https://tanstack.com/query) (React Query)        |
-| Styling        | [Tailwind CSS v4](https://tailwindcss.com/)                        |
-| Icons          | [Lucide React](https://lucide.dev/)                                |
-| Linter         | [Biome](https://biomejs.dev/)                                      |
-| API Codegen    | [Orval](https://orval.dev/) (from Swagger → React Query hooks)    |
-
-### Monorepo Tooling
-
-| Kategori       | Teknologi                                                          |
-|----------------|--------------------------------------------------------------------|
-| Package Manager| [pnpm](https://pnpm.io/) (workspaces)                             |
-| Build System   | [Nx](https://nx.dev/) (task orchestration & caching)               |
+| Lapisan | Teknologi |
+|---|---|
+| Backend | Go + Echo v4, GORM + PostgreSQL, Swagger (swaggo), JWT (`golang-jwt`), Logrus |
+| Frontend | React 19 + TypeScript, Vite, TanStack Router & Query, Tailwind CSS v4, Biome, Orval |
+| Object Storage | S3-compatible — MinIO (dev) / Cloudflare R2 (prod) |
+| Monorepo | pnpm workspaces + Nx |
 
 ---
 
-## Prerequisites
+## Struktur Repo
 
-Pastikan tools berikut sudah terinstall:
+```
+bandjari/
+├── apps/
+│   ├── api/            ← Go REST API (Echo + GORM + PostgreSQL)
+│   │   ├── config/     ← ENV, koneksi DB, storage
+│   │   ├── model/      ← GORM entities (User, Song, Section, SectionPart, SoundSlot, Sample)
+│   │   ├── dto/        ← Request/Response DTOs
+│   │   ├── repository/ ← Data access layer
+│   │   ├── service/    ← Business logic + access guard (access.go)
+│   │   ├── handler/    ← HTTP handlers
+│   │   ├── middleware/ ← JWT (role dari DB), OptionalAuth, logging
+│   │   ├── utility/    ← Validator steps/key/wav, JWT claims
+│   │   ├── seeders/    ← sample_templates & song_templates
+│   │   └── docs/       ← Swagger (auto-generated)
+│   └── platform/       ← React SPA
+│       └── src/
+│           ├── routes/                 ← TanStack Router (file-based)
+│           ├── features/               ← auth, song, section, sequencer, sample, launcher
+│           │   └── launcher/engine/    ← scheduler, section-player, audio cache
+│           ├── components/             ← atoms & molecules (Button, Badge, Toast, ...)
+│           ├── lib/                    ← steps codec (shared sequencer ↔ launcher)
+│           └── api/                    ← Orval generated hooks & types
+├── docs/
+│   ├── core/           ← BRD, PRD, TDD, Epic Breakdown, Wireframe
+│   └── src/            ← file .wav sampling (SAMPLING HADRAH AB CHANNEL)
+├── tasks/              ← plan.md & todo.md (perencanaan pengerjaan)
+├── docker-compose.yml  ← MinIO + minio-init (bucket otomatis)
+├── nx.json
+├── pnpm-workspace.yaml
+└── .env                ← konfigurasi environment (tidak di-commit)
+```
 
-- **Node.js** ≥ 20
-- **pnpm** ≥ 9
+---
+
+## Prasyarat
+
+- **Node.js** ≥ 20 & **pnpm** ≥ 9
 - **Go** ≥ 1.25
 - **PostgreSQL** ≥ 15
-- **Git**
+- **Docker** (untuk MinIO object storage)
 
 ---
 
 ## Getting Started
 
-### 1. Clone & Install Dependencies
+### 1. Install dependencies
 
 ```bash
-git clone <repository-url>
-cd monorepo_gots_starterkit
 pnpm install
 ```
 
-### 2. Setup Environment
+### 2. Setup environment
 
-Copy `.env.example` atau buat file `.env` di root project:
+Salin `.env.example` ke `.env` lalu sesuaikan:
 
 ```env
-# Backend (API) Configuration
+# API
 PORT=8080
-JWT_SECRET=supersecretkey
+JWT_SECRET=bandjari-dev-secret-2026
+
+# PostgreSQL
 DB_HOST=localhost
+DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=postgres
 DB_NAME=bandjari
-DB_PORT=5432
 SSL_MODE=disable
 
-# Object Storage (MinIO lokal / Cloudflare R2 untuk produksi)
+# Object Storage (MinIO dev / Cloudflare R2 prod)
 STORAGE_ENDPOINT=http://localhost:9000
 STORAGE_REGION=us-east-1
 STORAGE_BUCKET=bandjari-samples
@@ -106,234 +107,109 @@ STORAGE_ACCESS_KEY_ID=minioadmin
 STORAGE_SECRET_ACCESS_KEY=minioadmin
 STORAGE_USE_PATH_STYLE=true
 
-# Frontend (Platform) Configuration
+# Frontend
 VITE_API_URL=http://localhost:8080/api/v1
 ```
 
-### 3. Setup Database & Object Storage
-
-Buat database PostgreSQL:
+### 3. Database & object storage
 
 ```bash
 createdb bandjari
+docker compose up -d          # MinIO + buat bucket bandjari-samples
 ```
 
-> Tabel akan otomatis di-migrate oleh GORM saat API pertama kali dijalankan (Auto-Migrate).
+> Tabel dibuat otomatis oleh GORM AutoMigrate saat API pertama kali dijalankan.
+> Console MinIO: http://localhost:9001 (user/pass `minioadmin`).
 
-Jalankan MinIO (object storage lokal untuk file audio sample):
+### 4. Seed data (opsional tapi disarankan)
 
 ```bash
-docker compose up -d minio minio-init
+cd apps/api
+
+# 13 sample template sistem (butuh MinIO aktif + folder docs/src/SAMPLING HADRAH AB CHANNEL)
+go run ./seeders/sample_templates
+
+# Song template "Standar Banjari (Template)" — 8 section asli (awalan → tutup)
+go run ./seeders/song_templates
 ```
 
-- Console MinIO: http://localhost:9001 (user/pass: `minioadmin`)
-- Bucket `bandjari-samples` dibuat otomatis oleh service `minio-init`
+Seeder bersifat idempotent — aman dijalankan ulang.
 
-### 4. Run Development
-
-Jalankan **semua apps** sekaligus:
+### 5. Jalankan development
 
 ```bash
-pnpm dev
+pnpm dev                 # semua apps (API :8080 + Platform :3000)
 ```
 
-Atau jalankan masing-masing secara terpisah:
+atau terpisah:
 
 ```bash
-# API saja (port 8080)
-pnpm --filter api dev
-
-# Platform saja (port 3000)
-pnpm --filter platform dev
+pnpm --filter api dev           # API dengan hot-reload (Air)
+pnpm --filter platform dev      # Frontend dev server (port 3000)
 ```
 
-### 5. Build Production
-
-```bash
-pnpm build
-```
+Swagger UI tersedia di: **http://localhost:8080/swagger/index.html**
 
 ---
 
-## Project Architecture
+## Role Admin
 
-### Backend — Clean Architecture
+User default ber-role `user`. Penugasan admin dilakukan manual via database:
 
-```
-apps/api/
-├── main.go              ← Entry point, route registration, DI wiring
-├── config/
-│   └── database.go      ← ENV loader, PostgreSQL/GORM connection
-├── model/
-│   ├── model.go         ← Base model (PrimaryKey, BaseModelTimeAt)
-│   └── user.go          ← User entity (GORM model)
-├── dto/
-│   ├── user.go          ← Request/Response DTOs
-│   ├── success_response.go
-│   └── error_response.go
-├── repository/
-│   └── user_repository.go  ← Data access layer (GORM queries)
-├── service/
-│   └── user_service.go     ← Business logic layer
-├── handler/
-│   ├── user_handler.go     ← HTTP handler (controller)
-│   └── error_handler.go    ← Custom error handler
-├── middleware/
-│   ├── auth.go             ← JWT authentication middleware
-│   └── logrus_logger.go    ← Request logging middleware
-├── utility/
-│   └── validator.go        ← Custom request validator
-├── docs/                   ← Auto-generated Swagger docs
-├── seeders/                ← Database seeders
-└── .air.toml               ← Air hot-reload config
+```sql
+UPDATE users SET role = 'admin' WHERE email = 'anas@bandjari.com';
 ```
 
-**Alur request:**
+Hak admin:
 
-```
-Request → Middleware (CORS, Logging, JWT) → Handler → Service → Repository → Database
-```
+- Buat **Song Template System** (checkbox di form buat lagu) & kelola penuh (section, steps, sound slot).
+- Upload/rename/hapus **Sample Template System** (checkbox di form upload sample).
+- Halaman template menampilkan **Mode Admin** yang bisa diedit.
 
-### Frontend — Feature-Based Architecture
-
-```
-apps/platform/src/
-├── main.tsx                   ← App entry point
-├── router.tsx                 ← TanStack Router setup
-├── styles.css                 ← Global styles (Tailwind)
-├── routeTree.gen.ts           ← Auto-generated route tree
-├── routes/
-│   ├── __root.tsx             ← Root layout
-│   ├── login.tsx              ← Login page
-│   ├── register.tsx           ← Register page
-│   ├── _authenticated.tsx     ← Auth layout guard
-│   └── _authenticated/
-│       └── index.tsx          ← Dashboard (protected)
-├── components/
-│   ├── atoms/                 ← Atomic components
-│   │   ├── Alert.tsx
-│   │   ├── Button.tsx
-│   │   ├── Input.tsx
-│   │   └── Label.tsx
-│   └── molecules/             ← Composite components
-│       ├── ConfirmDialog.tsx
-│       ├── FormField.tsx
-│       └── Toast.tsx
-├── features/
-│   ├── auth/
-│   │   ├── AuthContext.tsx     ← Auth state management
-│   │   └── components/        ← Auth-specific components
-│   └── home/
-│       └── components/        ← Home-specific components
-└── api/
-    ├── endpoints/             ← Auto-generated API hooks (Orval)
-    ├── model/                 ← Auto-generated API types (Orval)
-    └── mutator/
-        └── custom-instance.ts ← Axios/fetch custom instance
-```
+Role dibaca dari database pada **setiap request** (middleware JWT), sehingga promosi/demosi berlaku seketika — tidak perlu menunggu token kedaluwarsa. Non-admin tetap tidak bisa menyentuh template (403), dan aturan kepemilikan data pribadi tidak berubah.
 
 ---
 
-## API Endpoints
+## Scripts
 
-| Method | Endpoint               | Auth | Deskripsi                    |
-|--------|------------------------|------|------------------------------|
-| POST   | `/api/v1/auth/register`| ❌   | Register user baru           |
-| POST   | `/api/v1/auth/login`   | ❌   | Login & dapatkan JWT token   |
-| GET    | `/api/v1/users`        | ✅   | Get current user profile     |
+| Command | Deskripsi |
+|---|---|
+| `pnpm dev` | Jalankan semua apps (nx) |
+| `pnpm build` | Build semua apps (nx) |
+| `pnpm --filter platform test` | Vitest — engine playback, steps codec, dll |
+| `pnpm --filter platform lint` | Biome lint |
+| `cd apps/api && go test ./...` | Seluruh tes backend (service, middleware, utility) |
+| `cd apps/api && go build ./...` | Build backend |
+| `cd apps/api && go run github.com/swaggo/swag/cmd/swag init -g main.go` | Regenerate Swagger |
+| `pnpm --filter platform generate:api` | Orval: Swagger → React Query hooks |
 
-### Swagger Documentation
-
-Setelah API berjalan, akses Swagger UI di:
-
-```
-http://localhost:8080/swagger/index.html
-```
-
----
-
-## Available Scripts
-
-### Root (Monorepo)
-
-| Command           | Deskripsi                                     |
-|-------------------|-----------------------------------------------|
-| `pnpm dev`        | Jalankan semua apps dalam mode development     |
-| `pnpm build`      | Build semua apps untuk production              |
-
-### API (`apps/api`)
-
-| Command                      | Deskripsi                              |
-|------------------------------|----------------------------------------|
-| `pnpm --filter api dev`     | Jalankan API dengan hot-reload (Air)   |
-| `pnpm --filter api build`   | Build binary Go                        |
-
-### Platform (`apps/platform`)
-
-| Command                            | Deskripsi                              |
-|------------------------------------|----------------------------------------|
-| `pnpm --filter platform dev`      | Jalankan frontend dev server (port 3000)|
-| `pnpm --filter platform build`    | Build frontend untuk production        |
-| `pnpm --filter platform lint`     | Jalankan Biome linter                  |
-| `pnpm --filter platform format`   | Format kode dengan Biome               |
-| `pnpm --filter platform generate:api` | Generate API hooks dari Swagger    |
+> Setelah mengubah DTO/handler backend: regenerate Swagger **lalu** Orval (`generate:api`) agar kontrak klien sinkron.
 
 ---
 
-## API Code Generation (Orval)
+## Ringkasan API (prefix `/api/v1`)
 
-Frontend menggunakan **Orval** untuk auto-generate React Query hooks dari Swagger spec:
+| Area | Endpoint |
+|---|---|
+| Auth | `POST /auth/register`, `POST /auth/login`, `GET /users` |
+| Songs | `GET/POST /songs`, `GET/PUT/DELETE /songs/:id`, `GET /songs/templates`, `POST /songs/:id/duplicate` |
+| Sections | `POST /songs/:songId/sections`, `PUT/DELETE /sections/:id`, `PUT /sections/:id/reorder`, `POST /sections/:id/duplicate` |
+| Sequencer | `GET /sections/:id/parts`, `PUT /section-parts/:id`, `POST /section-parts/:id/sound-slots`, `PUT/DELETE /sound-slots/:id` |
+| Samples | `GET/POST /samples`, `GET /samples/templates`, `PUT/DELETE /samples/:id`, `GET /samples/:id/playback-url` |
 
-```bash
-# 1. Pastikan API sedang running (untuk generate swagger.json)
-pnpm --filter api dev
-
-# 2. Generate API hooks
-pnpm --filter platform generate:api
-```
-
-Output akan di-generate ke:
-- `src/api/endpoints/` — React Query hooks per tag
-- `src/api/model/` — TypeScript types
+Format respons standar: `{ "message": string, "data": ... }`. Detail kontrak & aturan akses: [`docs/core/tdd.md`](docs/core/tdd.md).
 
 ---
 
-## Environment Variables
+## Dokumentasi Produk
 
-| Variable         | App      | Deskripsi                          | Default               |
-|------------------|----------|------------------------------------|-----------------------|
-| `PORT`           | API      | Port API server                    | `8080`                |
-| `JWT_SECRET`     | API      | Secret key untuk signing JWT       | —                     |
-| `DB_HOST`        | API      | PostgreSQL host                    | `localhost`           |
-| `DB_USER`        | API      | PostgreSQL user                    | `postgres`            |
-| `DB_PASSWORD`    | API      | PostgreSQL password                | —                     |
-| `DB_NAME`        | API      | PostgreSQL database name           | `bandjari`            |
-| `DB_PORT`        | API      | PostgreSQL port                    | `5432`                |
-| `SSL_MODE`       | API      | PostgreSQL SSL mode                | `disable`             |
-| `VITE_API_URL`   | Platform | Base URL API untuk frontend        | `http://localhost:8080/api/v1` |
-| `STORAGE_ENDPOINT`      | API      | Endpoint object storage S3-compatible | `http://localhost:9000` |
-| `STORAGE_REGION`        | API      | Region object storage              | `us-east-1`            |
-| `STORAGE_BUCKET`        | API      | Nama bucket file audio             | `bandjari-samples`     |
-| `STORAGE_ACCESS_KEY_ID` | API      | Access key object storage          | `minioadmin`           |
-| `STORAGE_SECRET_ACCESS_KEY` | API  | Secret key object storage          | `minioadmin`           |
-| `STORAGE_USE_PATH_STYLE`| API      | Path-style addressing (MinIO)      | `true`                 |
-
-> File `.env` diletakkan di **root project** dan dibaca oleh kedua apps.
-
----
-
-## Documentation
-
-Dokumentasi pengembangan produk tersedia di direktori `docs/`:
-
-```
-docs/
-├── README.md              ← Panduan alur dokumentasi & template
-└── issue/
-    └── README.md          ← Template penulisan issue
-```
-
-Lihat [docs/README.md](docs/README.md) untuk panduan lengkap workflow dokumentasi produk (PRD → UX Flow → UI Spec → ERD → API Contract).
+| Dokumen | Isi |
+|---|---|
+| [`docs/core/brd.md`](docs/core/brd.md) | Business Requirements |
+| [`docs/core/prd.md`](docs/core/prd.md) | Product Requirements (alur, FR, acceptance criteria) |
+| [`docs/core/tdd.md`](docs/core/tdd.md) | Technical Design (skema DB, kontrak API, playback engine, role FR-ROLE) |
+| [`docs/core/breakdown.md`](docs/core/breakdown.md) | Epic & user story breakdown |
+| [`docs/core/wireframe.html`](docs/core/wireframe.html) | Wireframe layar aplikasi |
 
 ---
 
