@@ -81,6 +81,20 @@ func TestUpdateSteps_TemplateSongForbidden(t *testing.T) {
 	}
 }
 
+// TestUpdateSteps_TemplateSongAdminAllowed — admin boleh mengedit steps milik
+// Song Template System (FR-ROLE).
+func TestUpdateSteps_TemplateSongAdminAllowed(t *testing.T) {
+	svc, partID, _ := setupPartEnv(t, true)
+	steps := "T,T,D,D"
+	res, err := svc.UpdateSteps(5, true, partID, dto.UpdateStepsRequest{Steps: &dto.NullableString{Set: true, Value: &steps}})
+	if err != nil {
+		t.Fatalf("admin UpdateSteps() error = %v", err)
+	}
+	if res.Steps == nil || *res.Steps != "T,T,D,D" {
+		t.Fatalf("steps = %v, want T,T,D,D", res.Steps)
+	}
+}
+
 func TestListBySection_UserSongGuestGetsNotFound(t *testing.T) {
 	svc, _, _ := setupPartEnv(t, false)
 	_, err := svc.ListBySection(nil, 1)

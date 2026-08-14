@@ -117,12 +117,19 @@ func (f *fakeSlotRepo) Delete(id uint) error {
 }
 
 // setupSlotEnv membangun rantai Song → Section → SectionPart + service.
-// steps berisi steps milik part (bisa nil).
-func setupSlotEnv(t *testing.T, steps *string) (*soundSlotService, *fakeSlotRepo, uint) {
+// steps berisi steps milik part (bisa nil); isTemplate=true membuat Song
+// Template System (dipakai tes guard admin, FR-ROLE).
+func setupSlotEnv(t *testing.T, steps *string, isTemplate bool) (*soundSlotService, *fakeSlotRepo, uint) {
 	t.Helper()
-	songRepo := newFakeSongRepo(&model.Song{UserID: uptr(5), Name: "Lagu", Bpm: 90})
+	song := &model.Song{Name: "Lagu", Bpm: 90}
+	if isTemplate {
+		song.IsSystemTemplate = true
+	} else {
+		song.UserID = uptr(5)
+	}
+	songRepo := newFakeSongRepo(song)
 	sectionRepo := newFakeSectionRepo()
-	sec, err := NewSectionService(sectionRepo, songRepo, newFakeSampleRepo()).Create(5, false, 1, dto.CreateSectionRequest{Name: "Dasar"})
+	sec, err := NewSectionService(sectionRepo, songRepo, newFakeSampleRepo()).Create(5, isTemplate, 1, dto.CreateSectionRequest{Name: "Dasar"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,8 +144,40 @@ func setupSlotEnv(t *testing.T, steps *string) (*soundSlotService, *fakeSlotRepo
 	return svc, slotRepo, partID
 }
 
+// TestSlotRole_AdminCanMutateTemplate — admin boleh buat/ubah/hapus SoundSlot
+// pada Song Template System; non-admin ditolak (FR-ROLE).
+func TestSlotRole_AdminCanMutateTemplate(t *testing.T) {
+	// non-admin → ditolak saat create
+	svc, _, partID := setupSlotEnv(t, nil, true)
+	_, err := svc.Create(5, false, partID, dto.CreateSoundSlotRequest{Label: "Duk", Key: "K"})
+	if !errors.Is(err, ErrForbidden) {
+		t.Fatalf("user biasa: err = %v, want ErrForbidden (FR-ROLE)", err)
+	}
+
+	// admin → create sukses
+	created, err := svc.Create(5, true, partID, dto.CreateSoundSlotRequest{Label: "Duk", Key: "K"})
+	if err != nil {
+		t.Fatalf("admin Create() error = %v", err)
+	}
+
+	// admin → update sukses
+	newKey := "KD"
+	updated, err := svc.Update(5, true, created.ID, dto.UpdateSoundSlotRequest{Key: &newKey})
+	if err != nil {
+		t.Fatalf("admin Update() error = %v", err)
+	}
+	if updated.Key != "KD" {
+		t.Fatalf("key = %q, want KD", updated.Key)
+	}
+
+	// admin → delete sukses
+	if err := svc.Delete(5, true, created.ID); err != nil {
+		t.Fatalf("admin Delete() error = %v", err)
+	}
+}
+
 func TestSlotCreate_DuplicateKeyBadRequest(t *testing.T) {
-	svc, slotRepo, partID := setupSlotEnv(t, nil)
+	svc, slotRepo, partID := setupSlotEnv(t, nil, false)
 	// pre-populate slot dengan key T
 	slotRepo.slots[1] = &model.SoundSlot{SectionPartID: partID, Label: "Tak", Key: "T"}
 	slotRepo.nextID = 2
@@ -150,7 +189,7 @@ func TestSlotCreate_DuplicateKeyBadRequest(t *testing.T) {
 }
 
 func TestSlotCreate_Success(t *testing.T) {
-	svc, _, partID := setupSlotEnv(t, nil)
+	svc, _, partID := setupSlotEnv(t, nil, false)
 	res, err := svc.Create(5, false, partID, dto.CreateSoundSlotRequest{Label: "Duk", Key: "K"})
 	if err != nil {
 		t.Fatal(err)
@@ -161,7 +200,7 @@ func TestSlotCreate_Success(t *testing.T) {
 }
 
 func TestSlotCreate_TwoCharKey(t *testing.T) {
-	svc, _, partID := setupSlotEnv(t, nil)
+	svc, _, partID := setupSlotEnv(t, nil, false)
 	res, err := svc.Create(5, false, partID, dto.CreateSoundSlotRequest{Label: "Duk Keras", Key: "KD"})
 	if err != nil {
 		t.Fatalf("Create key 2 karakter error = %v", err)
@@ -172,7 +211,7 @@ func TestSlotCreate_TwoCharKey(t *testing.T) {
 }
 
 func TestSlotCreate_InvalidKeyFormat(t *testing.T) {
-	svc, _, partID := setupSlotEnv(t, nil)
+	svc, _, partID := setupSlotEnv(t, nil, false)
 	for _, bad := range []string{"", "ABC", "T,", "T D"} {
 		_, err := svc.Create(5, false, partID, dto.CreateSoundSlotRequest{Label: "Buruk", Key: bad})
 		if !errors.Is(err, ErrBadRequest) {
@@ -182,7 +221,7 @@ func TestSlotCreate_InvalidKeyFormat(t *testing.T) {
 }
 
 func TestSlotCreate_OtherUsersSampleForbidden(t *testing.T) {
-	svc, _, partID := setupSlotEnv(t, nil)
+	svc, _, partID := setupSlotEnv(t, nil, false)
 	sampleRepo := svc.sampleRepo.(*fakeSampleRepo)
 	sampleRepo.samples[9] = &model.Sample{UserID: uptr(99), Name: "Punya Orang", Part: model.PartRebana1}
 	sampleRepo.nextID = 10
@@ -194,7 +233,7 @@ func TestSlotCreate_OtherUsersSampleForbidden(t *testing.T) {
 }
 
 func TestSlotCreate_TemplateSampleAllowed(t *testing.T) {
-	svc, _, partID := setupSlotEnv(t, nil)
+	svc, _, partID := setupSlotEnv(t, nil, false)
 	sampleRepo := svc.sampleRepo.(*fakeSampleRepo)
 	sampleRepo.samples[9] = &model.Sample{IsSystemTemplate: true, Name: "Rebana1 Tak", Part: model.PartRebana1}
 	sampleRepo.nextID = 10
@@ -210,7 +249,7 @@ func TestSlotCreate_TemplateSampleAllowed(t *testing.T) {
 
 func TestSlotUpdate_KeyChangeWhileUsedInSteps(t *testing.T) {
 	steps := "T,D,T,D"
-	svc, slotRepo, partID := setupSlotEnv(t, &steps)
+	svc, slotRepo, partID := setupSlotEnv(t, &steps, false)
 	slot := &model.SoundSlot{SectionPartID: partID, Label: "Tak", Key: "T"}
 	slot.ID = 1
 	slotRepo.slots[1] = slot
@@ -224,7 +263,7 @@ func TestSlotUpdate_KeyChangeWhileUsedInSteps(t *testing.T) {
 }
 
 func TestSlotUpdate_DetachSample(t *testing.T) {
-	svc, slotRepo, partID := setupSlotEnv(t, nil)
+	svc, slotRepo, partID := setupSlotEnv(t, nil, false)
 	sid := uint(9)
 	slot := &model.SoundSlot{SectionPartID: partID, Label: "Tak", Key: "T", SampleID: &sid}
 	slot.ID = 1
@@ -242,7 +281,7 @@ func TestSlotUpdate_DetachSample(t *testing.T) {
 
 func TestSlotDelete_KeyUsedInStepsConflict(t *testing.T) {
 	steps := "T,D,T,D"
-	svc, slotRepo, partID := setupSlotEnv(t, &steps)
+	svc, slotRepo, partID := setupSlotEnv(t, &steps, false)
 	slot := &model.SoundSlot{SectionPartID: partID, Label: "Tak", Key: "T"}
 	slot.ID = 1
 	slotRepo.slots[1] = slot
@@ -255,7 +294,7 @@ func TestSlotDelete_KeyUsedInStepsConflict(t *testing.T) {
 }
 
 func TestSlotDelete_Success(t *testing.T) {
-	svc, slotRepo, partID := setupSlotEnv(t, nil)
+	svc, slotRepo, partID := setupSlotEnv(t, nil, false)
 	slot := &model.SoundSlot{SectionPartID: partID, Label: "Duk", Key: "K"}
 	slot.ID = 1
 	slotRepo.slots[1] = slot
