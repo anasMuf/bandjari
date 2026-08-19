@@ -1,0 +1,138 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+      - "tasks/**"
+  pull_request:
+    branches: [main, develop]
+
+# Batalkan run lama pada ref yang sama bila ada push baru
+concurrency:
+  group: cicd-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------
+  # CHECKS — jalan paralel di setiap PR & push (gate sebelum deploy)
+  # ---------------------------------------------------------------
+  api-check:
+    name: API (Go) — vet · test · build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache-dependency-path: apps/api/go.sum
+      - run: go vet ./...
+      - run: go build ./...
+      - run: go test ./... -count=1
+
+  web-check:
+    name: Web (pnpm monorepo) — lint · test · build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      # Install seluruh workspace sekali (apps + packages bersama)
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter platform check
+      - run: pnpm --filter platform exec vitest run --passWithNoTests
+      - run: pnpm --filter platform build
+        env:
+          VITE_API_URL: ${{ vars.VITE_API_URL || 'http://localhost:8080/api/v1' }}
+
+  # ---------------------------------------------------------------
+  # BUILD & PUSH IMAGE — hanya saat push ke main, setelah checks hijau
+  # api & platform dibangun PARALEL lewat matrix
+  # ---------------------------------------------------------------
+  build:
+    name: Build & push (${{ matrix.app }})
+    needs: [api-check, web-check]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false   # api & platform build independen
+      matrix:
+        include:
+          - app: api
+            context: ./apps/api
+            file: ./apps/api/Dockerfile
+            image: bandjari-api
+            build_args: ""
+          - app: platform
+            context: .
+            file: ./apps/platform/Dockerfile
+            image: bandjari-platform
+            build_args: |
+              VITE_API_URL=${{ vars.VITE_API_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Owner huruf kecil (syarat GHCR)
+        id: owner
+        run: echo "name=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          push: true
+          build-args: ${{ matrix.build_args }}
+          tags: |
+            ghcr.io/${{ steps.owner.outputs.name }}/${{ matrix.image }}:latest
+            ghcr.io/${{ steps.owner.outputs.name }}/${{ matrix.image }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app }}
+
+  # ---------------------------------------------------------------
+  # DEPLOY — SSH ke VPS, tarik image baru, restart stack
+  # ---------------------------------------------------------------
+  deploy:
+    name: Deploy ke VPS
+    needs: build
+    runs-on: ubuntu-latest
+    environment: ANASLABS_VPS   # agar bisa baca secret VPS_HOST/USER/KEY
+    steps:
+      - name: SSH & docker compose up
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_KEY }}
+          script: |
+            set -e
+            cd "${{ secrets.DEPLOY_PATH }}"
+            # Paksa direktori deploy persis sama dengan main (apa pun branch lokalnya).
+            # .env aman karena gitignored.
+            git fetch origin main
+            git reset --hard origin/main
+            if [ -n "${{ secrets.GHCR_PAT }}" ]; then
+              echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+            fi
+            export IMAGE_OWNER="$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
+            export IMAGE_TAG="${{ github.sha }}"
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d
+            docker image prune -f

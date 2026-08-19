@@ -1,0 +1,56 @@
+# Compose PRODUKSI — dipakai pipeline deploy (CI/CD) di VPS.
+# Gambar diambil dari GHCR; IMAGE_OWNER & IMAGE_TAG di-set oleh workflow deploy.
+# Nilai variabel dibaca dari .env di direktori deploy (lihat .env.production.example).
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-bandjari}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-bandjari}
+      POSTGRES_DB: ${DB_NAME:-bandjari}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-bandjari} -d ${DB_NAME:-bandjari}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    image: ghcr.io/${IMAGE_OWNER:-anasmuf}/bandjari-api:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: "8080"
+      # DSN di config/database.go tidak memuat password — pgx membacanya dari PGPASSWORD
+      PGPASSWORD: ${DB_PASSWORD:-bandjari}
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: ${DB_USER:-bandjari}
+      DB_NAME: ${DB_NAME:-bandjari}
+      SSL_MODE: ${SSL_MODE:-disable}
+      JWT_SECRET: ${JWT_SECRET:-ganti-di-env-produksi}
+      # Object storage: Cloudflare R2 (S3-compatible). Bila STORAGE_ENDPOINT
+      # kosong, fitur Sample nonaktif — API tetap jalan dengan warning di startup.
+      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-}
+      STORAGE_REGION: ${STORAGE_REGION:-auto}
+      STORAGE_BUCKET: ${STORAGE_BUCKET:-bandjari-samples}
+      STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY_ID:-}
+      STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_ACCESS_KEY:-}
+      STORAGE_USE_PATH_STYLE: "true" # R2 & MinIO sama-sama path-style
+    ports:
+      - "8085:8080" # publik — dipakai browser (VITE_API_URL)
+
+  platform:
+    image: ghcr.io/${IMAGE_OWNER:-anasmuf}/bandjari-platform:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "80:80" # publik — frontend
+
+volumes:
+  postgres_data:

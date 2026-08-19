@@ -6,7 +6,8 @@ import '../styles.css'
 import type { useAuth } from '../features/auth/AuthContext'
 
 interface MyRouterContext {
-  auth: ReturnType<typeof useAuth>
+  // null sebelum AuthProvider merender (lihat main.tsx / router.tsx)
+  auth: ReturnType<typeof useAuth> | null;
 }
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({

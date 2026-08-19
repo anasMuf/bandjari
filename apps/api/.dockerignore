@@ -1,0 +1,4 @@
+tmp/
+bin/
+song_templates
+*.log

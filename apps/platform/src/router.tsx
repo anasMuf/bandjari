@@ -8,7 +8,7 @@ export function getRouter() {
     defaultPreload: 'intent',
     defaultPreloadStaleTime: 0,
     context: {
-      auth: undefined!,
+      auth: null,
     },
   })
 

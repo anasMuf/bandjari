@@ -13,5 +13,11 @@
   "license": "ISC",
   "devDependencies": {
     "nx": "^22.7.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "lightningcss"
+    ]
   }
 }

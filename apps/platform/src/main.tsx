@@ -17,7 +17,7 @@ const router = createRouter({
   defaultPreload: 'intent',
   scrollRestoration: true,
   context: {
-    auth: undefined!,
+    auth: null,
   },
 })
 
