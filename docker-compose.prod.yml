@@ -50,7 +50,7 @@ services:
     depends_on:
       - api
     ports:
-      - "80:80" # publik — frontend
+      - "8081:80" # publik — dipakai browser via Cloudflare (origin rule bandjari.net -> 8081)
 
 volumes:
   postgres_data:

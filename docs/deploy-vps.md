@@ -26,7 +26,7 @@ Isi `.env`:
 
 - `JWT_SECRET` wajib diisi (token lama invalid bila berubah).
 - `STORAGE_*` diisi kredensial Cloudflare R2 (bucket dibuat di dashboard R2, API token permission *Object Read & Write*).
-- Buka port `22`, `80` (frontend), `8085` (API) di firewall. Port MinIO `9000/9001` tidak dipakai di produksi.
+- Buka port `22`, `8081` (frontend), `8085` (API) di firewall. Port 80/443 di VPS ini dipakai nginx host project lain — jangan diganggu.
 
 Deploy pertama bisa dicoba manual:
 
@@ -48,8 +48,10 @@ Buat A record di Cloudflare (proxy aktif = orange cloud):
 | `api.bandjari.net` | A | IP VPS |
 
 - `VITE_API_URL` (GitHub variable) = `https://api.bandjari.net/api/v1` — dipakai browser, di-bake ke image saat build.
-- Origin tetap HTTP (port 80/8085); TLS diterminasi Cloudflare. Di dashboard Cloudflare pilih SSL/TLS mode **Flexible** (atau Full dengan origin cert bila mau lebih ketat).
-- Karena origin API ada di port non-standar `8085`, tambahkan **Origin Rule** di Cloudflare (Rules → Origin Rules, semua plan): `Hostname equals api.bandjari.net` → *Destination port* `8085`.
+- Origin tetap HTTP (port 8081/8085); TLS diterminasi Cloudflare. Di dashboard Cloudflare pilih SSL/TLS mode **Flexible**.
+- Karena origin keduanya di port non-standar, tambahkan **Origin Rule** di Cloudflare (Rules → Origin Rules, semua plan):
+  - `Hostname equals api.bandjari.net` → *Destination port* `8085`
+  - `Hostname equals bandjari.net` → *Destination port* `8081`
 - Presigned URL playback dari R2 (`*.r2.cloudflarestorage.com`) otomatis bisa diakses publik — tidak perlu konfigurasi tambahan.
 
 ## Setup GitHub (sekali saja)
