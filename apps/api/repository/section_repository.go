@@ -20,6 +20,12 @@ type SectionRepository interface {
 	// ClearNextTarget mereset section-section yang menjadikan targetID sebagai
 	// tujuan lanjut (next_mode=target) kembali ke mode default (order).
 	ClearNextTarget(targetID uint) error
+	// DeletePartsBySectionID soft-delete seluruh SectionPart milik satu Section —
+	// bagian dari kebijakan cascade: anak ikut terhapus saat induk dihapus.
+	DeletePartsBySectionID(sectionID uint) error
+	// DeleteSlotsBySectionID soft-delete seluruh SoundSlot milik satu Section
+	// (lewat SectionPart) — bagian dari kebijakan cascade yang sama.
+	DeleteSlotsBySectionID(sectionID uint) error
 	Delete(id uint) error
 	WithTransaction(fn func(repo SectionRepository) error) error
 }
@@ -80,6 +86,15 @@ func (r *sectionRepository) UpdateLoop(id uint, loop bool) error {
 
 func (r *sectionRepository) Delete(id uint) error {
 	return r.db.Delete(&model.Section{}, id).Error
+}
+
+func (r *sectionRepository) DeletePartsBySectionID(sectionID uint) error {
+	return r.db.Where("section_id = ?", sectionID).Delete(&model.SectionPart{}).Error
+}
+
+func (r *sectionRepository) DeleteSlotsBySectionID(sectionID uint) error {
+	partsSub := r.db.Model(&model.SectionPart{}).Select("id").Where("section_id = ?", sectionID)
+	return r.db.Where("section_part_id IN (?)", partsSub).Delete(&model.SoundSlot{}).Error
 }
 
 func (r *sectionRepository) WithTransaction(fn func(repo SectionRepository) error) error {

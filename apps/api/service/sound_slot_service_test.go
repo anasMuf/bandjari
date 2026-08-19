@@ -7,6 +7,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"gorm.io/gorm"
 )
 
@@ -41,8 +42,10 @@ func (f *fakePartRepo) Save(part *model.SectionPart) error {
 }
 
 type fakeSlotRepo struct {
-	slots  map[uint]*model.SoundSlot
-	nextID uint
+	slots     map[uint]*model.SoundSlot
+	nextID    uint
+	createErr error
+	saveErr   error
 }
 
 func newFakeSlotRepo() *fakeSlotRepo {
@@ -50,6 +53,9 @@ func newFakeSlotRepo() *fakeSlotRepo {
 }
 
 func (f *fakeSlotRepo) Create(slot *model.SoundSlot) error {
+	if f.createErr != nil {
+		return f.createErr
+	}
 	slot.ID = f.nextID
 	f.nextID++
 	f.slots[slot.ID] = slot
@@ -104,6 +110,9 @@ func (f *fakeSlotRepo) MaxOrderIndex(sectionPartID uint) (int, error) {
 }
 
 func (f *fakeSlotRepo) Save(slot *model.SoundSlot) error {
+	if f.saveErr != nil {
+		return f.saveErr
+	}
 	f.slots[slot.ID] = slot
 	return nil
 }
@@ -185,6 +194,36 @@ func TestSlotCreate_DuplicateKeyBadRequest(t *testing.T) {
 	_, err := svc.Create(5, false, partID, dto.CreateSoundSlotRequest{Label: "Tak Lain", Key: "T"})
 	if !errors.Is(err, ErrBadRequest) {
 		t.Fatalf("err = %v, want ErrBadRequest (FR-SLOT-02)", err)
+	}
+}
+
+// TestSlotCreate_UniqueViolationMapsToBadRequest — race: dua request paralel
+// sama-sama lolos CountByKey, satu INSERT kena unique violation dari backstop
+// idx_slot_key_active → harus 400 (bukan 500).
+func TestSlotCreate_UniqueViolationMapsToBadRequest(t *testing.T) {
+	svc, slotRepo, partID := setupSlotEnv(t, nil, false)
+	slotRepo.createErr = &pgconn.PgError{Code: "23505"}
+
+	_, err := svc.Create(5, false, partID, dto.CreateSoundSlotRequest{Label: "Duk", Key: "K"})
+	if !errors.Is(err, ErrBadRequest) {
+		t.Fatalf("err = %v, want ErrBadRequest (unique violation backstop)", err)
+	}
+}
+
+// TestSlotUpdate_UniqueViolationMapsToBadRequest — race pada Update: key baru
+// sudah dipakai slot lain sesaat sebelum UPDATE → backstop unique index → 400.
+func TestSlotUpdate_UniqueViolationMapsToBadRequest(t *testing.T) {
+	svc, slotRepo, partID := setupSlotEnv(t, nil, false)
+	slot := &model.SoundSlot{SectionPartID: partID, Label: "Tak", Key: "T"}
+	slot.ID = 1
+	slotRepo.slots[1] = slot
+	slotRepo.nextID = 2
+	slotRepo.saveErr = &pgconn.PgError{Code: "23505"}
+
+	newKey := "X"
+	_, err := svc.Update(5, false, 1, dto.UpdateSoundSlotRequest{Key: &newKey})
+	if !errors.Is(err, ErrBadRequest) {
+		t.Fatalf("err = %v, want ErrBadRequest (unique violation backstop)", err)
 	}
 }
 

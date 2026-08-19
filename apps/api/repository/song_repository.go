@@ -21,6 +21,15 @@ type SongRepository interface {
 	UpdateSectionLoop(sectionID uint, loop bool) error
 	Save(song *model.Song) error
 	Delete(id uint) error
+	// Ketiga metode berikut adalah bagian dari kebijakan cascade soft-delete:
+	// saat Song dihapus, seluruh Section → SectionPart → SoundSlot anak ikut
+	// dihapus lunak agar tidak menjadi baris aktif yatim.
+	DeleteSectionsBySongID(songID uint) error
+	DeletePartsBySongID(songID uint) error
+	DeleteSlotsBySongID(songID uint) error
+	// WithTransaction menjalankan fn dalam satu transaksi DB — dipakai Duplicate
+	// agar insert deep-copy + remap next_section_id bersifat atomik (all-or-nothing).
+	WithTransaction(fn func(repo SongRepository) error) error
 }
 
 type songRepository struct {
@@ -102,4 +111,25 @@ func (r *songRepository) Save(song *model.Song) error {
 
 func (r *songRepository) Delete(id uint) error {
 	return r.db.Delete(&model.Song{}, id).Error
+}
+
+func (r *songRepository) DeleteSectionsBySongID(songID uint) error {
+	return r.db.Where("song_id = ?", songID).Delete(&model.Section{}).Error
+}
+
+func (r *songRepository) DeletePartsBySongID(songID uint) error {
+	sectionsSub := r.db.Model(&model.Section{}).Select("id").Where("song_id = ?", songID)
+	return r.db.Where("section_id IN (?)", sectionsSub).Delete(&model.SectionPart{}).Error
+}
+
+func (r *songRepository) DeleteSlotsBySongID(songID uint) error {
+	partsSub := r.db.Model(&model.SectionPart{}).Select("id").
+		Where("section_id IN (?)", r.db.Model(&model.Section{}).Select("id").Where("song_id = ?", songID))
+	return r.db.Where("section_part_id IN (?)", partsSub).Delete(&model.SoundSlot{}).Error
+}
+
+func (r *songRepository) WithTransaction(fn func(repo SongRepository) error) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		return fn(&songRepository{db: tx})
+	})
 }

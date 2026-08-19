@@ -237,12 +237,29 @@ func (s *sectionService) Delete(userID uint, isAdmin bool, sectionID uint) error
 	if _, err := s.loadGuardedSection(sectionID, userID, isAdmin); err != nil {
 		return err
 	}
-	// Section lain yang menjadikan section ini tujuan lanjut (next_mode=target)
-	// dikembalikan ke mode default "order" agar tidak menunjuk section terhapus.
-	if err := s.sectionRepo.ClearNextTarget(sectionID); err != nil {
-		return err
-	}
-	return s.sectionRepo.Delete(sectionID)
+	// ClearNextTarget + Delete dalam satu transaksi: bila salah satu gagal,
+	// tidak ada referensi setengah dibersihkan atau target terhapus tanpa
+	// pembersihan pointer next_mode=target (dangling reference).
+	//
+	// Cascade soft-delete (kebijakan data): SectionPart & SoundSlot anak ikut
+	// dihapus lunak agar tidak menjadi baris aktif yatim — dan agar referensi
+	// Sample dari slot di section terhapus tidak lagi memblokir penghapusan
+	// Sample (FR-SAMP-08) oleh referensi tak terlihat.
+	return s.sectionRepo.WithTransaction(func(tx repository.SectionRepository) error {
+		// Section lain yang menjadikan section ini tujuan lanjut (next_mode=target)
+		// dikembalikan ke mode default "order" agar tidak menunjuk section terhapus.
+		if err := tx.ClearNextTarget(sectionID); err != nil {
+			return err
+		}
+		// Hapus anak lebih dulu (slot → part), baru induknya.
+		if err := tx.DeleteSlotsBySectionID(sectionID); err != nil {
+			return err
+		}
+		if err := tx.DeletePartsBySectionID(sectionID); err != nil {
+			return err
+		}
+		return tx.Delete(sectionID)
+	})
 }
 
 // Duplicate menyalin Section (beserta SectionPart & SoundSlot) di akhir
@@ -288,15 +305,20 @@ func (s *sectionService) Duplicate(userID uint, isAdmin bool, sectionID uint) (*
 		copied.Parts = append(copied.Parts, newPart)
 	}
 
-	if err := s.sectionRepo.Create(copied); err != nil {
-		return nil, err
-	}
-	if !copied.Loop {
-		// GORM melewatkan nilai zero (false) saat INSERT — pastikan loop=false
-		// benar-benar tersimpan (kolom punya default true).
-		if err := s.sectionRepo.UpdateLoop(copied.ID, false); err != nil {
-			return nil, err
+	// Create + UpdateLoop dalam satu transaksi: gagal di salah satunya harus
+	// menggagalkan keduanya agar salinan tidak tersimpan dengan loop yang salah.
+	if err := s.sectionRepo.WithTransaction(func(tx repository.SectionRepository) error {
+		if err := tx.Create(copied); err != nil {
+			return err
 		}
+		if !copied.Loop {
+			// GORM melewatkan nilai zero (false) saat INSERT — pastikan loop=false
+			// benar-benar tersimpan (kolom punya default true).
+			return tx.UpdateLoop(copied.ID, false)
+		}
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 	return toSectionResponse(copied), nil
 }

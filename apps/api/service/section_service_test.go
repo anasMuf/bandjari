@@ -118,6 +118,24 @@ func (f *fakeSectionRepo) Delete(id uint) error {
 	return nil
 }
 
+// DeletePartsBySectionID & DeleteSlotsBySectionID meniru cascade soft-delete
+// GORM: anak-anak dihapus dari struktur (efek yang sama dengan mengisi deleted_at).
+func (f *fakeSectionRepo) DeletePartsBySectionID(sectionID uint) error {
+	if s, ok := f.sections[sectionID]; ok {
+		s.Parts = nil
+	}
+	return nil
+}
+
+func (f *fakeSectionRepo) DeleteSlotsBySectionID(sectionID uint) error {
+	if s, ok := f.sections[sectionID]; ok {
+		for i := range s.Parts {
+			s.Parts[i].SoundSlots = nil
+		}
+	}
+	return nil
+}
+
 func (f *fakeSectionRepo) WithTransaction(fn func(repo repository.SectionRepository) error) error {
 	return fn(f)
 }
@@ -379,6 +397,33 @@ func TestSectionDuplicate_CopiesPartsAndSlots(t *testing.T) {
 	}
 	if len(part0.SoundSlots) != 1 || part0.SoundSlots[0].SampleID == nil || *part0.SoundSlots[0].SampleID != sampleID {
 		t.Fatal("SoundSlot/sample tidak ikut terduplikasi")
+	}
+}
+
+func TestSectionDelete_CascadesToChildren(t *testing.T) {
+	songRepo := newFakeSongRepo(&model.Song{UserID: uptr(5), Name: "Lagu", Bpm: 90})
+	sectionRepo := newFakeSectionRepo()
+	svc := NewSectionService(sectionRepo, songRepo, newFakeSampleRepo())
+
+	sec, err := svc.Create(5, false, 1, dto.CreateSectionRequest{Name: "Awalan"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored := sectionRepo.sections[sec.ID]
+	stored.Parts[0].SoundSlots = []model.SoundSlot{{Label: "Tak", Key: "T"}}
+	parts0 := &stored.Parts[0]
+
+	if err := svc.Delete(5, false, sec.ID); err != nil {
+		t.Fatalf("Delete() error = %v", err)
+	}
+	if _, ok := sectionRepo.sections[sec.ID]; ok {
+		t.Fatal("section harus terhapus")
+	}
+	if len(stored.Parts) != 0 {
+		t.Fatalf("SectionPart anak harus ikut terhapus (cascade), tersisa %d", len(stored.Parts))
+	}
+	if len(parts0.SoundSlots) != 0 {
+		t.Fatalf("SoundSlot anak harus ikut terhapus (cascade), tersisa %d", len(parts0.SoundSlots))
 	}
 }
 

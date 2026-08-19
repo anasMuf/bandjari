@@ -3,6 +3,7 @@ package service
 import (
 	"api/dto"
 	"api/model"
+	"api/repository"
 	"errors"
 	"testing"
 
@@ -116,6 +117,39 @@ func (f *fakeSongRepo) Delete(id uint) error {
 	return nil
 }
 
+// Tiga metode berikut meniru cascade soft-delete GORM: anak-anak dihapus dari
+// struktur (efek setara mengisi deleted_at pada seluruh turunan).
+func (f *fakeSongRepo) DeleteSectionsBySongID(songID uint) error {
+	if s, ok := f.songs[songID]; ok {
+		s.Sections = nil
+	}
+	return nil
+}
+
+func (f *fakeSongRepo) DeletePartsBySongID(songID uint) error {
+	if s, ok := f.songs[songID]; ok {
+		for i := range s.Sections {
+			s.Sections[i].Parts = nil
+		}
+	}
+	return nil
+}
+
+func (f *fakeSongRepo) DeleteSlotsBySongID(songID uint) error {
+	if s, ok := f.songs[songID]; ok {
+		for i := range s.Sections {
+			for j := range s.Sections[i].Parts {
+				s.Sections[i].Parts[j].SoundSlots = nil
+			}
+		}
+	}
+	return nil
+}
+
+func (f *fakeSongRepo) WithTransaction(fn func(repo repository.SongRepository) error) error {
+	return fn(f)
+}
+
 func uptr(u uint) *uint { return &u }
 
 func TestSongGetByID_SystemTemplate_AccessibleToGuest(t *testing.T) {
@@ -190,6 +224,46 @@ func TestSongDelete_SystemTemplateForbidden(t *testing.T) {
 
 	if err := svc.Delete(5, false, 1); !errors.Is(err, ErrForbidden) {
 		t.Fatalf("err = %v, want ErrForbidden (FR-SONG-08)", err)
+	}
+}
+
+// TestSongDelete_CascadesToChildren memastikan kebijakan cascade soft-delete:
+// Section → SectionPart → SoundSlot anak ikut terhapus saat Song dihapus,
+// agar tidak ada baris aktif yatim yang memblokir penghapusan Sample (FR-SAMP-08).
+func TestSongDelete_CascadesToChildren(t *testing.T) {
+	sampleID := uint(77)
+	src := &model.Song{
+		UserID: uptr(5),
+		Name:   "Lagu",
+		Bpm:    90,
+		Sections: []model.Section{
+			{Name: "Awalan", Parts: []model.SectionPart{
+				{Part: model.PartRebana1, SoundSlots: []model.SoundSlot{
+					{Label: "Tak", Key: "T", SampleID: &sampleID},
+				}},
+			}},
+		},
+	}
+	repo := newFakeSongRepo(src)
+	svc := NewSongService(repo)
+
+	sec0 := &src.Sections[0]
+	part0 := &sec0.Parts[0]
+
+	if err := svc.Delete(5, false, 1); err != nil {
+		t.Fatalf("Delete() error = %v", err)
+	}
+	if _, ok := repo.songs[1]; ok {
+		t.Fatal("song harus terhapus")
+	}
+	if len(src.Sections) != 0 {
+		t.Fatalf("Section anak harus ikut terhapus (cascade), tersisa %d", len(src.Sections))
+	}
+	if len(sec0.Parts) != 0 {
+		t.Fatalf("SectionPart anak harus ikut terhapus (cascade), tersisa %d", len(sec0.Parts))
+	}
+	if len(part0.SoundSlots) != 0 {
+		t.Fatalf("SoundSlot anak harus ikut terhapus (cascade), tersisa %d", len(part0.SoundSlots))
 	}
 }
 

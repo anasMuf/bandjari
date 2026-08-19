@@ -162,6 +162,12 @@ func (s *soundSlotService) Create(userID uint, isAdmin bool, sectionPartID uint,
 		OrderIndex:    maxOrder + 1,
 	}
 	if err := s.slotRepo.Create(slot); err != nil {
+		if isUniqueViolation(err) {
+			// Race: key sudah dibuat request lain di antara CountByKey dan INSERT.
+			// Unique index parsial idx_slot_key_active menjadi backstop → 400
+			// (konsisten dengan cek duplikat di atas), bukan 500.
+			return nil, ErrBadRequest
+		}
 		return nil, err
 	}
 	return toSoundSlotResponse(slot), nil
@@ -216,6 +222,11 @@ func (s *soundSlotService) Update(userID uint, isAdmin bool, slotID uint, req dt
 	}
 
 	if err := s.slotRepo.Save(slot); err != nil {
+		if isUniqueViolation(err) {
+			// Race: key sudah dipakai slot lain di antara CountByKeyExcluding dan
+			// UPDATE — backstop unique index parsial → 400, bukan 500.
+			return nil, ErrBadRequest
+		}
 		return nil, err
 	}
 	return toSoundSlotResponse(slot), nil

@@ -167,7 +167,24 @@ func (s *songService) Delete(userID uint, isAdmin bool, songID uint) error {
 	if !canMutateSong(song, userID, isAdmin) {
 		return ErrForbidden
 	}
-	return s.songRepo.Delete(songID)
+	// Cascade soft-delete (kebijakan data): Section → SectionPart → SoundSlot
+	// anak ikut dihapus lunak dalam transaksi yang sama dengan Song. Tanpa ini,
+	// anak tetap aktif (soft delete tidak memicu ON DELETE CASCADE DB) dan
+	// referensi Sample dari slot di song terhapus tetap memblokir penghapusan
+	// Sample (FR-SAMP-08) oleh referensi tak terlihat.
+	return s.songRepo.WithTransaction(func(tx repository.SongRepository) error {
+		// Hapus anak lebih dulu (slot → part → section), baru induknya.
+		if err := tx.DeleteSlotsBySongID(songID); err != nil {
+			return err
+		}
+		if err := tx.DeletePartsBySongID(songID); err != nil {
+			return err
+		}
+		if err := tx.DeleteSectionsBySongID(songID); err != nil {
+			return err
+		}
+		return tx.Delete(songID)
+	})
 }
 
 // Duplicate menyalin Song beserta Section/SectionPart/SoundSlot (deep copy).
@@ -221,45 +238,54 @@ func (s *songService) Duplicate(userID uint, songID uint) (*dto.SongResponse, er
 		copied.Sections = append(copied.Sections, newSec)
 	}
 
-	if err := s.songRepo.Create(copied); err != nil {
+	// Seluruh deep copy + remap next_section_id berjalan dalam SATU transaksi:
+	// bila salah satu UPDATE gagal di tengah, song salinan ikut dibatalkan
+	// (rollback) sehingga tidak mungkin ada salinan dengan pointer ke section
+	// song asal (korupsi lintas-song).
+	if err := s.songRepo.WithTransaction(func(tx repository.SongRepository) error {
+		if err := tx.Create(copied); err != nil {
+			return err
+		}
+
+		// Remap next_section_id: section hasil duplikasi yang menunjuk target
+		// tertentu harus menunjuk salinan targetnya (bukan section asal).
+		idMap := make(map[uint]uint, len(oldIDs))
+		for i := range copied.Sections {
+			if i < len(oldIDs) {
+				idMap[oldIDs[i]] = copied.Sections[i].ID
+			}
+		}
+		for i, sec := range song.Sections {
+			// GORM melewatkan nilai zero (false) saat INSERT — pastikan loop=false
+			// benar-benar tersimpan pada section salinan (kolom punya default true).
+			if !sec.Loop {
+				if err := tx.UpdateSectionLoop(copied.Sections[i].ID, false); err != nil {
+					return err
+				}
+			}
+
+			if sec.NextMode != string(model.NextModeTarget) || sec.NextSectionID == nil {
+				continue
+			}
+			newTarget, ok := idMap[*sec.NextSectionID]
+			if !ok {
+				// Target tidak ikut terduplikasi → kembalikan ke mode default.
+				if err := tx.UpdateSectionNextTarget(copied.Sections[i].ID, string(model.NextModeOrder), nil); err != nil {
+					return err
+				}
+				copied.Sections[i].NextMode = string(model.NextModeOrder)
+				copied.Sections[i].NextSectionID = nil
+				continue
+			}
+			if err := tx.UpdateSectionNextTarget(copied.Sections[i].ID, string(model.NextModeTarget), &newTarget); err != nil {
+				return err
+			}
+			copied.Sections[i].NextMode = string(model.NextModeTarget)
+			copied.Sections[i].NextSectionID = &newTarget
+		}
+		return nil
+	}); err != nil {
 		return nil, err
-	}
-
-	// Remap next_section_id: section hasil duplikasi yang menunjuk target
-	// tertentu harus menunjuk salinan targetnya (bukan section asal).
-	idMap := make(map[uint]uint, len(oldIDs))
-	for i := range copied.Sections {
-		if i < len(oldIDs) {
-			idMap[oldIDs[i]] = copied.Sections[i].ID
-		}
-	}
-	for i, sec := range song.Sections {
-		// GORM melewatkan nilai zero (false) saat INSERT — pastikan loop=false
-		// benar-benar tersimpan pada section salinan (kolom punya default true).
-		if !sec.Loop {
-			if err := s.songRepo.UpdateSectionLoop(copied.Sections[i].ID, false); err != nil {
-				return nil, err
-			}
-		}
-
-		if sec.NextMode != string(model.NextModeTarget) || sec.NextSectionID == nil {
-			continue
-		}
-		newTarget, ok := idMap[*sec.NextSectionID]
-		if !ok {
-			// Target tidak ikut terduplikasi → kembalikan ke mode default.
-			if err := s.songRepo.UpdateSectionNextTarget(copied.Sections[i].ID, string(model.NextModeOrder), nil); err != nil {
-				return nil, err
-			}
-			copied.Sections[i].NextMode = string(model.NextModeOrder)
-			copied.Sections[i].NextSectionID = nil
-			continue
-		}
-		if err := s.songRepo.UpdateSectionNextTarget(copied.Sections[i].ID, string(model.NextModeTarget), &newTarget); err != nil {
-			return nil, err
-		}
-		copied.Sections[i].NextMode = string(model.NextModeTarget)
-		copied.Sections[i].NextSectionID = &newTarget
 	}
 
 	return toSongResponse(copied), nil

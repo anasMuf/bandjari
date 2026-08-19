@@ -85,6 +85,12 @@ func (s *sampleService) Upload(userID uint, isAdmin bool, isTemplate bool, part 
 		sample.UserID = &userID
 	}
 	if err := s.sampleRepo.Create(sample); err != nil {
+		// Compensating action: file sudah ter-upload tapi insert DB gagal → hapus
+		// object-nya (best-effort) agar tidak meninggalkan file yatim di storage
+		// yang tidak bisa diidentifikasi dari baris DB manapun.
+		if delErr := s.storage.Delete(context.Background(), key); delErr != nil {
+			log.Printf("gagal membersihkan object storage %s setelah insert DB gagal: %v", key, delErr)
+		}
 		return nil, err
 	}
 	return toSampleResponse(sample), nil

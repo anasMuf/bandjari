@@ -177,6 +177,33 @@ func TestSampleUpload_ValidWav(t *testing.T) {
 	}
 }
 
+// failingSampleRepo memaksa Create gagal — untuk menguji compensating cleanup:
+// object yang sudah ter-upload harus dihapus dari storage saat insert DB gagal.
+type failingSampleRepo struct {
+	*fakeSampleRepo
+}
+
+func (f *failingSampleRepo) Create(sample *model.Sample) error {
+	return errors.New("db down")
+}
+
+func TestSampleUpload_DBInsertFailureCleansUpStorage(t *testing.T) {
+	repo := &failingSampleRepo{fakeSampleRepo: newFakeSampleRepo()}
+	storage := newFakeStorage()
+	svc := NewSampleService(repo, storage)
+
+	_, err := svc.Upload(5, false, false, model.PartRebana1, "Tak Keras", wavBytes())
+	if err == nil {
+		t.Fatal("Upload() harus gagal saat insert DB gagal")
+	}
+	if len(storage.uploaded) != 1 {
+		t.Fatalf("file harus sempat ter-upload, got %d", len(storage.uploaded))
+	}
+	if len(storage.deleted) != 1 {
+		t.Fatalf("object harus dibersihkan dari storage, deleted = %v", storage.deleted)
+	}
+}
+
 func TestSampleUpload_RejectsNonWav(t *testing.T) {
 	repo := newFakeSampleRepo()
 	svc := NewSampleService(repo, newFakeStorage())

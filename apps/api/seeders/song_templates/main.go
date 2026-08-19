@@ -1,9 +1,10 @@
 // Seeder Song Template System (FR-SONG-07) — sekali jalan, idempotent.
 //
-// Men-seed susunan asli "Standar Banjari" yang dikonfirmasi pemilik produk
-// (song id 35): 8 section — awalan, dasar, naik setengah, naik, jeda, papatan,
-// turun, tutup — lengkap dengan pola steps, jenis bunyi (SoundSlot), perilaku
-// loop dan tujuan lanjut antar section (order/target/end).
+// Men-seed susunan "Standar Banjari" yang dikonfirmasi pemilik produk
+// (song id 35): 12 section — awalan, awal dasaran, dasar, naik setengah, naik,
+// awal papatan, jeda, papatan, turun, tutup, naik (duk tok), variasi naik 1 —
+// lengkap dengan pola steps, jenis bunyi (SoundSlot), perilaku loop dan tujuan
+// lanjut antar section (order/target/end).
 //
 // Jalankan dari apps/api:
 //
@@ -53,18 +54,30 @@ type sectionSpec struct {
 	parts       []partSpec
 }
 
-// Susunan 8 section asli "standar banjari". Loop & tujuan lanjut mengikuti data
-// song asli: awalan → dasar; naik setengah & turun → dasar; naik & jeda →
-// papatan; papatan & tutup = ending (berhenti).
+// Susunan 12 section "standar banjari" (data terbaru song id 35). Loop &
+// tujuan lanjut mengikuti data song asli: awalan → awal dasaran → dasar;
+// naik setengah & turun → awal dasaran; naik, naik (duk tok) & variasi naik 1
+// → awal papatan; awal papatan → jeda; jeda → papatan; papatan & tutup =
+// ending (berhenti).
 var sectionSpecs = []sectionSpec{
 	{
 		name: "awalan", loop: false, nextMode: "order", targetOrder: -1,
 		parts: []partSpec{
-			{model.PartRebana1, "DK,.,.,.,T,.,.,.,DK,.,DK,.,T,.,.,T", []slotSpec{{"Tak", "T"}, {"Duk", "DK"}}},
-			{model.PartRebana2, "DK,.,.,.,T,.,.,.,DK,.,DK,.,.,.,T,.", []slotSpec{{"Tak", "T"}, {"Duk", "DK"}}},
-			{model.PartRebana3, "D,.,.,.,T,.,.,.,D,.,.,.,T,.,.,T", []slotSpec{{"Tak", "T"}, {"Dung", "D"}}},
-			{model.PartRebana4, "D,.,.,.,T,.,.,.,D,.,.,.,.,.,.,T", []slotSpec{{"Tak", "T"}, {"Dung", "D"}}},
+			{model.PartRebana1, "DK,.,.,.,T,.,.,DK,DK,.,DK,.,T,.,.,T", []slotSpec{{"Tak", "T"}, {"Duk", "DK"}}},
+			{model.PartRebana2, "DK,.,.,.,T,.,DK,.,DK,.,DK,.,.,.,T,.", []slotSpec{{"Tak", "T"}, {"Duk", "DK"}}},
+			{model.PartRebana3, "D,.,.,.,T,.,.,.,D,.,D,.,T,.,.,T", []slotSpec{{"Tak", "T"}, {"Dung", "D"}}},
+			{model.PartRebana4, "D,.,.,.,T,.,D,.,D,.,D,.,.,.,.,T", []slotSpec{{"Tak", "T"}, {"Dung", "D"}}},
 			{model.PartBass, "DR,.,.,.,.,.,.,DK,.,.,.,.,DK,.,DK,.", []slotSpec{{"Der", "DR"}, {"Duk", "DK"}, {"Dung", "DG"}}},
+		},
+	},
+	{
+		name: "awal dasaran", loop: false, nextMode: "order", targetOrder: -1,
+		parts: []partSpec{
+			{model.PartRebana1, "DK,.,.,.,T,.,.,DP,DK,.,DK,.,T,.,.,T", []slotSpec{{"Tek", "T"}, {"Duk", "DK"}, {"Dep", "DP"}}},
+			{model.PartRebana2, "DK,.,T,.,.,.,DK,DP,.,DK,.,T,DP,.,T,.", []slotSpec{{"Tek", "T"}, {"Duk", "DK"}, {"Dep", "DP"}}},
+			{model.PartRebana3, "D,.,.,.,T,.,.,.,D,.,D,.,T,.,.,.", []slotSpec{{"Tek", "T"}, {"Duk", "D"}}},
+			{model.PartRebana4, "D,.,T,.,.,.,D,.,D,.,D,.,.,.,T,.", []slotSpec{{"Tek", "T"}, {"Duk", "D"}}},
+			{model.PartBass, "DR,.,.,.,.,.,.,DG,.,.,DG,.,DK,.,.,.", []slotSpec{{"Dung", "DG"}, {"Duk", "DK"}, {"Der", "DR"}}},
 		},
 	},
 	{
@@ -78,7 +91,7 @@ var sectionSpecs = []sectionSpec{
 		},
 	},
 	{
-		name: "naik setengah", loop: false, nextMode: "target", targetOrder: 1, // → dasar
+		name: "naik setengah", loop: false, nextMode: "target", targetOrder: 1, // → awal dasaran
 		parts: []partSpec{
 			{model.PartRebana1, "DK,.,T,.,T,.,.,T,T,.,T,.,T,.,.,T", []slotSpec{{"Tek", "T"}, {"Duk", "DK"}, {"Dep", "DP"}}},
 			{model.PartRebana2, "DK,.,T,.,.,.,T,.,T,.,.,T,.,DP,T,.", []slotSpec{{"Tek", "T"}, {"Duk", "DK"}, {"Dep", "DP"}}},
@@ -88,7 +101,7 @@ var sectionSpecs = []sectionSpec{
 		},
 	},
 	{
-		name: "naik", loop: false, nextMode: "target", targetOrder: 5, // → papatan
+		name: "naik", loop: false, nextMode: "target", targetOrder: 5, // → awal papatan
 		parts: []partSpec{
 			{model.PartRebana1, "DK,.,DK,.,T,.,.,T,T,.,T,.,T,.,.,T,DK,.,DK,.,DK,.,.,DK,DK,.,DK,.,DK,.,.,DK", []slotSpec{{"Tek", "T"}, {"Duk", "DK"}, {"Dep", "DP"}}},
 			{model.PartRebana2, "DK,DK,.,T,T,.,T,.,T,.,.,T,.,DK,T,.,DK,.,.,DK,DK,.,DK,.,DK,.,.,DK,.,DK,DK,.", []slotSpec{{"Tek", "T"}, {"Duk", "DK"}, {"Dep", "DP"}}},
@@ -98,7 +111,17 @@ var sectionSpecs = []sectionSpec{
 		},
 	},
 	{
-		name: "jeda", loop: false, nextMode: "target", targetOrder: 5, // → papatan
+		name: "awal papatan", loop: false, nextMode: "target", targetOrder: 6, // → jeda
+		parts: []partSpec{
+			{model.PartRebana1, "DK,.,.,.,T,.,.,T,T,.,DK,.,T,.,.,T", []slotSpec{{"Tek", "T"}, {"Duk", "DK"}, {"Dep", "DP"}}},
+			{model.PartRebana2, "DK,.,T,.,.,.,T,T,.,DK,.,T,T,.,T,.", []slotSpec{{"Tek", "T"}, {"Duk", "DK"}, {"Dep", "DP"}}},
+			{model.PartRebana3, "D,.,.,.,T,.,.,.,T,.,D,.,T,.,.,T", []slotSpec{{"Tek", "T"}, {"Duk", "D"}}},
+			{model.PartRebana4, "D,.,T,.,.,.,T,.,T,.,T,.,.,.,T,.", []slotSpec{{"Tek", "T"}, {"Duk", "D"}}},
+			{model.PartBass, "DR,.,.,.,.,.,.,DK,.,.,DK,.,DG,.,.,.", []slotSpec{{"Dung", "DG"}, {"Duk", "DK"}, {"Der", "DR"}}},
+		},
+	},
+	{
+		name: "jeda", loop: false, nextMode: "target", targetOrder: 7, // → papatan
 		parts: []partSpec{
 			{model.PartRebana1, "DK,.,T,.,T,.,.,T,T,.,DK,.,T,DK,.,T,.,.,.,.,T,.,.,T,T,.,T,.,T,.,.,T,T,.,T,.,T,.,.,T,T,.,DK,.,T,.,.,T", []slotSpec{{"Tek", "T"}, {"Duk", "DK"}, {"Dep", "DP"}}},
 			{model.PartRebana2, "DK,.,.,T,T,.,T,T,.,DK,.,T,.,DK,T,.,DK,.,.,.,.,.,T,.,T,.,.,T,.,T,T,.,T,T,.,T,T,.,T,T,.,DK,.,T,T,.,T,.", []slotSpec{{"Tek", "T"}, {"Duk", "DK"}, {"Dep", "DP"}}},
@@ -118,9 +141,9 @@ var sectionSpecs = []sectionSpec{
 		},
 	},
 	{
-		name: "turun", loop: false, nextMode: "target", targetOrder: 1, // → dasar
+		name: "turun", loop: false, nextMode: "target", targetOrder: 1, // → awal dasaran
 		parts: []partSpec{
-			{model.PartRebana1, "DK,.,DK,.,DK,.,.,T,T,.,DK,.,T,.,.,T", []slotSpec{{"Tek", "T"}, {"Duk", "DK"}, {"Dep", "DP"}}},
+			{model.PartRebana1, "DK,.,DK,.,DK,.,.,T,T,.,DK,.,T,DK,.,T", []slotSpec{{"Tek", "T"}, {"Duk", "DK"}, {"Dep", "DP"}}},
 			{model.PartRebana2, "DK,DK,.,DK,.,.,T,T,.,DK,.,T,T,.,T,.", []slotSpec{{"Tek", "T"}, {"Duk", "DK"}, {"Dep", "DP"}}},
 			{model.PartRebana3, "D,.,.,.,D,.,.,.,T,.,.,.,T,.,.,.", []slotSpec{{"Tek", "T"}, {"Duk", "D"}}},
 			{model.PartRebana4, "D,.,D,.,.,.,T,.,T,.,D,.,.,.,T,.", []slotSpec{{"Tek", "T"}, {"Duk", "D"}}},
@@ -130,11 +153,31 @@ var sectionSpecs = []sectionSpec{
 	{
 		name: "tutup", loop: false, nextMode: "end", targetOrder: -1,
 		parts: []partSpec{
-			{model.PartRebana1, "DK,.,DK,.,DK,.,.,T,T,.,DK,.,T,.,.,T,DK,.,.,.,.,.,.,.", []slotSpec{{"Tek", "T"}, {"Duk", "DK"}, {"Dep", "DP"}}},
+			{model.PartRebana1, "DK,.,DK,.,DK,.,.,T,T,.,DK,.,T,DK,.,T,DK,.,.,.,.,.,.,.", []slotSpec{{"Tek", "T"}, {"Duk", "DK"}, {"Dep", "DP"}}},
 			{model.PartRebana2, "DK,DK,.,DK,.,.,T,T,.,DK,.,T,T,.,T,.,DK,.,.,.,.,.,.,.", []slotSpec{{"Tek", "T"}, {"Duk", "DK"}, {"Dep", "DP"}}},
 			{model.PartRebana3, "D,.,.,.,D,.,.,.,T,.,.,.,T,.,.,.,D,.,.,.,.,.,.,.", []slotSpec{{"Tek", "T"}, {"Duk", "D"}}},
 			{model.PartRebana4, "D,.,D,.,.,.,T,.,T,.,D,.,.,.,T,.,D,.,.,.,.,.,.,.", []slotSpec{{"Tek", "T"}, {"Duk", "D"}}},
 			{model.PartBass, "DR,.,.,.,.,.,.,.,DK,.,.,.,DK,.,DK,.,DR,.,.,.,.,.,.,.", []slotSpec{{"Dung", "DG"}, {"Duk", "DK"}, {"Der", "DR"}}},
+		},
+	},
+	{
+		name: "naik (duk tok)", loop: true, nextMode: "target", targetOrder: 5, // → awal papatan
+		parts: []partSpec{
+			{model.PartRebana1, "DK,.,DK,.,DK,.,.,DK,DK,.,DK,.,DK,.,.,DK", []slotSpec{{"Tek", "T"}, {"Duk", "DK"}, {"Dep", "DP"}}},
+			{model.PartRebana2, "DK,.,.,DK,DK,.,DK,.,DK,.,.,DK,.,DK,DK,.", []slotSpec{{"Tek", "T"}, {"Duk", "DK"}, {"Dep", "DP"}}},
+			{model.PartRebana3, "D,.,.,.,D,.,.,.,D,.,.,.,D,.,.,.", []slotSpec{{"Tek", "T"}, {"Duk", "D"}}},
+			{model.PartRebana4, "D,.,D,.,D,.,.,.,D,.,D,.,D,.,.,.", []slotSpec{{"Tek", "T"}, {"Duk", "D"}}},
+			{model.PartBass, "DR,.,.,.,DK,.,DK,.,DR,.,.,.,DK,.,DK,.", []slotSpec{{"Dung", "DG"}, {"Duk", "DK"}, {"Der", "DR"}}},
+		},
+	},
+	{
+		name: "variasi naik 1", loop: true, nextMode: "target", targetOrder: 5, // → awal papatan
+		parts: []partSpec{
+			{model.PartRebana1, "DK,.,T,.,T,.,.,T,T,.,T,.,T,.,.,T,DK,.,DK,.,DK,.,.,DK,DK,.,DK,.,DK,.,.,DK", []slotSpec{{"Tek", "T"}, {"Duk", "DK"}, {"Dep", "DP"}}},
+			{model.PartRebana2, "DK,.,.,T,.,DK,T,.,T,.,.,T,.,DK,T,.,DK,.,.,DK,DK,.,DK,.,DK,.,.,DK,.,DK,DK,.", []slotSpec{{"Tek", "T"}, {"Duk", "DK"}, {"Dep", "DP"}}},
+			{model.PartRebana3, "D,.,.,.,T,.,.,.,T,.,.,.,T,.,.,.,D,.,.,.,D,.,.,.,D,.,.,.,D,.,.,.", []slotSpec{{"Tek", "T"}, {"Duk", "D"}}},
+			{model.PartRebana4, "D,.,T,.,T,.,.,.,T,.,T,.,T,.,.,.,D,.,D,.,D,.,.,.,D,.,D,.,D,.,.,.", []slotSpec{{"Tek", "T"}, {"Duk", "D"}}},
+			{model.PartBass, "DR,.,.,.,.,.,.,.,DK,.,.,.,DK,.,DK,.,DR,.,.,.,DK,.,DK,.,DR,.,.,.,DK,.,DK,.", []slotSpec{{"Dung", "DG"}, {"Duk", "DK"}, {"Der", "DR"}}},
 		},
 	},
 }
