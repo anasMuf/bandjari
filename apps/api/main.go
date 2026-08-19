@@ -90,7 +90,19 @@ func main() {
 	e := echo.New()
 	e.Validator = &utility.CustomValidator{Validator: validator.New()}
 	e.Use(middleware.MiddlewareLogging)
-	e.Use(echoMiddleware.CORS())
+	// CORS eksplisit: default Echo tidak menyetel Access-Control-Allow-Headers,
+	// sehingga preflight request dengan header Authorization/Content-Type ditolak browser.
+	e.Use(echoMiddleware.CORSWithConfig(echoMiddleware.CORSConfig{
+		AllowOrigins: config.LoadCORSAllowedOrigins(),
+		AllowMethods: echoMiddleware.DefaultCORSConfig.AllowMethods,
+		AllowHeaders: []string{
+			echo.HeaderOrigin,
+			echo.HeaderContentType,
+			echo.HeaderAccept,
+			echo.HeaderAuthorization,
+		},
+		MaxAge: 86400,
+	}))
 
 	e.HTTPErrorHandler = handler.CustomHTTPErrorHandler
 

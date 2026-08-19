@@ -32,7 +32,9 @@ services:
       DB_USER: ${DB_USER:-bandjari}
       DB_NAME: ${DB_NAME:-bandjari}
       SSL_MODE: ${SSL_MODE:-disable}
-      JWT_SECRET: ${JWT_SECRET:-ganti-di-env-produksi}
+    	  JWT_SECRET: ${JWT_SECRET:-ganti-di-env-produksi}
+    	  # Origin yang boleh memanggil API (dipisah koma); kosong = pakai default di config/cors.go
+    	  CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
       # Object storage: Cloudflare R2 (S3-compatible). Bila STORAGE_ENDPOINT
       # kosong, fitur Sample nonaktif — API tetap jalan dengan warning di startup.
       STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-}
