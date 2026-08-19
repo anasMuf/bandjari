@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { ArrowLeft } from 'lucide-react'
 import { useGetSongsId } from '../api/endpoints/songs/songs'
 import { useAuth } from '../features/auth/AuthContext'
 import { LoginPromptInline } from '../features/auth/components/LoginPromptInline'
@@ -108,8 +109,14 @@ function LauncherPage() {
 
       <PageHeader
         back={
-          <Link to={backTo} params={{ songId: String(id) }} className="text-sm text-stone-500 hover:text-stone-700">
-            ← Kembali ke lagu
+          <Link
+            to={backTo}
+            params={{ songId: String(id) }}
+            aria-label="Kembali ke lagu"
+            className="inline-flex items-center text-sm text-stone-500 hover:text-stone-700"
+          >
+            <ArrowLeft className="size-4 sm:hidden" aria-hidden="true" />
+            <span className="max-sm:hidden">← Kembali ke lagu</span>
           </Link>
         }
         title={`Launcher — ${song.name}`}
@@ -148,11 +155,24 @@ function LauncherPage() {
           pendingSectionId={playback.pendingSectionId}
           stepIndex={playback.stepIndex}
           isPlaying={playback.isPlaying}
+          isPaused={playback.isPaused}
           mutedParts={playback.mutedParts}
+          queue={playback.queue}
+          cursor={playback.cursor}
+          queueMode={playback.queueMode}
+          tempBpm={playback.tempBpm}
           onTrigger={playback.trigger}
+          onPlay={playback.play}
+          onPause={playback.pause}
           onStop={playback.stop}
           onToggleMute={playback.toggleMute}
           onAddSection={handleAddSection}
+          onEnqueue={playback.enqueue}
+          onClearQueue={playback.clearQueue}
+          onSetLoopCount={playback.setLoopCount}
+          onRemoveRow={playback.removeRow}
+          onMoveRow={playback.moveRow}
+          onSetTempBpm={playback.setTempBpm}
         />
       )}
 

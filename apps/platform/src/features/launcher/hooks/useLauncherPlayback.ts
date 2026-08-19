@@ -2,9 +2,15 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { getSamplesIdPlaybackUrl } from '../../../api/endpoints/samples/samples';
 import { AudioBufferCache } from '../engine/audio-buffer-cache';
 import { Scheduler } from '../engine/scheduler';
-import { SectionPlayer, type NextMode, type SectionDefinition } from '../engine/section-player';
+import {
+  SectionPlayer,
+  type NextMode,
+  type QueueRow,
+  type SectionDefinition,
+} from '../engine/section-player';
 import { excludeMutedParts, type ScheduledPart } from '../engine/scheduling-math';
 import { normalizeStepsToGrid } from '../../../lib/steps';
+import { scaleBpm } from '../../../lib/bpm';
 
 export interface LauncherSlot {
   key: string;
@@ -44,6 +50,16 @@ export function useLauncherPlayback(songBpm: number) {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mutedParts, setMutedParts] = useState<Set<string>>(new Set());
+  /** Cermin antrian engine — baris persisten, cursor menandai yang sedang/akan main. */
+  const [queue, setQueue] = useState<QueueRow[]>([]);
+  const [cursor, setCursor] = useState(-1);
+  /** Playback dibekukan (AudioContext suspend) — Play melanjutkan dari titik yang sama. */
+  const [isPaused, setIsPaused] = useState(false);
+  /**
+   * BPM dasar Song sementara (sesi) — null = ikut BPM asli Song. Mengubahnya
+   * menskalakan SEMUA section secara proporsional (termasuk BPM override ★).
+   */
+  const [tempBpm, setTempBpm] = useState<number | null>(null);
 
   const ctxRef = useRef<AudioContext | null>(null);
   const playerRef = useRef<SectionPlayer | null>(null);
@@ -63,8 +79,25 @@ export function useLauncherPlayback(songBpm: number) {
     setPendingSectionId((prev) =>
       player.pendingSectionId === prev ? prev : player.pendingSectionId,
     );
+    // Jaga ref section aktif tetap segar walau playback berpindah lewat
+    // auto-advance / Play-antrian (tanpa melalui trigger pad).
+    const activeId = player.activeSectionId;
+    if (activeId != null && activeSectionRef.current?.id !== activeId) {
+      activeSectionRef.current = sectionsRef.current.find((s) => s.id === activeId) ?? null;
+    }
     const step = schedulerRef.current?.currentStep ?? 0;
     setStepIndex((prev) => (step === prev ? prev : step));
+    const mirrored = player.queue.map((row) => ({ ...row }));
+    setQueue((prev) => {
+      if (
+        prev.length === mirrored.length &&
+        prev.every((row, i) => row.sectionId === mirrored[i].sectionId && row.loopCount === mirrored[i].loopCount)
+      ) {
+        return prev;
+      }
+      return mirrored;
+    });
+    setCursor((prev) => (player.cursor === prev ? prev : player.cursor));
   }, []);
 
   /** Susun ScheduledPart suatu Section dengan menerapkan filter Mute (FR-PLAY-10). */
@@ -74,19 +107,20 @@ export function useLauncherPlayback(songBpm: number) {
   }, []);
 
   /** Normalisasi nilai next_mode dari API menjadi union NextMode engine. */
-  const toNextMode = (mode: string | undefined): NextMode =>
-    mode === 'target' || mode === 'end' ? mode : 'order';
+  const toNextMode = useCallback((mode: string | undefined): NextMode =>
+    mode === 'target' || mode === 'end' ? mode : 'order',
+  []);
 
   /** Bangun definisi playback satu section (parts + bpm + perilaku loop). */
   const buildDefinition = useCallback(
     (section: LauncherSection, muted: Set<string>): SectionDefinition => ({
       parts: buildParts(section, muted),
-      bpm: section.bpm_override ?? songBpm,
+      bpm: scaleBpm(section.bpm_override, songBpm, tempBpm),
       loop: section.loop !== false, // data lama tanpa field loop → diulang
       nextMode: toNextMode(section.next_mode),
       nextTargetId: section.next_section_id ?? undefined,
     }),
-    [buildParts, songBpm],
+    [buildParts, songBpm, tempBpm, toNextMode],
   );
 
   /** Prefetch + decode seluruh sample yang direferensikan song (FR-PLAY-02). */
@@ -167,25 +201,120 @@ export function useLauncherPlayback(songBpm: number) {
     [syncState, buildDefinition],
   );
 
-  /** Trigger pad Section (quantized bila section lain sedang aktif — FR-PLAY-04). */
+  /**
+   * Trigger pad Section. Engine yang memutuskan: idle → mulai langsung;
+   * section sama → restart; Mode Antrian → append; Mode Biasa → pending jump.
+   */
   const trigger = useCallback(
     (section: LauncherSection) => {
       const player = playerRef.current;
       const ctx = ctxRef.current;
       if (!player || !ctx) return;
       activeSectionRef.current = section;
-      player.registerDefinition(section.id, buildDefinition(section, mutedRef.current));
       const definition = buildDefinition(section, mutedRef.current);
+      player.registerDefinition(section.id, definition);
       void ctx.resume(); // AudioContext boleh dibuat suspended — resume pada gesture
+      setIsPaused(false);
       player.trigger(section.id, definition);
       syncState();
     },
     [buildDefinition, syncState],
   );
 
+  /** Tombol antrian pad (append-only): tambahkan section ke akhir antrian. */
+  const enqueue = useCallback(
+    (section: LauncherSection) => {
+      const player = playerRef.current;
+      if (!player) return;
+      const definition = buildDefinition(section, mutedRef.current);
+      player.registerDefinition(section.id, definition);
+      player.enqueue(section.id, definition);
+      syncState();
+    },
+    [buildDefinition, syncState],
+  );
+
+  /** Hapus semua baris antrian → kembali ke Mode Biasa (antrian < 1 = nonaktif). */
+  const clearQueue = useCallback(() => {
+    playerRef.current?.clearQueue();
+    syncState();
+  }, [syncState]);
+
+  /** Ubah jumlah loop satu baris antrian. */
+  const setLoopCount = useCallback(
+    (index: number, loopCount: number) => {
+      playerRef.current?.setLoopCount(index, loopCount);
+      syncState();
+    },
+    [syncState],
+  );
+
+  /** Hapus satu baris antrian. */
+  const removeRow = useCallback(
+    (index: number) => {
+      playerRef.current?.removeRow(index);
+      syncState();
+    },
+    [syncState],
+  );
+
+  /** Pindahkan baris antrian (drag-drop / tombol ↑↓). */
+  const moveRow = useCallback(
+    (from: number, to: number) => {
+      playerRef.current?.moveRow(from, to);
+      syncState();
+    },
+    [syncState],
+  );
+
+  /**
+   * Tombol Play: lanjutkan bila pause; mulai per antrian bila idle (cursor →
+   * baris cursor, cursor lewat ujung → baris pertama); antrian kosong → section
+   * urutan pertama. No-op bila sedang main.
+   */
+  const play = useCallback(() => {
+    const player = playerRef.current;
+    const ctx = ctxRef.current;
+    if (!player || !ctx) return;
+    if (isPaused) {
+      // Pause → lanjutkan tepat dari titik beku (jadwal step & bunyi utuh).
+      void ctx.resume();
+      setIsPaused(false);
+      return;
+    }
+    if (player.activeSectionId != null) return; // sudah main — no-op
+    void ctx.resume();
+    if (player.playFromQueue()) {
+      syncState();
+      return;
+    }
+    if (player.queue.length > 0) return; // antrian berisi tapi barisnya tak tersedia — aman
+    // Antrian kosong → mulai dari section urutan pertama.
+    const ordered = [...sectionsRef.current].sort((a, b) => a.order_index - b.order_index);
+    const first = ordered[0];
+    if (!first) return;
+    activeSectionRef.current = first;
+    const definition = buildDefinition(first, mutedRef.current);
+    player.registerDefinition(first.id, definition);
+    player.trigger(first.id, definition);
+    syncState();
+  }, [buildDefinition, isPaused, syncState]);
+
+  /** Tombol Pause: bekukan AudioContext — jadwal step & bunyi berhenti di titik yang sama. */
+  const pause = useCallback(() => {
+    const player = playerRef.current;
+    const ctx = ctxRef.current;
+    if (!player || !ctx || player.activeSectionId == null || isPaused) return;
+    void ctx.suspend();
+    setIsPaused(true);
+  }, [isPaused]);
+
+  /** Tombol Stop: hentikan playback; antrian tetap utuh; context di-resume bila pause. */
   const stop = useCallback(() => {
     playerRef.current?.stop();
     activeSectionRef.current = null;
+    void ctxRef.current?.resume();
+    setIsPaused(false);
     syncState();
   }, [syncState]);
 
@@ -224,19 +353,64 @@ export function useLauncherPlayback(songBpm: number) {
     };
   }, []);
 
+  /**
+   * Atur BPM temporary (null = reset ke BPM asli Song). Berlaku realtime:
+   * definisi semua section didaftar ulang dengan rasio baru, dan section yang
+   * sedang main langsung pindah tempo via scheduler.setBpm.
+   */
+  const applyTempBpm = useCallback(
+    (next: number | null) => {
+      setTempBpm(next);
+      const player = playerRef.current;
+      if (!player) return;
+      const ratio = next != null && songBpm > 0 ? next / songBpm : 1;
+      for (const section of sectionsRef.current) {
+        const definition = buildDefinition(section, mutedRef.current);
+        definition.bpm = (section.bpm_override ?? songBpm) * ratio;
+        player.registerDefinition(section.id, definition);
+      }
+      // Jangan andalkan activeSectionRef (basi saat auto-advance) — cari section
+      // aktif langsung dari id yang tercatat di engine.
+      const activeId = player.activeSectionId;
+      const active = activeId != null
+        ? sectionsRef.current.find((s) => s.id === activeId)
+        : undefined;
+      if (active) {
+        schedulerRef.current?.setBpm((active.bpm_override ?? songBpm) * ratio);
+      }
+      syncState();
+    },
+    [buildDefinition, songBpm, syncState],
+  );
+
   const isPlaying = activeSectionId != null;
+  /** Mode Antrian aktif bila antrian tidak kosong (baris < 1 = Mode Biasa). */
+  const queueMode = queue.length > 0;
 
   return {
     activeSectionId,
     pendingSectionId,
     stepIndex,
     isPlaying,
+    isPaused,
     ready,
     error,
     mutedParts,
+    queue,
+    cursor,
+    queueMode,
+    tempBpm,
     prepare,
     trigger,
+    play,
+    pause,
+    enqueue,
+    clearQueue,
+    setLoopCount,
+    removeRow,
+    moveRow,
     stop,
     toggleMute,
+    setTempBpm: applyTempBpm,
   };
 }

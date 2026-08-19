@@ -43,6 +43,15 @@ export class Scheduler {
   }
 
   /**
+   * Ubah BPM secara realtime — stepDur dihitung ulang per iterasi tick,
+   * sehingga langkah berikutnya yang BELUM dijadwalkan langsung memakai
+   * tempo baru (langkah yang sudah terjadwal dalam window lookahead tetap).
+   */
+  setBpm(bpm: number): void {
+    this.bpm = bpm;
+  }
+
+  /**
    * Mulai memutar section baru dari langkah 0 — bunyi lama dipotong (choke).
    * `startAt` opsional: bila disediakan (transisi quantized), langkah pertama
    * dijadwalkan tepat di timestamp itu dan bunyi lama dipotong TEPAT di titik
