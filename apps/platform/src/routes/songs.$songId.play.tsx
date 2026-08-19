@@ -57,7 +57,7 @@ function LauncherPage() {
           {isAuthenticated ? (
             <>
               <p className="text-sm font-medium text-red-800">Lagu tidak ditemukan atau tidak dapat diakses.</p>
-              <Link to="/songs" className="mt-2 inline-block text-sm font-semibold text-brand-700 hover:text-brand-600">
+              <Link to="/project" className="mt-2 inline-block text-sm font-semibold text-brand-700 hover:text-brand-600">
                 Kembali ke daftar lagu
               </Link>
             </>
@@ -76,7 +76,7 @@ function LauncherPage() {
                   Masuk
                 </Link>
                 <Link
-                  to="/"
+                  to="/explore"
                   className="inline-flex items-center justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-stone-900 ring-1 ring-stone-300 ring-inset hover:bg-stone-50"
                 >
                   Lihat lagu bawaan

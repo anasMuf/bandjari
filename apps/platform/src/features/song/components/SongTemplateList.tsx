@@ -28,7 +28,7 @@ export function SongTemplateList() {
   }
 
   return (
-    <section aria-label="Lagu bawaan" className="mt-10">
+    <section aria-label="Lagu bawaan" className="mt-6 sm:mt-10">
       <SectionHeader
         title="Lagu Bawaan"
         subtitle="Susunan standar Al-Banjari — bebas dimainkan tanpa login"

@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from '@tanstack/react-router';
+import { ArrowLeft } from 'lucide-react';
 import { useGetSongsId } from '../../../api/endpoints/songs/songs';
 import { useGetSectionsIdParts, usePutSectionPartsId } from '../../../api/endpoints/section-parts/section-parts';
 import type { DtoSuccessResponse } from '../../../api/model';
 import { Button } from '../../../components/atoms/Button';
+import { PageHeader } from '../../../components/molecules/PageHeader';
 import { useToast } from '../../../components/molecules/Toast';
 import { ApiError } from '../../../api/mutator/custom-instance';
 import { useAuth } from '../../auth/AuthContext';
@@ -45,13 +47,12 @@ export function SequencerView({ songId, sectionId, sectionName, songBpm, bpmOver
 
   const [stepsByPart, setStepsByPart] = useState<Record<number, string>>({});
   const [selectedPartId, setSelectedPartId] = useState<number | null>(null);
+  const [managerOpen, setManagerOpen] = useState(false);
   const [editPromptZone, setEditPromptZone] = useState<'slots' | 'grid' | null>(null);
-  const [focusCreateSignal, setFocusCreateSignal] = useState(0);
   // Mute per Part (hanya memengaruhi preview Sequencer) — real-time via ref.
   const [mutedParts, setMutedParts] = useState<Set<string>>(new Set());
   const mutedPartsRef = useRef(mutedParts);
   mutedPartsRef.current = mutedParts;
-  const managerRef = useRef<HTMLDivElement>(null);
   // Refs agar preview membaca isian grid & slot TERKINI setiap tick (real-time),
   // bukan snapshot saat tombol Play ditekan.
   const stepsByPartRef = useRef(stepsByPart);
@@ -253,43 +254,45 @@ export function SequencerView({ songId, sectionId, sectionName, songBpm, bpmOver
 
   const selectPartForManager = (partId: number) => {
     setSelectedPartId(partId);
-    managerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setManagerOpen(true);
   };
 
   return (
     <div>
-      {/* Breadcrumb + judul */}
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
+      {/* Breadcrumb + judul — pola PageHeader bersama (mobile: back ikon + judul tengah + info). */}
+      <PageHeader
+        back={
           <Link
             to={isTemplate ? '/templates/$songId' : '/songs/$songId'}
             params={{ songId: String(songId) }}
-            className="text-sm text-stone-500 hover:text-stone-700"
+            aria-label={isTemplate ? 'Kembali ke Template' : 'Kembali ke Section'}
+            className="inline-flex items-center text-sm text-stone-500 hover:text-stone-700"
           >
-            {isTemplate ? '← Kembali ke Template' : '← Kembali ke Section'}
+            <ArrowLeft className="size-4 sm:hidden" aria-hidden="true" />
+            <span className="max-sm:hidden">
+              {isTemplate ? '← Kembali ke Template' : '← Kembali ke Section'}
+            </span>
           </Link>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-stone-900">
-            Sequencer — Section: {sectionName}
-          </h1>
-          <p className="mt-1 text-sm text-stone-500">
-            Isi pola pukulan per Part — klik kotak step, panjang bebas, preview audio tersedia.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {dirtyParts.length > 0 && !readOnly && (
-            <span className="text-xs font-medium text-amber-600">Perubahan belum disimpan</span>
-          )}
-          {readOnly && (
-            <Link
-              to="/songs/$songId/play"
-              params={{ songId: String(songId) }}
-              className="inline-flex items-center justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-stone-900 ring-1 ring-stone-300 ring-inset transition-colors hover:bg-stone-50"
-            >
-              Buka Launcher
-            </Link>
-          )}
-        </div>
-      </div>
+        }
+        title={`Sequencer — Section: ${sectionName}`}
+        subtitle="Isi pola pukulan per Part — klik kotak step, panjang bebas, preview audio tersedia."
+        actions={
+          <>
+            {dirtyParts.length > 0 && !readOnly && (
+              <span className="text-xs font-medium text-amber-600">Perubahan belum disimpan</span>
+            )}
+            {readOnly && (
+              <Link
+                to="/songs/$songId/play"
+                params={{ songId: String(songId) }}
+                className="inline-flex items-center justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-stone-900 ring-1 ring-stone-300 ring-inset transition-colors hover:bg-stone-50"
+              >
+                Buka Launcher
+              </Link>
+            )}
+          </>
+        }
+      />
 
       {readOnly && (
         <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
@@ -303,17 +306,9 @@ export function SequencerView({ songId, sectionId, sectionName, songBpm, bpmOver
         </div>
       )}
 
-      <p className="mt-4 rounded-md border border-stone-200 bg-white p-3 text-xs leading-relaxed text-stone-600">
-        <span className="font-semibold text-stone-800">Cara pakai:</span> klik kotak pada baris & kolom step untuk
-        mengaktifkan/menonaktifkan bunyi — <span className="font-semibold">klik satu kotak hanya mengisi kotak itu</span>,
-        kotak di kirinya tetap kosong (langkah istirahat, senyap). Jumlah baris tiap Part dinamis — tiap Part punya
-        sejumlah SoundSlot (jenis bunyi, mis. Tak/Dung/Duk) yang bisa ditambah bebas. Slot sample boleh kosong dulu —
-        playback tetap jalan, part tsb senyap. Tombol ▶ di kiri tiap baris memutar preview bunyi tsb sendirian (FR-SEQ-05).
-      </p>
-
-      {/* Toolbar */}
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-white p-3 ring-1 ring-stone-900/5">
-        <div className="flex flex-wrap items-center gap-3">
+      {/* Toolbar — mobile: pola transport bar Launcher (full-bleed, sticky di bawah header, baris tersendiri terpusat). */}
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-white p-3 ring-1 ring-stone-900/5 max-sm:sticky max-sm:top-10 max-sm:z-20 max-sm:-mx-4 max-sm:rounded-none max-sm:px-4">
+        <div className="flex flex-wrap items-center justify-center gap-3 max-sm:w-full max-sm:text-center">
           <Button type="button" variant="secondary" size="sm" onClick={handleTogglePreview}>
             {preview.isPlaying ? '■ Stop Preview' : '▶ Play Preview'}
           </Button>
@@ -329,7 +324,7 @@ export function SequencerView({ songId, sectionId, sectionName, songBpm, bpmOver
             (1 step = 1/16 ketukan; kelipatan beat)
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-center gap-2 max-sm:w-full">
           <Button type="button" size="sm" variant="secondary" onClick={() => handleBatchSteps(STEP_BATCH)}>
             + 4 Step
           </Button>
@@ -371,8 +366,7 @@ export function SequencerView({ songId, sectionId, sectionName, songBpm, bpmOver
         onManagePart={selectPartForManager}
         onAddSlot={(partId) => {
           setSelectedPartId(partId);
-          setFocusCreateSignal((n) => n + 1);
-          managerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          setManagerOpen(true);
         }}
         onClearPart={handleClearPart}
         readOnly={readOnly}
@@ -408,26 +402,18 @@ export function SequencerView({ songId, sectionId, sectionName, songBpm, bpmOver
         </Link>
       </div>
 
-      {/* Panel kelola SoundSlot untuk Part terpilih */}
-      <div ref={managerRef} className="scroll-mt-6">
-        {editPromptZone === 'slots' && (
-          <LoginPromptInline action="mengubah jenis bunyi" onDismiss={() => setEditPromptZone(null)} />
-        )}
-        <SoundSlotManager
-          key={selectedPart.id}
-          partId={selectedPart.id}
-          slots={selectedPart.sound_slots ?? []}
-          onChanged={() => partsQuery.refetch()}
-          readOnly={readOnly}
-          onEditAttempt={() => setEditPromptZone('slots')}
-          focusCreateSignal={focusCreateSignal}
-        />
-      </div>
-
-      <p className="mt-2 text-xs text-stone-400">
-        Kelola Bunyi di atas berlaku untuk {PART_LABELS[selectedPart.part] ?? selectedPart.part} — pilih Part lain
-        lewat tombol “Kelola bunyi” pada subheader grid.
-      </p>
+      {/* Drawer kelola SoundSlot untuk Part terpilih (mobile: bottom sheet; desktop: panel sisi). */}
+      <SoundSlotManager
+        key={selectedPart.id}
+        partId={selectedPart.id}
+        partLabel={PART_LABELS[selectedPart.part] ?? selectedPart.part}
+        slots={selectedPart.sound_slots ?? []}
+        onChanged={() => partsQuery.refetch()}
+        readOnly={readOnly}
+        onEditAttempt={() => setEditPromptZone('slots')}
+        open={managerOpen}
+        onClose={() => setManagerOpen(false)}
+      />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { createFileRoute, Link } from '@tanstack/react-router'
+import { ArrowLeft } from 'lucide-react'
 import { useGetSongsId, usePostSongsIdDuplicate } from '../api/endpoints/songs/songs'
 import { useAuth } from '../features/auth/AuthContext'
 import { LoginPromptInline } from '../features/auth/components/LoginPromptInline'
@@ -37,24 +38,28 @@ function PublicSongViewPage() {
 
   if (songQuery.isLoading) {
     return (
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <p className="text-sm text-stone-500">Memuat lagu...</p>
-      </main>
+      <div className="min-h-screen bg-stone-100">
+        <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <p className="text-sm text-stone-500">Memuat lagu...</p>
+        </main>
+      </div>
     );
   }
 
   if (songQuery.isError) {
     return (
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-2xl">
-          <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
-            <p className="text-sm font-medium text-red-800">Lagu tidak ditemukan atau tidak dapat diakses.</p>
-            <Link to="/" className="mt-2 inline-block text-sm font-semibold text-brand-700 hover:text-brand-600">
-              Kembali ke beranda
-            </Link>
+      <div className="min-h-screen bg-stone-100">
+        <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-2xl">
+            <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
+              <p className="text-sm font-medium text-red-800">Lagu tidak ditemukan atau tidak dapat diakses.</p>
+              <Link to="/explore" className="mt-2 inline-block text-sm font-semibold text-brand-700 hover:text-brand-600">
+                Kembali ke Explore
+              </Link>
+            </div>
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
     );
   }
 
@@ -89,7 +94,8 @@ function PublicSongViewPage() {
   };
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-stone-100">
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       {showPrompt && !isAuthenticated && (
         <div className="mb-4 max-w-md">
           <LoginPromptInline action="menduplikasi lagu" onDismiss={() => setShowPrompt(false)} />
@@ -99,12 +105,17 @@ function PublicSongViewPage() {
       <SongDetailView
         song={song}
         back={
-          <Link to="/" className="text-sm text-stone-500 hover:text-stone-700">
-            ← Beranda
+          <Link
+            to="/explore"
+            aria-label="Kembali ke Explore"
+            className="inline-flex items-center text-sm text-stone-500 hover:text-stone-700"
+          >
+            <ArrowLeft className="size-4 sm:hidden" aria-hidden="true" />
+            <span className="max-sm:hidden">← Explore</span>
           </Link>
         }
         banner={
-          <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm">
+          <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm">
             <p className="flex flex-wrap items-center gap-2">
               <span className="font-semibold text-amber-800">
                 {isAdmin ? '🛠 Mode Admin' : '🔒 Mode Lihat Saja'}
@@ -126,6 +137,7 @@ function PublicSongViewPage() {
         onEditAttempt={() => setShowPrompt(true)}
         onChanged={() => songQuery.refetch()}
       />
-    </main>
+      </main>
+    </div>
   );
 }

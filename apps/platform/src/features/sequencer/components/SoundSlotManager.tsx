@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
+import { X } from 'lucide-react';
 import {
   usePostSectionPartsIdSoundSlots,
   usePutSoundSlotsId,
@@ -21,13 +22,17 @@ export interface SoundSlotData {
 
 interface SoundSlotManagerProps {
   partId: number;
+  /** Nama tampilan Part (mis. "Rebana 1") — dipakai di judul panel. */
+  partLabel: string;
   slots: SoundSlotData[];
   onChanged: () => void;
+  /** Drawer kelola bunyi terbuka? */
+  open: boolean;
+  /** Tutup drawer. */
+  onClose: () => void;
   /** Mode lihat-saja: aksi edit memicu onEditAttempt (AC-12), bukan perubahan. */
   readOnly?: boolean;
   onEditAttempt?: () => void;
-  /** Berubah nilainya → fokus otomatis ke input "Label Bunyi Baru". */
-  focusCreateSignal?: number;
 }
 
 const emptyForm = { label: '', key: '' };
@@ -40,11 +45,13 @@ const emptyForm = { label: '', key: '' };
  */
 export function SoundSlotManager({
   partId,
+  partLabel,
   slots,
   onChanged,
+  open,
+  onClose,
   readOnly = false,
   onEditAttempt,
-  focusCreateSignal,
 }: SoundSlotManagerProps) {
   const { addToast } = useToast();
   const createMutation = usePostSectionPartsIdSoundSlots();
@@ -55,13 +62,6 @@ export function SoundSlotManager({
   const [editing, setEditing] = useState<SoundSlotData | null>(null);
   const [editForm, setEditForm] = useState(emptyForm);
   const [deleting, setDeleting] = useState<SoundSlotData | null>(null);
-  const createLabelRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (focusCreateSignal != null) {
-      createLabelRef.current?.focus();
-    }
-  }, [focusCreateSignal]);
 
   const guardEdit = (): boolean => {
     if (readOnly) {
@@ -137,13 +137,38 @@ export function SoundSlotManager({
     );
   };
 
+  if (!open) return null;
+
   return (
-    <section aria-label={`Jenis bunyi ${partId}`} className="mt-6 rounded-lg bg-white p-5 ring-1 ring-stone-900/5">
-      <h2 className="text-sm font-semibold text-stone-900">Jenis Bunyi (SoundSlot) Part Ini</h2>
-      <p className="mt-1 text-xs text-stone-500">
-        Setiap jenis bunyi punya label, key 1–2 karakter (dipakai di steps), dan satu sample.
-        Bunyi tanpa sample akan senyap saat dimainkan.
-      </p>
+    <>
+      {/* Backdrop — mobile only (desktop: panel sisi tanpa backdrop, pola LauncherQueue). */}
+      <div className="fixed inset-0 z-30 bg-stone-900/40 sm:hidden" onClick={onClose} aria-hidden="true" />
+
+      <section
+        aria-label={`Jenis bunyi ${partLabel}`}
+        className="fixed inset-x-0 bottom-0 z-40 flex max-h-[70vh] flex-col rounded-t-2xl bg-white shadow-2xl ring-1 ring-stone-900/10 max-sm:animate-[slideUp_180ms_ease-out] sm:inset-y-0 sm:right-0 sm:left-auto sm:max-h-none sm:w-96 sm:rounded-none sm:rounded-l-2xl sm:animate-[slideIn_180ms_ease-out]"
+      >
+        {/* Header drawer */}
+        <div className="flex items-start justify-between gap-3 border-b border-stone-100 px-5 py-3">
+          <div className="min-w-0">
+            <h2 className="truncate text-sm font-semibold text-stone-900">Jenis Bunyi (SoundSlot) — {partLabel}</h2>
+            <p className="mt-0.5 text-xs text-stone-500">
+              Setiap jenis bunyi punya label, key 1–2 karakter (dipakai di steps), dan satu sample.
+              Bunyi tanpa sample akan senyap saat dimainkan.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Tutup kelola bunyi"
+            className="shrink-0 rounded p-1 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-700 cursor-pointer"
+          >
+            <X className="size-4" aria-hidden="true" />
+          </button>
+        </div>
+
+        {/* Konten scrollable */}
+        <div className="overflow-y-auto p-5">
 
       <ul className="mt-3 divide-y divide-stone-100 rounded-md ring-1 ring-stone-200 ring-inset">
         {slots.map((slot) =>
@@ -231,7 +256,6 @@ export function SoundSlotManager({
           </label>
           <input
             id="new-slot-label"
-            ref={createLabelRef}
             value={form.label}
             onChange={(e) => setForm({ ...form, label: e.target.value })}
             placeholder="mis. Duk"
@@ -264,6 +288,8 @@ export function SoundSlotManager({
           Mode lihat-saja — masuk untuk mengubah jenis bunyi.
         </p>
       )}
+        </div>
+      </section>
 
       <ConfirmDialog
         open={!!deleting}
@@ -275,6 +301,6 @@ export function SoundSlotManager({
         onConfirm={confirmDelete}
         onCancel={() => setDeleting(null)}
       />
-    </section>
+    </>
   );
 }

@@ -11,7 +11,7 @@ function Register() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate({ to: '/dashboard' })
+      navigate({ to: '/' })
     }
   }, [isAuthenticated, navigate])
 
@@ -35,7 +35,7 @@ function Register() {
             Masuk
           </Link>
           {' · '}
-          <Link to="/" className="font-semibold text-brand-700 hover:text-brand-600">
+          <Link to="/explore" className="font-semibold text-brand-700 hover:text-brand-600">
             ← Lihat Song Bawaan tanpa login
           </Link>
         </p>

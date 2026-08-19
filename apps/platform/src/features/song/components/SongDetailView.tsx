@@ -39,20 +39,13 @@ export function SongDetailView({ song, back, banner, readOnly, onEditAttempt, on
 
   return (
     <div>
-      {banner}
-
       <PageHeader
         back={back}
         title={song.name}
         subtitle={`BPM dasar ${song.bpm} · susun Section secara dinamis — urutan bebas, tempo bisa berbeda tiap Section`}
       />
 
-      <p className="mt-4 rounded-md border border-stone-200 bg-white p-3 text-xs leading-relaxed text-stone-600">
-        <span className="font-semibold text-stone-800">Section bersifat dinamis</span> — nama & jumlah
-        bebas ditentukan olehmu. Saat Section dibuat, sistem otomatis membuat 5 SectionPart kosong
-        (rebana1–4, bass) di baliknya — tidak terlihat di layar ini, baru tampak saat masuk Sequencer
-        Mode. Tempo (BPM) tiap Section bersifat opsional — kosong berarti ikut BPM dasar Song.
-      </p>
+      {banner && <div className="mb-4">{banner}</div>}
 
       <SectionStrip
         songId={song.id}

@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
+import { ArrowLeft } from 'lucide-react'
 import { useGetSongsId } from '../api/endpoints/songs/songs'
 import { useAuth } from '../features/auth/AuthContext'
 import { SongDetailView } from '../features/song/components/SongDetailView'
@@ -40,7 +41,7 @@ function SongDetailPage() {
           {isAuthenticated ? (
             <>
               <p className="text-sm font-medium text-red-800">Lagu tidak ditemukan atau tidak dapat diakses.</p>
-              <Link to="/songs" className="mt-2 inline-block text-sm font-semibold text-brand-700 hover:text-brand-600">
+              <Link to="/project" className="mt-2 inline-block text-sm font-semibold text-brand-700 hover:text-brand-600">
                 Kembali ke daftar lagu
               </Link>
             </>
@@ -76,8 +77,13 @@ function SongDetailPage() {
       <SongDetailView
         song={song}
         back={
-          <Link to="/songs" className="text-sm text-stone-500 hover:text-stone-700">
-            ← Semua lagu
+          <Link
+            to="/project"
+            aria-label="Kembali ke daftar lagu"
+            className="inline-flex items-center text-sm text-stone-500 hover:text-stone-700"
+          >
+            <ArrowLeft className="size-4 sm:hidden" aria-hidden="true" />
+            <span className="max-sm:hidden">← Semua lagu</span>
           </Link>
         }
         // Song Template System hanya bisa diedit admin (FR-ROLE); non-admin

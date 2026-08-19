@@ -6,6 +6,7 @@ import {
 import { Button } from '../../../components/atoms/Button';
 import { Badge } from '../../../components/atoms/Badge';
 import { useToast } from '../../../components/molecules/Toast';
+import { InfoPopover } from '../../../components/molecules/InfoPopover';
 import { ApiError } from '../../../api/mutator/custom-instance';
 
 export interface SectionItem {
@@ -133,14 +134,20 @@ export function SectionStrip({
 
   return (
     <section aria-label="Section" className="mt-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-stone-900">Section</h2>
-        <span className="text-xs text-stone-500">
-          {readOnly ? 'Urutan menentukan susunan pad Launcher' : 'Seret ⠿ untuk mengatur ulang urutan'}
+        <span className="flex items-center gap-1.5">
+          <span className="hidden text-xs text-stone-500 sm:inline">
+            {readOnly ? 'Urutan menentukan susunan pad Launcher' : 'Seret ⠿ untuk mengatur ulang urutan'}
+          </span>
+          <InfoPopover
+            ariaLabel="Info Section bersifat dinamis"
+            content="Section bersifat dinamis — nama & jumlah Section bebas ditentukan olehmu. Saat Section dibuat, sistem otomatis membuat 5 SectionPart kosong (rebana1–4, bass) di baliknya — tidak terlihat di layar ini, baru tampak saat masuk Sequencer Mode. Tempo (BPM) tiap Section bersifat opsional — kosong berarti ikut BPM dasar Song."
+          />
         </span>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
         {sorted.map((sec, index) => {
           const active = sec.id === selectedId;
           const override = sec.bpm_override !== null;
@@ -163,67 +170,73 @@ export function SectionStrip({
                 }
               }}
               className={[
-                'flex select-none items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors',
+                'flex w-full min-w-0 select-none flex-col rounded-lg border px-3 py-2 text-sm transition-colors',
                 active
                   ? 'border-brand-700 bg-brand-50 ring-1 ring-brand-700/30 ring-inset'
                   : 'border-stone-200 bg-white hover:border-stone-300',
                 readOnly ? 'cursor-default' : 'cursor-grab',
               ].join(' ')}
             >
-              <span className="flex items-center gap-1 text-xs text-stone-400" aria-hidden="true">
-                <span>⠿</span>
-                <span className={active ? 'font-semibold text-brand-800' : ''}>#{index + 1}</span>
+              <span className="flex min-w-0 items-center gap-1.5">
+                <span className="flex shrink-0 items-center gap-1 text-xs text-stone-400" aria-hidden="true">
+                  <span>⠿</span>
+                  <span className={active ? 'font-semibold text-brand-800' : ''}>#{index + 1}</span>
+                </span>
+                <span className={`min-w-0 truncate font-medium ${active ? 'text-brand-900' : 'text-stone-900'}`}>
+                  {sec.name}
+                </span>
               </span>
-              <span className={`font-medium ${active ? 'text-brand-900' : 'text-stone-900'}`}>
-                {sec.name}
+              <span className="mt-1.5 flex items-center justify-between gap-1">
+                <span className="flex min-w-0 items-center gap-1">
+                  {override ? (
+                    <>
+                      <Badge variant="star">★</Badge>
+                      <span className="truncate text-xs font-semibold text-amber-700">{sec.bpm_override} BPM</span>
+                    </>
+                  ) : (
+                    <span className="truncate text-xs text-stone-500">{songBpm} BPM</span>
+                  )}
+                  {sec.loop === false && (
+                    <span title={onceTooltip(sec)}>
+                      <Badge variant="system">1×</Badge>
+                    </span>
+                  )}
+                </span>
+                {!readOnly && (
+                  <span className="flex shrink-0 items-center gap-0.5">
+                    <button
+                      type="button"
+                      title="Naikkan urutan"
+                      aria-label={`Naikkan urutan ${sec.name}`}
+                      className="rounded px-1 text-stone-400 hover:bg-stone-100 hover:text-stone-700 cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        move(sec, Math.max(0, sec.order_index - 1));
+                      }}
+                    >
+                      ▲
+                    </button>
+                    <button
+                      type="button"
+                      title="Turunkan urutan"
+                      aria-label={`Turunkan urutan ${sec.name}`}
+                      className="rounded px-1 text-stone-400 hover:bg-stone-100 hover:text-stone-700 cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        move(sec, sec.order_index + 1);
+                      }}
+                    >
+                      ▼
+                    </button>
+                  </span>
+                )}
               </span>
-              {override ? (
-                <span className="flex items-center gap-1">
-                  <Badge variant="star">★</Badge>
-                  <span className="text-xs font-semibold text-amber-700">{sec.bpm_override} BPM</span>
-                </span>
-              ) : (
-                <span className="text-xs text-stone-500">{songBpm} BPM</span>
-              )}
-              {sec.loop === false && (
-                <span title={onceTooltip(sec)}>
-                  <Badge variant="system">1×</Badge>
-                </span>
-              )}
-              {!readOnly && (
-                <span className="ml-1 flex items-center gap-0.5">
-                  <button
-                    type="button"
-                    title="Naikkan urutan"
-                    aria-label={`Naikkan urutan ${sec.name}`}
-                    className="rounded px-1 text-stone-400 hover:bg-stone-100 hover:text-stone-700 cursor-pointer"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      move(sec, Math.max(0, sec.order_index - 1));
-                    }}
-                  >
-                    ▲
-                  </button>
-                  <button
-                    type="button"
-                    title="Turunkan urutan"
-                    aria-label={`Turunkan urutan ${sec.name}`}
-                    className="rounded px-1 text-stone-400 hover:bg-stone-100 hover:text-stone-700 cursor-pointer"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      move(sec, sec.order_index + 1);
-                    }}
-                  >
-                    ▼
-                  </button>
-                </span>
-              )}
             </div>
           );
         })}
 
         {adding ? (
-          <form onSubmit={handleCreate} className="flex items-center gap-2">
+          <form onSubmit={handleCreate} className="col-span-full flex items-center gap-2">
             <input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
@@ -231,7 +244,7 @@ export function SectionStrip({
               required
               maxLength={255}
               aria-label="Nama section baru"
-              className="block w-40 rounded-md border-0 px-3 py-1.5 text-sm text-stone-900 outline-1 -outline-offset-1 outline-stone-300 placeholder:text-stone-400 focus:outline-2 focus:-outline-offset-2 focus:outline-brand-700"
+              className="block min-w-0 flex-1 rounded-md border-0 px-3 py-1.5 text-sm text-stone-900 outline-1 -outline-offset-1 outline-stone-300 placeholder:text-stone-400 focus:outline-2 focus:-outline-offset-2 focus:outline-brand-700"
             />
             <Button type="submit" size="sm" disabled={createMutation.isPending}>
               Simpan
@@ -244,7 +257,7 @@ export function SectionStrip({
           <button
             type="button"
             onClick={startAdd}
-            className="rounded-lg border border-dashed border-stone-300 px-3 py-2 text-sm text-stone-500 transition-colors hover:border-brand-700 hover:text-brand-700 cursor-pointer"
+            className="flex items-center justify-center rounded-lg border border-dashed border-stone-300 px-3 py-2 text-sm text-stone-500 transition-colors hover:border-brand-700 hover:text-brand-700 cursor-pointer"
           >
             + Tambah Section
           </button>

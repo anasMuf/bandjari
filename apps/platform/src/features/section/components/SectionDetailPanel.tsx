@@ -199,11 +199,6 @@ export function SectionDetailPanel({
         </Button>
       </div>
 
-      <p className="mt-3 text-xs text-stone-500">
-        Drag ⠿ pada strip di atas untuk mengatur ulang urutan (FR-SEC-04). Urutan ini menentukan
-        susunan pad di Launcher Mode nanti — tapi saat live, pad tetap bisa dipicu di luar urutan.
-      </p>
-
       {renaming ? (
         <form onSubmit={handleRename} className="mt-4 flex flex-wrap items-end gap-2">
           <div className="min-w-48 flex-1">

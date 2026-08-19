@@ -1,6 +1,6 @@
 import { Fragment } from 'react';
+import { SlidersHorizontal, Trash2, Volume2, VolumeX } from 'lucide-react';
 import { getSamplesIdPlaybackUrl } from '../../../api/endpoints/samples/samples';
-import { Badge } from '../../../components/atoms/Badge';
 import { decodeSteps, roundUpToStepMultiple, stepCount } from '../../../lib/steps';
 import { PART_LABELS, PART_ORDER } from '../utils/parts';
 
@@ -79,7 +79,7 @@ export function SequencerGrid({
           <tr>
             <th
               scope="col"
-              className="sticky left-0 z-10 min-w-56 border-b border-stone-200 bg-white px-3 py-2 text-left align-bottom text-xs font-semibold text-stone-500"
+              className="sticky left-0 z-10 min-w-40 border-b border-stone-200 bg-white px-3 py-2 text-left align-bottom text-xs font-semibold text-stone-500 max-sm:min-w-36 sm:min-w-56"
             >
               Part / Bunyi
             </th>
@@ -110,45 +110,48 @@ export function SequencerGrid({
             const isMuted = mutedParts.has(part.part);
             return (
               <Fragment key={part.id}>
-                {/* Subheader Part */}
+                {/* Subheader Part — sel pertama sticky: nama Part + aksi bersebelahan, tidak ikut scroll horizontal. */}
                 <tr className={isMuted ? 'bg-stone-50 opacity-60' : 'bg-stone-50'}>
-                  <td
-                    colSpan={maxLen + 1}
-                    className="border-y border-stone-200 px-3 py-1.5"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="flex items-center gap-2">
-                        <span className="font-semibold text-stone-800">{partLabel}</span>
-                        {isMuted && (
-                          <span className="text-[10px] font-bold uppercase text-stone-400">
-                            (senyap)
-                          </span>
-                        )}
-                      </span>
-                      <span className="flex items-center gap-3">
-                        <span className="text-stone-500">{cells.length} step</span>
+                  <td className="sticky left-0 z-10 border-y border-stone-200 bg-stone-50 px-3 py-1.5">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="font-semibold text-stone-800">{partLabel}</span>
+                      {isMuted && (
+                        <span className="text-[10px] font-bold uppercase text-stone-400">
+                          (senyap)
+                        </span>
+                      )}
+                      <span className="text-stone-500">{cells.length} step</span>
+                      <span className="flex items-center gap-1.5">
                         <button
                           type="button"
                           aria-pressed={isMuted}
-                          aria-label={`Mute ${partLabel}`}
+                          aria-label={isMuted ? `Bunyikan ${partLabel}` : `Mute ${partLabel}`}
                           title={isMuted ? `Bunyikan ${partLabel}` : `Mute ${partLabel}`}
                           onClick={() => onToggleMute(part.part)}
                           className={[
-                            'rounded px-1.5 py-0.5 text-xs font-semibold transition-colors cursor-pointer',
+                            'inline-flex items-center gap-1 rounded px-1.5 py-1 text-xs font-semibold transition-colors cursor-pointer',
                             isMuted
                               ? 'bg-stone-200 text-stone-500 hover:bg-stone-300'
                               : 'bg-brand-50 text-brand-800 hover:bg-brand-100',
                           ].join(' ')}
                         >
-                          {isMuted ? '🔇 Mute' : '🔊 Bunyi'}
+                          {isMuted ? (
+                            <VolumeX className="size-4" aria-hidden="true" />
+                          ) : (
+                            <Volume2 className="size-4" aria-hidden="true" />
+                          )}
+                          <span className="max-sm:hidden">{isMuted ? 'Mute' : 'Bunyi'}</span>
                         </button>
                         {!readOnly && (
                           <button
                             type="button"
+                            title={`Kelola bunyi ${partLabel}`}
+                            aria-label={`Kelola bunyi ${partLabel}`}
                             onClick={() => onManagePart(part.id)}
-                            className="rounded px-1.5 py-0.5 text-brand-700 underline-offset-2 hover:underline cursor-pointer"
+                            className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-xs text-brand-700 underline-offset-2 hover:underline cursor-pointer"
                           >
-                            Kelola bunyi
+                            <SlidersHorizontal className="size-4" aria-hidden="true" />
+                            <span className="max-sm:hidden">Kelola bunyi</span>
                           </button>
                         )}
                         {!readOnly && (
@@ -162,19 +165,21 @@ export function SequencerGrid({
                                 : `Bersihkan semua kotak step ${partLabel}`
                             }
                             aria-label={`Bersihkan semua kotak step ${partLabel}`}
-                            className="rounded px-1.5 py-0.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                            className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                           >
-                            🗑 Bersihkan step
+                            <Trash2 className="size-4" aria-hidden="true" />
+                            <span className="max-sm:hidden">Bersihkan step</span>
                           </button>
                         )}
                       </span>
                     </div>
                   </td>
+                  {/* Spacer — menutup sisa lebar tabel (area step) tanpa konten. */}
+                  <td colSpan={maxLen} className="border-y border-stone-200" aria-hidden="true" />
                 </tr>
 
                 {part.slots.map((slot) => {
                   const sampleName = slot.sample?.name ?? null;
-                  const isTemplate = slot.sample?.is_system_template === true;
                   return (
                     <tr key={slot.id} className={isMuted ? 'opacity-60' : ''}>
                       <td className="sticky left-0 z-10 border-b border-stone-100 bg-white px-3 py-1.5">
@@ -194,7 +199,6 @@ export function SequencerGrid({
                             </p>
                             {sampleName ? (
                               <p className="mt-0.5 flex items-center gap-1 truncate text-stone-500">
-                                {isTemplate && <Badge>SYS</Badge>}
                                 <span className="truncate">{sampleName}</span>
                               </p>
                             ) : (
@@ -226,7 +230,7 @@ export function SequencerGrid({
                                 onToggleCell(part.id, slot.key, colIndex);
                               }}
                               className={[
-                                'h-8 w-full min-w-8 border-b border-stone-100 font-mono text-xs transition-colors cursor-pointer',
+                                'h-8 w-full min-w-8 border-b border-stone-100 font-mono text-xs transition-colors cursor-pointer max-sm:h-10',
                                 active ? 'bg-brand-700 text-white' : 'text-stone-300 hover:bg-stone-50',
                                 beyond ? 'bg-stone-50' : '',
                                 isPlayhead ? 'bg-brand-100' : '',
@@ -242,9 +246,9 @@ export function SequencerGrid({
                   );
                 })}
 
-                {/* Baris + Tambah Bunyi per Part */}
+                {/* Baris + Tambah Bunyi per Part — sel pertama sticky agar aksi tidak ikut scroll horizontal. */}
                 <tr className={isMuted ? 'opacity-60' : ''}>
-                  <td colSpan={maxLen + 1} className="border-t border-stone-100 px-3 py-1.5">
+                  <td className="sticky left-0 z-10 border-t border-stone-100 bg-white px-3 py-1.5">
                     <button
                       type="button"
                       onClick={() => {
@@ -256,9 +260,11 @@ export function SequencerGrid({
                       }}
                       className="text-xs font-medium text-stone-500 underline-offset-2 hover:text-brand-700 hover:underline cursor-pointer"
                     >
-                      + Tambah Bunyi untuk {partLabel}
+                      + Tambah Bunyi<span className="max-sm:hidden"> untuk {partLabel}</span>
                     </button>
                   </td>
+                  {/* Spacer — menutup sisa lebar tabel (area step) tanpa konten. */}
+                  <td colSpan={maxLen} className="border-t border-stone-100" aria-hidden="true" />
                 </tr>
               </Fragment>
             );

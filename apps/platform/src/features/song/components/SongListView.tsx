@@ -264,7 +264,7 @@ export function SongListView() {
                   BPM {song.bpm} · {song.section_count ?? 0} Section · {formatRelativeTime(song.updated_at)}
                 </p>
               </Link>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 max-sm:w-full max-sm:justify-end">
                 <Link
                   to="/songs/$songId/play"
                   params={{ songId: String(song.id) }}

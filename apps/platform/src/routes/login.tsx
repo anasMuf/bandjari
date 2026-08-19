@@ -12,7 +12,7 @@ function Login() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate({ to: '/dashboard' })
+      navigate({ to: '/' })
     }
   }, [isAuthenticated, navigate])
 
@@ -28,7 +28,7 @@ function Login() {
       </div>
 
       <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
-        <LoginForm onSuccess={() => navigate({ to: '/dashboard' })} />
+        <LoginForm onSuccess={() => navigate({ to: '/' })} />
 
         <p className="mt-10 text-center text-sm/6 text-stone-500">
           Belum punya akun?{' '}
@@ -36,7 +36,7 @@ function Login() {
             Daftar
           </Link>
           {' · '}
-          <Link to="/" className="font-semibold text-brand-700 hover:text-brand-600">
+          <Link to="/explore" className="font-semibold text-brand-700 hover:text-brand-600">
             ← Lihat Song Bawaan tanpa login
           </Link>
         </p>
