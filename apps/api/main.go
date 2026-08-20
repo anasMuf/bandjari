@@ -90,8 +90,9 @@ func main() {
 	e := echo.New()
 	e.Validator = &utility.CustomValidator{Validator: validator.New()}
 	e.Use(middleware.MiddlewareLogging)
-	// CORS eksplisit: default Echo tidak menyetel Access-Control-Allow-Headers,
-	// sehingga preflight request dengan header Authorization/Content-Type ditolak browser.
+	// CORS eksplisit: di produksi hanya origin bandjari.net yang diizinkan
+	// (lihat config/cors.go); dev lokal tanpa env = izinkan semua origin.
+	// AllowHeaders disetel eksplisit agar preflight Authorization/Content-Type pasti lolos.
 	e.Use(echoMiddleware.CORSWithConfig(echoMiddleware.CORSConfig{
 		AllowOrigins: config.LoadCORSAllowedOrigins(),
 		AllowMethods: echoMiddleware.DefaultCORSConfig.AllowMethods,
