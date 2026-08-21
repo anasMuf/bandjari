@@ -25,7 +25,9 @@ services:
         condition: service_healthy
     environment:
       PORT: "8080"
-      # DSN di config/database.go tidak memuat password — pgx membacanya dari PGPASSWORD
+      # Password dipakai langsung di DSN (config/database.go). PGPASSWORD
+      # dipertahankan agar image lama tetap bisa konek.
+      DB_PASSWORD: ${DB_PASSWORD:-bandjari}
       PGPASSWORD: ${DB_PASSWORD:-bandjari}
       DB_HOST: postgres
       DB_PORT: "5432"

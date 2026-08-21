@@ -75,13 +75,17 @@ Buat A record di Cloudflare (proxy aktif = orange cloud):
 ## Setelah deploy pertama
 
 - Auto-migrate tabel dijalankan API saat startup (GORM `AutoMigrate` + constraint).
-- Seeder template (song & sample) dijalankan manual dari `apps/api`:
+- Seeder template dijalankan dari VPS via container Go sementara (VPS tidak punya Go, dan container API hanya berisi binary runtime). Kredensial DB & R2 dibaca dari `.env`; cukup tambah `DB_HOST=postgres` karena postgres hanya ada di network internal docker:
   ```sh
-  cd apps/api
-  go run ./seeders/song_templates
-  go run ./seeders/sample_templates -src "../../docs/src/SAMPLING HADRAH AB CHANNEL"
+  cd ~/bandjari
+  docker run --rm -v "$PWD":/src -w /src/apps/api --env-file .env \
+    -e DB_HOST=postgres -e DB_PORT=5432 --network bandjari_default \
+    golang:1.25-alpine go run ./seeders/song_templates
+  docker run --rm -v "$PWD":/src -w /src/apps/api --env-file .env \
+    -e DB_HOST=postgres -e DB_PORT=5432 --network bandjari_default \
+    golang:1.25-alpine go run ./seeders/sample_templates -src "../../docs/src/SAMPLING HADRAH AB CHANNEL"
   ```
-  (Seeder sample butuh object storage aktif, dan kredensial dijalankan dari mesin dengan akses ke R2.)
+  (Urutkan sample dulu, lalu song. Keduanya idempotent; run pertama lama karena download Go modules.)
 
 ## Rollback
 

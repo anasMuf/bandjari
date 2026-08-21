@@ -23,10 +23,22 @@ func DBInit() *gorm.DB {
 	name := os.Getenv("DB_NAME")
 	sslmode := os.Getenv("SSL_MODE")
 
+	// Password dibaca dari DB_PASSWORD (fallback PGPASSWORD). Dimasukkan ke DSN
+	// hanya bila terisi — menghindari password kosong yang menimpa PGPASSWORD.
+	password := os.Getenv("DB_PASSWORD")
+	if password == "" {
+		password = os.Getenv("PGPASSWORD")
+	}
 	dsn := fmt.Sprintf(
 		"host=%s user=%s dbname=%s port=%s sslmode=%s",
 		host, user, name, port, sslmode,
 	)
+	if password != "" {
+		dsn = fmt.Sprintf(
+			"host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
+			host, user, password, name, port, sslmode,
+		)
+	}
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
