@@ -52,10 +52,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter platform check
       - run: pnpm --filter platform exec vitest run --passWithNoTests
-    	  - run: pnpm --filter platform build
-    	    env:
-    	      # Fallback: jangan biarkan variabel kosong diam-diam menghasilkan bundle yang menunjuk ke localhost
-    	      VITE_API_URL: ${{ vars.VITE_API_URL || 'https://api.bandjari.net/api/v1' }}
+      - run: pnpm --filter platform build
+        env:
+          # Fallback: jangan biarkan variabel kosong diam-diam menghasilkan bundle yang menunjuk ke localhost
+          VITE_API_URL: ${{ vars.VITE_API_URL || 'https://api.bandjari.net/api/v1' }}
 
   # ---------------------------------------------------------------
   # BUILD & PUSH IMAGE — hanya saat push ke main, setelah checks hijau
@@ -78,12 +78,12 @@ jobs:
             file: ./apps/api/Dockerfile
             image: bandjari-api
             build_args: ""
-        	  - app: platform
-        	    context: .
-        	    file: ./apps/platform/Dockerfile
-        	    image: bandjari-platform
-        	    build_args: |
-        	      VITE_API_URL=${{ vars.VITE_API_URL || 'https://api.bandjari.net/api/v1' }}
+          - app: platform
+            context: .
+            file: ./apps/platform/Dockerfile
+            image: bandjari-platform
+            build_args: |
+              VITE_API_URL=${{ vars.VITE_API_URL || 'https://api.bandjari.net/api/v1' }}
     steps:
       - uses: actions/checkout@v4
       - name: Owner huruf kecil (syarat GHCR)
