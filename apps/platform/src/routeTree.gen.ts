@@ -13,9 +13,16 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AppBantuanRouteImport } from './routes/_app/bantuan'
+import { Route as AppDonasiRouteImport } from './routes/_app/donasi'
 import { Route as AppExploreRouteImport } from './routes/_app/explore'
+import { Route as AppFaqRouteImport } from './routes/_app/faq'
+import { Route as AppKontakRouteImport } from './routes/_app/kontak'
+import { Route as AppPrivasiRouteImport } from './routes/_app/privasi'
 import { Route as AppProfileRouteImport } from './routes/_app/profile'
 import { Route as AppProjectRouteImport } from './routes/_app/project'
+import { Route as AppSyaratRouteImport } from './routes/_app/syarat'
+import { Route as AppTentangRouteImport } from './routes/_app/tentang'
 import { Route as SongsSongIdRouteImport } from './routes/songs.$songId'
 import { Route as TemplatesSongIdRouteImport } from './routes/templates.$songId'
 import { Route as AppProjectIndexRouteImport } from './routes/_app/project.index'
@@ -43,9 +50,34 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppBantuanRoute = AppBantuanRouteImport.update({
+  id: '/bantuan',
+  path: '/bantuan',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDonasiRoute = AppDonasiRouteImport.update({
+  id: '/donasi',
+  path: '/donasi',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppExploreRoute = AppExploreRouteImport.update({
   id: '/explore',
   path: '/explore',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppFaqRoute = AppFaqRouteImport.update({
+  id: '/faq',
+  path: '/faq',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppKontakRoute = AppKontakRouteImport.update({
+  id: '/kontak',
+  path: '/kontak',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPrivasiRoute = AppPrivasiRouteImport.update({
+  id: '/privasi',
+  path: '/privasi',
   getParentRoute: () => AppRoute,
 } as any)
 const AppProfileRoute = AppProfileRouteImport.update({
@@ -56,6 +88,16 @@ const AppProfileRoute = AppProfileRouteImport.update({
 const AppProjectRoute = AppProjectRouteImport.update({
   id: '/project',
   path: '/project',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSyaratRoute = AppSyaratRouteImport.update({
+  id: '/syarat',
+  path: '/syarat',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTentangRoute = AppTentangRouteImport.update({
+  id: '/tentang',
+  path: '/tentang',
   getParentRoute: () => AppRoute,
 } as any)
 const SongsSongIdRoute = SongsSongIdRouteImport.update({
@@ -99,9 +141,16 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/bantuan': typeof AppBantuanRoute
+  '/donasi': typeof AppDonasiRoute
   '/explore': typeof AppExploreRoute
+  '/faq': typeof AppFaqRoute
+  '/kontak': typeof AppKontakRoute
+  '/privasi': typeof AppPrivasiRoute
   '/profile': typeof AppProfileRoute
   '/project': typeof AppProjectRouteWithChildren
+  '/syarat': typeof AppSyaratRoute
+  '/tentang': typeof AppTentangRoute
   '/songs/$songId': typeof SongsSongIdRouteWithChildren
   '/templates/$songId': typeof TemplatesSongIdRoute
   '/project/samples': typeof AppProjectSamplesRoute
@@ -113,8 +162,15 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/bantuan': typeof AppBantuanRoute
+  '/donasi': typeof AppDonasiRoute
   '/explore': typeof AppExploreRoute
+  '/faq': typeof AppFaqRoute
+  '/kontak': typeof AppKontakRoute
+  '/privasi': typeof AppPrivasiRoute
   '/profile': typeof AppProfileRoute
+  '/syarat': typeof AppSyaratRoute
+  '/tentang': typeof AppTentangRoute
   '/templates/$songId': typeof TemplatesSongIdRoute
   '/': typeof AppIndexRoute
   '/project/samples': typeof AppProjectSamplesRoute
@@ -128,9 +184,16 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/_app/bantuan': typeof AppBantuanRoute
+  '/_app/donasi': typeof AppDonasiRoute
   '/_app/explore': typeof AppExploreRoute
+  '/_app/faq': typeof AppFaqRoute
+  '/_app/kontak': typeof AppKontakRoute
+  '/_app/privasi': typeof AppPrivasiRoute
   '/_app/profile': typeof AppProfileRoute
   '/_app/project': typeof AppProjectRouteWithChildren
+  '/_app/syarat': typeof AppSyaratRoute
+  '/_app/tentang': typeof AppTentangRoute
   '/songs/$songId': typeof SongsSongIdRouteWithChildren
   '/templates/$songId': typeof TemplatesSongIdRoute
   '/_app/': typeof AppIndexRoute
@@ -146,9 +209,16 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/register'
+    | '/bantuan'
+    | '/donasi'
     | '/explore'
+    | '/faq'
+    | '/kontak'
+    | '/privasi'
     | '/profile'
     | '/project'
+    | '/syarat'
+    | '/tentang'
     | '/songs/$songId'
     | '/templates/$songId'
     | '/project/samples'
@@ -160,8 +230,15 @@ export interface FileRouteTypes {
   to:
     | '/login'
     | '/register'
+    | '/bantuan'
+    | '/donasi'
     | '/explore'
+    | '/faq'
+    | '/kontak'
+    | '/privasi'
     | '/profile'
+    | '/syarat'
+    | '/tentang'
     | '/templates/$songId'
     | '/'
     | '/project/samples'
@@ -174,9 +251,16 @@ export interface FileRouteTypes {
     | '/_app'
     | '/login'
     | '/register'
+    | '/_app/bantuan'
+    | '/_app/donasi'
     | '/_app/explore'
+    | '/_app/faq'
+    | '/_app/kontak'
+    | '/_app/privasi'
     | '/_app/profile'
     | '/_app/project'
+    | '/_app/syarat'
+    | '/_app/tentang'
     | '/songs/$songId'
     | '/templates/$songId'
     | '/_app/'
@@ -225,11 +309,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/bantuan': {
+      id: '/_app/bantuan'
+      path: '/bantuan'
+      fullPath: '/bantuan'
+      preLoaderRoute: typeof AppBantuanRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/donasi': {
+      id: '/_app/donasi'
+      path: '/donasi'
+      fullPath: '/donasi'
+      preLoaderRoute: typeof AppDonasiRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/explore': {
       id: '/_app/explore'
       path: '/explore'
       fullPath: '/explore'
       preLoaderRoute: typeof AppExploreRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/faq': {
+      id: '/_app/faq'
+      path: '/faq'
+      fullPath: '/faq'
+      preLoaderRoute: typeof AppFaqRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/kontak': {
+      id: '/_app/kontak'
+      path: '/kontak'
+      fullPath: '/kontak'
+      preLoaderRoute: typeof AppKontakRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/privasi': {
+      id: '/_app/privasi'
+      path: '/privasi'
+      fullPath: '/privasi'
+      preLoaderRoute: typeof AppPrivasiRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/profile': {
@@ -244,6 +363,20 @@ declare module '@tanstack/react-router' {
       path: '/project'
       fullPath: '/project'
       preLoaderRoute: typeof AppProjectRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/syarat': {
+      id: '/_app/syarat'
+      path: '/syarat'
+      fullPath: '/syarat'
+      preLoaderRoute: typeof AppSyaratRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/tentang': {
+      id: '/_app/tentang'
+      path: '/tentang'
+      fullPath: '/tentang'
+      preLoaderRoute: typeof AppTentangRouteImport
       parentRoute: typeof AppRoute
     }
     '/songs/$songId': {
@@ -313,16 +446,30 @@ const AppProjectRouteWithChildren = AppProjectRoute._addFileChildren(
 )
 
 interface AppRouteChildren {
+  AppBantuanRoute: typeof AppBantuanRoute
+  AppDonasiRoute: typeof AppDonasiRoute
   AppExploreRoute: typeof AppExploreRoute
+  AppFaqRoute: typeof AppFaqRoute
+  AppKontakRoute: typeof AppKontakRoute
+  AppPrivasiRoute: typeof AppPrivasiRoute
   AppProfileRoute: typeof AppProfileRoute
   AppProjectRoute: typeof AppProjectRouteWithChildren
+  AppSyaratRoute: typeof AppSyaratRoute
+  AppTentangRoute: typeof AppTentangRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppBantuanRoute: AppBantuanRoute,
+  AppDonasiRoute: AppDonasiRoute,
   AppExploreRoute: AppExploreRoute,
+  AppFaqRoute: AppFaqRoute,
+  AppKontakRoute: AppKontakRoute,
+  AppPrivasiRoute: AppPrivasiRoute,
   AppProfileRoute: AppProfileRoute,
   AppProjectRoute: AppProjectRouteWithChildren,
+  AppSyaratRoute: AppSyaratRoute,
+  AppTentangRoute: AppTentangRoute,
   AppIndexRoute: AppIndexRoute,
 }
 

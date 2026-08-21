@@ -7,6 +7,7 @@ import { ConfirmDialog } from '../../../components/molecules/ConfirmDialog';
 import { EmptyState } from '../../../components/molecules/EmptyState';
 import { MobilePageHeader } from '../../../components/molecules/MobilePageHeader';
 import { PageHeader } from '../../../components/molecules/PageHeader';
+import { SupportLinksSection } from '../../support/components/SupportLinksSection';
 
 /**
  * Halaman Profile (menu 4): identitas akun (avatar generik, nama, email, role),
@@ -50,6 +51,9 @@ export function ProfileView() {
             Daftar
           </Link>
         </EmptyState>
+
+        {/* Guest juga perlu akses support di mobile. */}
+        <SupportLinksSection />
       </div>
     );
   }
@@ -113,6 +117,9 @@ export function ProfileView() {
         onConfirm={handleLogout}
         onCancel={() => setConfirming(false)}
       />
+
+      {/* Pintu akses halaman support — utama untuk mobile (keputusan desain #1). */}
+      <SupportLinksSection />
     </div>
   );
 }
