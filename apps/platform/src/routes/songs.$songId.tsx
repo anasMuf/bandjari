@@ -1,6 +1,14 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router'
+import { seoMeta } from '../lib/seo'
 
 export const Route = createFileRoute('/songs/$songId')({
+  head: ({ match }) =>
+    seoMeta({
+      title: 'Lagu | BandJari',
+      description: 'Kelola lagu pola rebana Al-Banjari Anda.',
+      pathname: match.pathname,
+      noindex: true,
+    }),
   component: SongLayout,
 })
 

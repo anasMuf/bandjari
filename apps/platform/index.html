@@ -1,10 +1,18 @@
 
 <!doctype html>
-<html lang="en">
+<html lang="id">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BandJari</title>
+    <!-- Meta per-route (title, description, canonical, OG, robots) dirender oleh
+         TanStack Router HeadContent dari route head(). JANGAN tambahkan title/
+         description/OG statis di sini — React 19 tidak menghapus tag statis, dan
+         duplikat meta membuat crawler memakai nilai yang salah. -->
+    <meta name="theme-color" content="#0f766e" />
+    <link rel="icon" type="image/svg+xml" href="/icon_bandjari.svg" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/logo512.png" />
+    <link rel="manifest" href="/manifest.json" />
   </head>
   <body>
     <div id="app"></div>

@@ -3,8 +3,16 @@ import { useAuth } from '../../features/auth/AuthContext'
 import { EmptyState } from '../../components/molecules/EmptyState'
 import { MobilePageHeader } from '../../components/molecules/MobilePageHeader'
 import { PageHeader } from '../../components/molecules/PageHeader'
+import { seoMeta } from '../../lib/seo'
 
 export const Route = createFileRoute('/_app/project')({
+  head: ({ match }) =>
+    seoMeta({
+      title: 'Project | BandJari',
+      description: 'Kelola lagu, section, dan library sample BandJari Anda.',
+      pathname: match.pathname,
+      noindex: true,
+    }),
   component: ProjectLayout,
 })
 

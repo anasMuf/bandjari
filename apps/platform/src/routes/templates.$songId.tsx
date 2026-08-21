@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
 import { useGetSongsId, usePostSongsIdDuplicate } from '../api/endpoints/songs/songs'
@@ -9,8 +9,16 @@ import { Button } from '../components/atoms/Button'
 import { useToast } from '../components/molecules/Toast'
 import { ApiError } from '../api/mutator/custom-instance'
 import type { SectionItem } from '../features/section/components/SectionStrip'
+import { seoMeta } from '../lib/seo'
 
 export const Route = createFileRoute('/templates/$songId')({
+  head: ({ match }) =>
+    seoMeta({
+      title: 'Template Pola Rebana Al-Banjari | BandJari',
+      description:
+        'Lihat pola pukulan rebana Al-Banjari lengkap per section — 4 rebana + 1 bass. Bebas dimainkan tanpa login, duplikasi untuk menyusun pola sendiri.',
+      pathname: match.pathname,
+    }),
   component: PublicSongViewPage,
 })
 
@@ -35,6 +43,17 @@ function PublicSongViewPage() {
   const { addToast } = useToast()
   const duplicateMutation = usePostSongsIdDuplicate()
   const [showPrompt, setShowPrompt] = useState(false)
+
+  const resp = songQuery.data?.data;
+  const song = resp && 'data' in resp ? (resp.data as SongDetail) : undefined;
+
+  // Title tab/crawler dinamis pakai nama lagu setelah data termuat (data di-fetch
+  // lewat React Query di komponen, bukan route loader — jadi head() statis).
+  useEffect(() => {
+    if (song?.name) {
+      document.title = `${song.name} | BandJari`
+    }
+  }, [song?.name])
 
   if (songQuery.isLoading) {
     return (
@@ -63,8 +82,6 @@ function PublicSongViewPage() {
     );
   }
 
-  const resp = songQuery.data?.data;
-  const song = resp && 'data' in resp ? (resp.data as SongDetail) : undefined;
   if (!song) return null;
 
   const handleDuplicate = () => {

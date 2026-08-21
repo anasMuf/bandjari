@@ -2,8 +2,19 @@ import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { useAuth } from '../features/auth/AuthContext'
 import { LoginForm } from '../features/auth/components/LoginForm'
+import { seoMeta } from '../lib/seo'
 
-export const Route = createFileRoute('/login')({ component: Login })
+export const Route = createFileRoute('/login')({
+  head: ({ match }) =>
+    seoMeta({
+      title: 'Masuk | BandJari',
+      description:
+        'Masuk ke akun BandJari untuk menyusun & mengelola pola pukulan rebana Al-Banjari milik Anda.',
+      pathname: match.pathname,
+      noindex: true,
+    }),
+  component: Login,
+})
 
 /** Layar 0b wireframe — auth disederhanakan; fokus form login + pintu Guest. */
 function Login() {

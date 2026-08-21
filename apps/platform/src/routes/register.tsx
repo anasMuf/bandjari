@@ -2,8 +2,19 @@ import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { useAuth } from '../features/auth/AuthContext'
 import { RegisterForm } from '../features/auth/components/RegisterForm'
+import { seoMeta } from '../lib/seo'
 
-export const Route = createFileRoute('/register')({ component: Register })
+export const Route = createFileRoute('/register')({
+  head: ({ match }) =>
+    seoMeta({
+      title: 'Daftar | BandJari',
+      description:
+        'Buat akun BandJari gratis untuk menyusun pola pukulan rebana Al-Banjari Anda sendiri.',
+      pathname: match.pathname,
+      noindex: true,
+    }),
+  component: Register,
+})
 
 function Register() {
   const { isAuthenticated } = useAuth()
