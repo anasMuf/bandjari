@@ -1,6 +1,5 @@
 import { Fragment } from 'react';
-import { SlidersHorizontal, Trash2, Volume2, VolumeX } from 'lucide-react';
-import { getSamplesIdPlaybackUrl } from '../../../api/endpoints/samples/samples';
+import { Loader2, SlidersHorizontal, Trash2, Volume2, VolumeX } from 'lucide-react';
 import { decodeSteps, roundUpToStepMultiple, stepCount } from '../../../lib/steps';
 import { PART_LABELS, PART_ORDER } from '../utils/parts';
 
@@ -32,6 +31,8 @@ interface SequencerGridProps {
   onEditAttempt?: () => void;
   /** Kolom yang sedang disorot playhead saat Play Preview aktif. */
   playheadIndex?: number | null;
+  /** Sample yang sedang disiapkan preview satu bunyi — tombol ▶-nya menampilkan placeholder. */
+  previewingSampleId?: number | null;
   /** Part yang sedang di-mute (senyap saat preview). */
   mutedParts: Set<string>;
   onToggleMute: (partKey: string) => void;
@@ -53,6 +54,7 @@ export function SequencerGrid({
   readOnly = false,
   onEditAttempt,
   playheadIndex = null,
+  previewingSampleId = null,
   mutedParts,
   onToggleMute,
 }: SequencerGridProps) {
@@ -180,6 +182,8 @@ export function SequencerGrid({
 
                 {part.slots.map((slot) => {
                   const sampleName = slot.sample?.name ?? null;
+                  const isPreviewing =
+                    previewingSampleId != null && slot.sample_id === previewingSampleId;
                   return (
                     <tr key={slot.id} className={isMuted ? 'opacity-60' : ''}>
                       <td className="sticky left-0 z-10 border-b border-stone-100 bg-white px-3 py-1.5">
@@ -187,11 +191,16 @@ export function SequencerGrid({
                           <button
                             type="button"
                             aria-label={`Preview bunyi ${slot.label} ${partLabel}`}
-                            title={`Preview ${slot.label} (${slot.key})`}
+                            title={isPreviewing ? 'Memuat sample…' : `Preview ${slot.label} (${slot.key})`}
+                            aria-busy={isPreviewing}
                             onClick={() => onPreviewSlot(slot)}
                             className="flex size-6 shrink-0 items-center justify-center rounded border border-stone-200 text-[10px] text-stone-500 transition-colors hover:border-brand-700 hover:text-brand-700 cursor-pointer"
                           >
-                            ▶
+                            {isPreviewing ? (
+                              <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                            ) : (
+                              '▶'
+                            )}
                           </button>
                           <div className="min-w-0">
                             <p className="font-medium text-stone-900">
@@ -275,13 +284,3 @@ export function SequencerGrid({
   );
 }
 
-/**
- * Preview satu sample (per baris grid, FR-SEQ-05): ambil signed URL lalu putar
- * sekali lewat elemen Audio.
- */
-export async function previewSampleAudio(sampleId: number): Promise<void> {
-  const resp = await getSamplesIdPlaybackUrl(sampleId);
-  const url = (resp.data as { data?: { url?: string } })?.data?.url;
-  if (!url) return;
-  await new Audio(url).play();
-}

@@ -56,14 +56,19 @@ export function AppNav() {
             </Link>
           ))}
 
-          {/* Dropdown Bantuan */}
-          <div className="relative">
+          {/* Dropdown Bantuan — wrapper flex: tanpa flex, line-box blok membengkak
+              oleh strut line-height warisan sehingga tombol tidak sejajar dengan
+              menu lain; flex menghilangkan line-box & menyamakan tinggi kotak. */}
+          <div className="relative flex">
             <button
               type="button"
               aria-haspopup="menu"
               aria-expanded={supportOpen}
               onClick={() => setSupportOpen((open) => !open)}
-              className="inline-flex cursor-pointer items-center gap-1 text-sm text-stone-600 hover:text-stone-900"
+              // p-0: preflight Tailwind tidak mereset padding UA tombol — tanpa ini
+              // kotak tombol lebih lebar/tinggi dari link menu sehingga label & panel
+              // dropdown tidak sejajar (tidak simetris) dengan menu lain.
+              className="inline-flex cursor-pointer items-center gap-1 p-0 text-sm text-stone-600 hover:text-stone-900"
             >
               <LifeBuoy className="size-4" aria-hidden="true" />
               Bantuan

@@ -25,15 +25,36 @@ interface PlaybackUrlData {
  *   per instrumen), ekor sample tidak menumpuk.
  * - Tiap part loop sesuai panjang steps-nya (AC-2); step tanpa sample senyap
  *   (AC-5). 1 step = 1/16 ketukan (60000/bpm/4 ms).
+ *
+ * Guard anti-tumpuk: pemuatan sample bergantung koneksi, jadi play() memberi
+ * tahu pemanggil lewat `isPreparing` (dipakai tombol menampilkan placeholder
+ * "Memuat audio…"). Tiap play()/stop() membatalkan load & request HTTP yang
+ * masih berjalan (AbortController + token generasi), sehingga play() yang
+ * tertunda tidak pernah mulai berbunyi — klik berulang di tengah load tidak
+ * menumpuk suara.
  */
 export function useSectionPreview() {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isPreparing, setIsPreparing] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const stopRef = useRef<(() => void) | null>(null);
+  /**
+   * Token generasi playback — dinaikkan tiap stop() / play() baru. play() yang
+   * masih memuat sample dianggap basi bila nomornya berubah; hasil load-nya
+   * dibuang tanpa memulai bunyi.
+   */
+  const generationRef = useRef(0);
+  /** AbortController aktif — membatalkan request sample yang sedang berjalan. */
+  const abortRef = useRef<AbortController | null>(null);
 
   const stop = useCallback(() => {
+    // Batalkan load in-flight + tandai play() yang tertunda sebagai basi.
+    generationRef.current += 1;
+    abortRef.current?.abort();
+    abortRef.current = null;
     stopRef.current?.();
     stopRef.current = null;
+    setIsPreparing(false);
     setIsPlaying(false);
     setStepIndex(0);
   }, []);
@@ -41,6 +62,11 @@ export function useSectionPreview() {
   const play = useCallback(
     async (getParts: () => SectionPreviewPart[], bpm: number) => {
       stop();
+
+      const generation = generationRef.current;
+      const controller = new AbortController();
+      abortRef.current = controller;
+      setIsPreparing(true);
 
       const AudioCtx = window.AudioContext;
       const ctx = new AudioCtx();
@@ -57,14 +83,24 @@ export function useSectionPreview() {
         }
         await Promise.all(
           Array.from(sampleIds).map(async (sampleId) => {
-            const resp = await getSamplesIdPlaybackUrl(sampleId);
+            const resp = await getSamplesIdPlaybackUrl(sampleId, { signal: controller.signal });
             const url = (resp.data as PlaybackUrlData)?.data?.url;
             if (!url) return;
-            const arrayBuffer = await fetch(url).then((r) => r.arrayBuffer());
+            const arrayBuffer = await fetch(url, { signal: controller.signal }).then((r) => r.arrayBuffer());
             const buffer = await ctx.decodeAudioData(arrayBuffer);
             buffers.set(sampleId, buffer);
           }),
         );
+
+        // play() ini dibatalkan selama load (stop / tombol ditekan ulang) —
+        // buang hasilnya tanpa mulai tick agar bunyi tidak bertumpuk. State
+        // isPreparing tidak disentuh di sini: stop()/play() pengganti sudah
+        // menetapkan nilainya.
+        if (generation !== generationRef.current) {
+          void ctx.close();
+          return;
+        }
+        abortRef.current = null;
 
         // Sumber aktif per Part — untuk choke monofonik.
         const activeSources = new Map<string, AudioBufferSourceNode[]>();
@@ -138,6 +174,7 @@ export function useSectionPreview() {
 
         tick();
         setIsPlaying(true);
+        setIsPreparing(false);
         stopRef.current = () => {
           clearTimeout(timer);
           for (const sources of activeSources.values()) {
@@ -151,18 +188,24 @@ export function useSectionPreview() {
           }
           ctx.close();
           setIsPlaying(false);
+          setIsPreparing(false);
           setStepIndex(0);
         };
       } catch (error) {
-        ctx.close();
-        throw error;
+        void ctx.close();
+        // Load dibatalkan karena play() digantikan / stop — bukan error, jangan
+        // diteruskan ke pemanggil (state sudah diatur stop()/play() pengganti).
+        if (generation === generationRef.current) {
+          setIsPreparing(false);
+          throw error;
+        }
       }
     },
     [stop],
   );
 
-  // Hentikan playback saat komponen unmount.
+  // Hentikan playback & load in-flight saat komponen unmount.
   useEffect(() => stop, [stop]);
 
-  return { play, stop, isPlaying, stepIndex };
+  return { play, stop, isPlaying, isPreparing, stepIndex };
 }

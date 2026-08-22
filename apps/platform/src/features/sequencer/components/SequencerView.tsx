@@ -10,9 +10,10 @@ import { useToast } from '../../../components/molecules/Toast';
 import { ApiError } from '../../../api/mutator/custom-instance';
 import { useAuth } from '../../auth/AuthContext';
 import { LoginPromptInline } from '../../auth/components/LoginPromptInline';
-import { SequencerGrid, previewSampleAudio, type GridSlot } from './SequencerGrid';
+import { SequencerGrid, type GridSlot } from './SequencerGrid';
 import { SoundSlotManager, type SoundSlotData } from './SoundSlotManager';
 import { useSectionPreview } from '../hooks/useSectionPreview';
+import { useSamplePreview } from '../../sample/hooks/useSamplePreview';
 import { padSteps, trimSteps, decodeSteps, encodeSteps, setStepExtending, toggleKeyInCell, stepCount, normalizeStepsToGrid, roundUpToStepMultiple } from '../../../lib/steps';
 import { PART_LABELS, PART_ORDER } from '../utils/parts';
 
@@ -44,6 +45,7 @@ export function SequencerView({ songId, sectionId, sectionName, songBpm, bpmOver
   const songQuery = useGetSongsId(songId);
   const saveStepsMutation = usePutSectionPartsId();
   const preview = useSectionPreview();
+  const samplePreview = useSamplePreview();
 
   const [stepsByPart, setStepsByPart] = useState<Record<number, string>>({});
   const [selectedPartId, setSelectedPartId] = useState<number | null>(null);
@@ -219,6 +221,12 @@ export function SequencerView({ songId, sectionId, sectionName, songBpm, bpmOver
       preview.stop();
       return;
     }
+    if (preview.isPreparing) {
+      // Klik ulang saat sample masih dimuat = mulai ulang: batalkan load lama
+      // (request HTTP ikut dibatalkan) lalu muat ulang — tidak pernah ada dua
+      // proses load / dua playback yang berjalan bersamaan.
+      preview.stop();
+    }
     // Getter dipanggil ulang tiap tick → edit kotak & mute part saat preview
     // berjalan langsung terdengar (real-time). Part yang di-mute tetap ikut
     // dikirim (dengan flag) agar bunyi berderingnya langsung dipotong.
@@ -247,7 +255,9 @@ export function SequencerView({ songId, sectionId, sectionName, songBpm, bpmOver
       addToast({ variant: 'info', title: 'Belum ada sample', message: 'Pasang sample dulu untuk mendengar bunyi ini.' });
       return;
     }
-    previewSampleAudio(slot.sample_id).catch(() => {
+    // Preview satu bunyi — satu preview aktif dalam satu waktu; klik lain saat
+    // masih memuat membatalkan yang sebelumnya (tidak menumpuk suara).
+    samplePreview.preview(slot.sample_id).catch(() => {
       addToast({ variant: 'error', title: 'Gagal memutar', message: 'Audio tidak dapat diputar.' });
     });
   };
@@ -309,8 +319,14 @@ export function SequencerView({ songId, sectionId, sectionName, songBpm, bpmOver
       {/* Toolbar — mobile: pola transport bar Launcher (full-bleed, sticky di bawah header, baris tersendiri terpusat). */}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-white p-3 ring-1 ring-stone-900/5 max-sm:sticky max-sm:top-10 max-sm:z-20 max-sm:-mx-4 max-sm:rounded-none max-sm:px-4">
         <div className="flex flex-wrap items-center justify-center gap-3 max-sm:w-full max-sm:text-center">
-          <Button type="button" variant="secondary" size="sm" onClick={handleTogglePreview}>
-            {preview.isPlaying ? '■ Stop Preview' : '▶ Play Preview'}
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={handleTogglePreview}
+            aria-busy={preview.isPreparing}
+          >
+            {preview.isPlaying ? '■ Stop Preview' : preview.isPreparing ? 'Memuat audio…' : '▶ Play Preview'}
           </Button>
           <span className="text-xs text-stone-500">
             BPM {effectiveBpm}
@@ -372,6 +388,7 @@ export function SequencerView({ songId, sectionId, sectionName, songBpm, bpmOver
         readOnly={readOnly}
         onEditAttempt={() => setEditPromptZone('grid')}
         playheadIndex={preview.isPlaying ? preview.stepIndex : null}
+        previewingSampleId={samplePreview.previewingId}
         mutedParts={mutedParts}
         onToggleMute={(partKey) =>
           setMutedParts((prev) => {
@@ -390,8 +407,13 @@ export function SequencerView({ songId, sectionId, sectionName, songBpm, bpmOver
             Simpan Perubahan
           </Button>
         )}
-        <Button type="button" variant="secondary" onClick={handleTogglePreview}>
-          ▶ Preview Section Ini (Semua Part)
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={handleTogglePreview}
+          aria-busy={preview.isPreparing}
+        >
+          {preview.isPlaying ? '■ Stop Preview' : preview.isPreparing ? 'Memuat audio…' : '▶ Preview Section Ini (Semua Part)'}
         </Button>
         <Link
           to={isTemplate ? '/templates/$songId' : '/songs/$songId'}

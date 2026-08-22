@@ -5,7 +5,6 @@ import {
   usePostSamples,
   usePutSamplesId,
   useDeleteSamplesId,
-  getSamplesIdPlaybackUrl,
 } from '../../../api/endpoints/samples/samples';
 import type { DtoSuccessResponse } from '../../../api/model';
 import { Button } from '../../../components/atoms/Button';
@@ -20,6 +19,7 @@ import { ApiError } from '../../../api/mutator/custom-instance';
 import { useAuth } from '../../auth/AuthContext';
 import { PART_LABELS } from '../../sequencer/utils/parts';
 import { sampleNameFromFileName } from '../sample-name';
+import { useSamplePreview } from '../hooks/useSamplePreview';
 
 interface SampleItem {
   id: number;
@@ -57,6 +57,8 @@ export function SampleLibraryView() {
   const [deleting, setDeleting] = useState<SampleItem | null>(null);
   // State error 409 (FR-SAMP-08/AC-6): sample masih direferensikan SoundSlot.
   const [deleteConflict, setDeleteConflict] = useState<{ name: string; message: string } | null>(null);
+  // Preview satu sample — placeholder "Memuat…" + satu bunyi aktif dalam satu waktu.
+  const samplePreview = useSamplePreview();
 
   const notify = (title: string, message: string) =>
     addToast({ variant: 'success', title, message });
@@ -166,19 +168,16 @@ export function SampleLibraryView() {
     );
   };
 
-  const handlePreview = async (sample: SampleItem) => {
-    try {
-      const response = await getSamplesIdPlaybackUrl(sample.id);
-      const data = response.data as DtoSuccessResponse;
-      const url = (data.data as { url: string })?.url;
-      if (url) {
-        new Audio(url).play().catch(() => {
-          addToast({ variant: 'error', title: 'Gagal memutar', message: 'Audio tidak dapat diputar.' });
-        });
+  const handlePreview = (sample: SampleItem) => {
+    // Preview baru membatalkan yang sedang berjalan — rapid-click tidak menumpuk
+    // bunyi; tombol menampilkan placeholder selama sample disiapkan.
+    samplePreview.preview(sample.id).catch((error) => {
+      if (error instanceof ApiError) {
+        showError(error, 'Gagal mengambil URL playback');
+      } else {
+        addToast({ variant: 'error', title: 'Gagal memutar', message: 'Audio tidak dapat diputar.' });
       }
-    } catch (error) {
-      showError(error, 'Gagal mengambil URL playback');
-    }
+    });
   };
 
   return (
@@ -407,8 +406,14 @@ export function SampleLibraryView() {
                   {(sample.usage_count ?? 0) > 1 ? ' (reuse)' : ''}
                 </p>
                 <div className="mt-3 flex items-center gap-2">
-                  <Button type="button" variant="secondary" size="sm" onClick={() => handlePreview(sample)}>
-                    ▶ Preview
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => handlePreview(sample)}
+                    aria-busy={samplePreview.previewingId === sample.id}
+                  >
+                    {samplePreview.previewingId === sample.id ? 'Memuat…' : '▶ Preview'}
                   </Button>
                   {isAdmin && (
                     <>
@@ -502,8 +507,14 @@ export function SampleLibraryView() {
                   {Math.round(sample.file_size_bytes / 1024)} KB
                 </p>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <Button type="button" variant="secondary" size="sm" onClick={() => handlePreview(sample)}>
-                    ▶ Preview
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => handlePreview(sample)}
+                    aria-busy={samplePreview.previewingId === sample.id}
+                  >
+                    {samplePreview.previewingId === sample.id ? 'Memuat…' : '▶ Preview'}
                   </Button>
                   <Button
                     type="button"
