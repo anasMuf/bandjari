@@ -16,9 +16,25 @@ Aplikasi ini dibuat untuk mempermudah grup hadrah/banjari menyusun pola pukulan,
 
 Dibangun dengan standar web modern: React + TypeScript, Vite, TanStack Router & Query, Tailwind CSS, dan backend Go (Echo + PostgreSQL) — seluruh audio diproses dan dijadwalkan **100% di sisi klien** (Web Worker + Web Audio API).
 
-## Pengembang
+## Kredit & Atribusi
 
-BandJari dikembangkan oleh pengembang independen. Produk ini dikerjakan secara terbuka, berfokus pada kebutuhan komunitas banjari/hadrah Indonesia.
+BandJari berdiri berkat karya pihak-pihak berikut — terima kasih banyak 🙏:
+
+- **Sumber audio sample** — sample template sistem diambil dari **SAMPLING HADRAH AB CHANNEL** ([tautan](https://youtu.be/uPCOB0gckVw?si=GhlahL2dOFoiHI4K)).
+- **Desain logo & aset** — logo BandJari dirancang oleh **Anas Mufti**.
+- **Teknologi open source** — dibangun di atas ekosistem open source: React, TanStack, Vite, Tailwind CSS, Go, Echo, PostgreSQL, dan lainnya.
+
+## Pengembang & Kontribusi
+
+BandJari dikembangkan oleh **Anas Mufti** sebagai proyek terbuka, berfokus pada kebutuhan
+komunitas banjari/hadrah Indonesia. Kode sumber tersedia di
+[GitHub — anasMuf/bandjari](https://github.com/anasMuf/bandjari) dengan lisensi ISC.
+
+Kontribusi dari siapa pun sangat diterima:
+
+- **Lapor bug / usul fitur** — buka issue di repositori GitHub.
+- **Kirim perbaikan** — pull request dipersilakan.
+- **Diskusi & masukan** — sampaikan via GitHub atau halaman [Kontak](/kontak).
 
 Dukung kelanjutan pengembangan di halaman [Donasi](/donasi) — setiap dukungan berarti untuk biaya server, storage audio, dan fitur baru. 🙏
 
