@@ -17,13 +17,14 @@ const SUPPORT_ITEMS = [
   { to: '/tentang', label: 'Tentang' },
 ] as const;
 
-const activeNavClass = 'text-brand-800 font-semibold';
-
 /**
  * Navbar atas desktop: brand + Home/Explore/Project/Profile + dropdown Bantuan
  * (FAQ/Bantuan/Kontak/Tentang) + tombol Donasi (CTA aksen).
  * Di mobile navbar disembunyikan — navigasi pindah ke BottomNav + seksi
  * "Bantuan & Informasi" di halaman Profile.
+ *
+ * Warna aktif memakai variant `data-[status=active]:` (bukan activeProps class
+ * polos) — lihat catatan di BottomNav.tsx soal konflik urutan stylesheet.
  */
 export function AppNav() {
   const [supportOpen, setSupportOpen] = useState(false);
@@ -49,8 +50,7 @@ export function AppNav() {
             <Link
               key={item.to}
               to={item.to}
-              className="text-sm text-stone-600 hover:text-stone-900"
-              activeProps={{ className: activeNavClass }}
+              className="text-sm text-stone-600 transition-colors hover:text-brand-700 data-[status=active]:text-brand-800 data-[status=active]:font-semibold"
             >
               {item.label}
             </Link>
