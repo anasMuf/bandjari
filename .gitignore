@@ -37,6 +37,9 @@ tmp/
 .env.test.local
 .env.production.local
 
+# Secret OAuth (Google Cloud) — jangan pernah commit client secret ke repo
+client_secret_*.json
+
 # OS
 .DS_Store
 Thumbs.db
