@@ -1,6 +1,6 @@
 # Syarat & Ketentuan BandJari
 
-*Terakhir diperbarui: 21 Agustus 2026*
+*Terakhir diperbarui: 24 Agustus 2026*
 
 ## 1. Penerimaan Syarat
 
@@ -14,6 +14,9 @@ Dengan mengakses atau menggunakan BandJari, Anda menyetujui syarat & ketentuan b
 
 ## 3. Akun
 
+- Anda wajib memberikan alamat email yang **valid dan milik Anda**. Mendaftar dengan alamat email atau identitas orang lain dilarang.
+- Dengan mendaftar, Anda menyetujui penerimaan **email transaksional** dari kami (mis. verifikasi alamat email dan reset kata sandi).
+- Bila Anda memilih masuk dengan akun Google, penggunaan Anda tetap tunduk pada syarat ini.
 - Anda bertanggung jawab menjaga kerahasiaan kredensial akun.
 - Kami dapat menangguhkan akun yang melanggar syarat ini atau membahayakan layanan.
 - Karya Anda adalah milik Anda; BandJari tidak mengklaim kepemilikan atas konten yang Anda buat.
