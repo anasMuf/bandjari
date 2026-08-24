@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { useAuth } from '../features/auth/AuthContext'
 import { RegisterForm } from '../features/auth/components/RegisterForm'
+import { GoogleLoginButton } from '../features/auth/components/GoogleLoginButton'
 import { seoMeta } from '../lib/seo'
 
 export const Route = createFileRoute('/register')({
@@ -39,6 +40,16 @@ function Register() {
 
       <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-md">
         <RegisterForm onSuccess={() => navigate({ to: '/login' })} />
+
+        <div className="my-6 flex items-center gap-3">
+          <span className="h-px flex-1 bg-stone-300" />
+          <span className="text-xs text-stone-400">atau</span>
+          <span className="h-px flex-1 bg-stone-300" />
+        </div>
+
+        {/* Backend menangani daftar & masuk Google sekaligus (LoginOrCreateUser) —
+            akun baru dibuat otomatis bila email belum terdaftar. */}
+        <GoogleLoginButton label="Daftar dengan Google" />
 
         <p className="mt-10 text-center text-sm/6 text-stone-500">
           Sudah punya akun?{' '}

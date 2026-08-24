@@ -2,6 +2,7 @@ import { Outlet, createFileRoute } from '@tanstack/react-router'
 import { AppNav } from '../components/molecules/AppNav'
 import { BottomNav } from '../components/molecules/BottomNav'
 import { Footer } from '../components/molecules/Footer'
+import { VerifyEmailBanner } from '../features/auth/components/VerifyEmailBanner'
 
 export const Route = createFileRoute('/_app')({
   component: AppShell,
@@ -20,6 +21,8 @@ function AppShell() {
 
       {/* pb-24 = ruang untuk BottomNav mobile (tinggi + safe-area). */}
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 pb-24 sm:px-6 sm:py-8 lg:px-8">
+        {/* Banner verifikasi email — hanya muncul untuk user yang belum verified (E-AUTH-2026 R9). */}
+        <VerifyEmailBanner />
         <Outlet />
       </main>
 

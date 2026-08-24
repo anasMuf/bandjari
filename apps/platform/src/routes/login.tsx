@@ -39,6 +39,7 @@ function Login() {
       </div>
 
       <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
+        {/* Email-first: form dua langkah (email → password/google/daftar). */}
         <LoginForm onSuccess={() => navigate({ to: '/' })} />
 
         <p className="mt-10 text-center text-sm/6 text-stone-500">
