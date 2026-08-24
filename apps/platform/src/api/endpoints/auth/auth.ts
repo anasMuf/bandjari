@@ -25,17 +25,423 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  DtoCheckEmailRequest,
+  DtoCheckEmailResponse,
   DtoCreateUserRequest,
   DtoErrorResponse,
+  DtoForgotPasswordRequest,
   DtoLoginUserRequest,
   DtoLoginUserResponse,
-  DtoSuccessResponse
+  DtoRefreshTokenResponse,
+  DtoResendVerificationRequest,
+  DtoResetPasswordRequest,
+  DtoSuccessResponse,
+  DtoVerifyEmailRequest
 } from '../../model';
 
 import { customInstance } from '../../mutator/custom-instance';
 
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+
+
+export type postAuthCheckEmailResponse200 = {
+  data: DtoCheckEmailResponse
+  status: 200
+}
+
+export type postAuthCheckEmailResponse400 = {
+  data: DtoErrorResponse
+  status: 400
+}
+
+export type postAuthCheckEmailResponseSuccess = (postAuthCheckEmailResponse200) & {
+  headers: Headers;
+};
+export type postAuthCheckEmailResponseError = (postAuthCheckEmailResponse400) & {
+  headers: Headers;
+};
+
+export type postAuthCheckEmailResponse = (postAuthCheckEmailResponseSuccess | postAuthCheckEmailResponseError)
+
+export const getPostAuthCheckEmailUrl = () => {
+
+
+
+
+  return `/auth/check-email`
+}
+
+/**
+ * Email-first login: kembalikan metode login (password/google/none)
+ * @summary Check login method for email
+ */
+export const postAuthCheckEmail = async (dtoCheckEmailRequest: DtoCheckEmailRequest, options?: RequestInit): Promise<postAuthCheckEmailResponse> => {
+
+  return customInstance<postAuthCheckEmailResponse>(getPostAuthCheckEmailUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      dtoCheckEmailRequest,)
+  }
+);}
+
+
+
+
+export const getPostAuthCheckEmailMutationOptions = <TError = DtoErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postAuthCheckEmail>>, TError,{data: DtoCheckEmailRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof postAuthCheckEmail>>, TError,{data: DtoCheckEmailRequest}, TContext> => {
+
+const mutationKey = ['postAuthCheckEmail'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postAuthCheckEmail>>, {data: DtoCheckEmailRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  postAuthCheckEmail(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostAuthCheckEmailMutationResult = NonNullable<Awaited<ReturnType<typeof postAuthCheckEmail>>>
+    export type PostAuthCheckEmailMutationBody = DtoCheckEmailRequest
+    export type PostAuthCheckEmailMutationError = DtoErrorResponse
+
+    /**
+ * @summary Check login method for email
+ */
+export const usePostAuthCheckEmail = <TError = DtoErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postAuthCheckEmail>>, TError,{data: DtoCheckEmailRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postAuthCheckEmail>>,
+        TError,
+        {data: DtoCheckEmailRequest},
+        TContext
+      > => {
+      return useMutation(getPostAuthCheckEmailMutationOptions(options), queryClient);
+    }
+    export type postAuthForgotPasswordResponse200 = {
+  data: DtoSuccessResponse
+  status: 200
+}
+
+export type postAuthForgotPasswordResponseSuccess = (postAuthForgotPasswordResponse200) & {
+  headers: Headers;
+};
+;
+
+export type postAuthForgotPasswordResponse = (postAuthForgotPasswordResponseSuccess)
+
+export const getPostAuthForgotPasswordUrl = () => {
+
+
+
+
+  return `/auth/forgot-password`
+}
+
+/**
+ * Kirim link reset password. Respons selalu 200 (anti email-enumeration)
+ * @summary Request password reset
+ */
+export const postAuthForgotPassword = async (dtoForgotPasswordRequest: DtoForgotPasswordRequest, options?: RequestInit): Promise<postAuthForgotPasswordResponse> => {
+
+  return customInstance<postAuthForgotPasswordResponse>(getPostAuthForgotPasswordUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      dtoForgotPasswordRequest,)
+  }
+);}
+
+
+
+
+export const getPostAuthForgotPasswordMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postAuthForgotPassword>>, TError,{data: DtoForgotPasswordRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof postAuthForgotPassword>>, TError,{data: DtoForgotPasswordRequest}, TContext> => {
+
+const mutationKey = ['postAuthForgotPassword'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postAuthForgotPassword>>, {data: DtoForgotPasswordRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  postAuthForgotPassword(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostAuthForgotPasswordMutationResult = NonNullable<Awaited<ReturnType<typeof postAuthForgotPassword>>>
+    export type PostAuthForgotPasswordMutationBody = DtoForgotPasswordRequest
+    export type PostAuthForgotPasswordMutationError = unknown
+
+    /**
+ * @summary Request password reset
+ */
+export const usePostAuthForgotPassword = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postAuthForgotPassword>>, TError,{data: DtoForgotPasswordRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postAuthForgotPassword>>,
+        TError,
+        {data: DtoForgotPasswordRequest},
+        TContext
+      > => {
+      return useMutation(getPostAuthForgotPasswordMutationOptions(options), queryClient);
+    }
+    export type getAuthGoogleResponse302 = {
+  data: void
+  status: 302
+}
+
+;
+export type getAuthGoogleResponseError = (getAuthGoogleResponse302) & {
+  headers: Headers;
+};
+
+export type getAuthGoogleResponse = (getAuthGoogleResponseError)
+
+export const getGetAuthGoogleUrl = () => {
+
+
+
+
+  return `/auth/google`
+}
+
+/**
+ * Redirect ke Google OAuth (state di cookie, anti-CSRF)
+ * @summary Login with Google
+ */
+export const getAuthGoogle = async ( options?: RequestInit): Promise<getAuthGoogleResponse> => {
+
+  return customInstance<getAuthGoogleResponse>(getGetAuthGoogleUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAuthGoogleQueryKey = () => {
+    return [
+    `/auth/google`
+    ] as const;
+    }
+
+
+export const getGetAuthGoogleQueryOptions = <TData = Awaited<ReturnType<typeof getAuthGoogle>>, TError = void>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuthGoogle>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAuthGoogleQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAuthGoogle>>> = ({ signal }) => getAuthGoogle({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAuthGoogle>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAuthGoogleQueryResult = NonNullable<Awaited<ReturnType<typeof getAuthGoogle>>>
+export type GetAuthGoogleQueryError = void
+
+
+export function useGetAuthGoogle<TData = Awaited<ReturnType<typeof getAuthGoogle>>, TError = void>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuthGoogle>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAuthGoogle>>,
+          TError,
+          Awaited<ReturnType<typeof getAuthGoogle>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAuthGoogle<TData = Awaited<ReturnType<typeof getAuthGoogle>>, TError = void>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuthGoogle>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAuthGoogle>>,
+          TError,
+          Awaited<ReturnType<typeof getAuthGoogle>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAuthGoogle<TData = Awaited<ReturnType<typeof getAuthGoogle>>, TError = void>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuthGoogle>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Login with Google
+ */
+
+export function useGetAuthGoogle<TData = Awaited<ReturnType<typeof getAuthGoogle>>, TError = void>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuthGoogle>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAuthGoogleQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export type getAuthGoogleCallbackResponse302 = {
+  data: void
+  status: 302
+}
+
+;
+export type getAuthGoogleCallbackResponseError = (getAuthGoogleCallbackResponse302) & {
+  headers: Headers;
+};
+
+export type getAuthGoogleCallbackResponse = (getAuthGoogleCallbackResponseError)
+
+export const getGetAuthGoogleCallbackUrl = () => {
+
+
+
+
+  return `/auth/google/callback`
+}
+
+/**
+ * Tukar code → profil → buat/link akun → set session → redirect ke frontend
+ * @summary Google OAuth callback
+ */
+export const getAuthGoogleCallback = async ( options?: RequestInit): Promise<getAuthGoogleCallbackResponse> => {
+
+  return customInstance<getAuthGoogleCallbackResponse>(getGetAuthGoogleCallbackUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAuthGoogleCallbackQueryKey = () => {
+    return [
+    `/auth/google/callback`
+    ] as const;
+    }
+
+
+export const getGetAuthGoogleCallbackQueryOptions = <TData = Awaited<ReturnType<typeof getAuthGoogleCallback>>, TError = void>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuthGoogleCallback>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAuthGoogleCallbackQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAuthGoogleCallback>>> = ({ signal }) => getAuthGoogleCallback({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAuthGoogleCallback>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAuthGoogleCallbackQueryResult = NonNullable<Awaited<ReturnType<typeof getAuthGoogleCallback>>>
+export type GetAuthGoogleCallbackQueryError = void
+
+
+export function useGetAuthGoogleCallback<TData = Awaited<ReturnType<typeof getAuthGoogleCallback>>, TError = void>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuthGoogleCallback>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAuthGoogleCallback>>,
+          TError,
+          Awaited<ReturnType<typeof getAuthGoogleCallback>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAuthGoogleCallback<TData = Awaited<ReturnType<typeof getAuthGoogleCallback>>, TError = void>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuthGoogleCallback>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAuthGoogleCallback>>,
+          TError,
+          Awaited<ReturnType<typeof getAuthGoogleCallback>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAuthGoogleCallback<TData = Awaited<ReturnType<typeof getAuthGoogleCallback>>, TError = void>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuthGoogleCallback>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Google OAuth callback
+ */
+
+export function useGetAuthGoogleCallback<TData = Awaited<ReturnType<typeof getAuthGoogleCallback>>, TError = void>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuthGoogleCallback>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAuthGoogleCallbackQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
 
 
 
@@ -134,6 +540,177 @@ export const usePostAuthLogin = <TError = DtoErrorResponse,
       > => {
       return useMutation(getPostAuthLoginMutationOptions(options), queryClient);
     }
+    export type postAuthLogoutResponse204 = {
+  data: void
+  status: 204
+}
+
+export type postAuthLogoutResponseSuccess = (postAuthLogoutResponse204) & {
+  headers: Headers;
+};
+;
+
+export type postAuthLogoutResponse = (postAuthLogoutResponseSuccess)
+
+export const getPostAuthLogoutUrl = () => {
+
+
+
+
+  return `/auth/logout`
+}
+
+/**
+ * Mencabut refresh token server-side dan menghapus cookie (idempotent)
+ * @summary Logout
+ */
+export const postAuthLogout = async ( options?: RequestInit): Promise<postAuthLogoutResponse> => {
+
+  return customInstance<postAuthLogoutResponse>(getPostAuthLogoutUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getPostAuthLogoutMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postAuthLogout>>, TError,void, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof postAuthLogout>>, TError,void, TContext> => {
+
+const mutationKey = ['postAuthLogout'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postAuthLogout>>, void> = () => {
+
+
+          return  postAuthLogout(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostAuthLogoutMutationResult = NonNullable<Awaited<ReturnType<typeof postAuthLogout>>>
+
+    export type PostAuthLogoutMutationError = unknown
+
+    /**
+ * @summary Logout
+ */
+export const usePostAuthLogout = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postAuthLogout>>, TError,void, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postAuthLogout>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getPostAuthLogoutMutationOptions(options), queryClient);
+    }
+    export type postAuthRefreshResponse200 = {
+  data: DtoRefreshTokenResponse
+  status: 200
+}
+
+export type postAuthRefreshResponse401 = {
+  data: DtoErrorResponse
+  status: 401
+}
+
+export type postAuthRefreshResponseSuccess = (postAuthRefreshResponse200) & {
+  headers: Headers;
+};
+export type postAuthRefreshResponseError = (postAuthRefreshResponse401) & {
+  headers: Headers;
+};
+
+export type postAuthRefreshResponse = (postAuthRefreshResponseSuccess | postAuthRefreshResponseError)
+
+export const getPostAuthRefreshUrl = () => {
+
+
+
+
+  return `/auth/refresh`
+}
+
+/**
+ * Memutar refresh token (httpOnly cookie) dan mengembalikan access token baru
+ * @summary Refresh access token
+ */
+export const postAuthRefresh = async ( options?: RequestInit): Promise<postAuthRefreshResponse> => {
+
+  return customInstance<postAuthRefreshResponse>(getPostAuthRefreshUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getPostAuthRefreshMutationOptions = <TError = DtoErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postAuthRefresh>>, TError,void, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof postAuthRefresh>>, TError,void, TContext> => {
+
+const mutationKey = ['postAuthRefresh'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postAuthRefresh>>, void> = () => {
+
+
+          return  postAuthRefresh(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostAuthRefreshMutationResult = NonNullable<Awaited<ReturnType<typeof postAuthRefresh>>>
+
+    export type PostAuthRefreshMutationError = DtoErrorResponse
+
+    /**
+ * @summary Refresh access token
+ */
+export const usePostAuthRefresh = <TError = DtoErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postAuthRefresh>>, TError,void, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postAuthRefresh>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getPostAuthRefreshMutationOptions(options), queryClient);
+    }
     export type postAuthRegisterResponse201 = {
   data: DtoSuccessResponse
   status: 201
@@ -228,6 +805,269 @@ export const usePostAuthRegister = <TError = DtoErrorResponse,
         TContext
       > => {
       return useMutation(getPostAuthRegisterMutationOptions(options), queryClient);
+    }
+    export type postAuthResendVerificationResponse200 = {
+  data: DtoSuccessResponse
+  status: 200
+}
+
+export type postAuthResendVerificationResponseSuccess = (postAuthResendVerificationResponse200) & {
+  headers: Headers;
+};
+;
+
+export type postAuthResendVerificationResponse = (postAuthResendVerificationResponseSuccess)
+
+export const getPostAuthResendVerificationUrl = () => {
+
+
+
+
+  return `/auth/resend-verification`
+}
+
+/**
+ * Kirim ulang link verifikasi. Respons selalu 200 (anti email-enumeration)
+ * @summary Resend verification email
+ */
+export const postAuthResendVerification = async (dtoResendVerificationRequest: DtoResendVerificationRequest, options?: RequestInit): Promise<postAuthResendVerificationResponse> => {
+
+  return customInstance<postAuthResendVerificationResponse>(getPostAuthResendVerificationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      dtoResendVerificationRequest,)
+  }
+);}
+
+
+
+
+export const getPostAuthResendVerificationMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postAuthResendVerification>>, TError,{data: DtoResendVerificationRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof postAuthResendVerification>>, TError,{data: DtoResendVerificationRequest}, TContext> => {
+
+const mutationKey = ['postAuthResendVerification'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postAuthResendVerification>>, {data: DtoResendVerificationRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  postAuthResendVerification(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostAuthResendVerificationMutationResult = NonNullable<Awaited<ReturnType<typeof postAuthResendVerification>>>
+    export type PostAuthResendVerificationMutationBody = DtoResendVerificationRequest
+    export type PostAuthResendVerificationMutationError = unknown
+
+    /**
+ * @summary Resend verification email
+ */
+export const usePostAuthResendVerification = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postAuthResendVerification>>, TError,{data: DtoResendVerificationRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postAuthResendVerification>>,
+        TError,
+        {data: DtoResendVerificationRequest},
+        TContext
+      > => {
+      return useMutation(getPostAuthResendVerificationMutationOptions(options), queryClient);
+    }
+    export type postAuthResetPasswordResponse200 = {
+  data: DtoSuccessResponse
+  status: 200
+}
+
+export type postAuthResetPasswordResponse400 = {
+  data: DtoErrorResponse
+  status: 400
+}
+
+export type postAuthResetPasswordResponseSuccess = (postAuthResetPasswordResponse200) & {
+  headers: Headers;
+};
+export type postAuthResetPasswordResponseError = (postAuthResetPasswordResponse400) & {
+  headers: Headers;
+};
+
+export type postAuthResetPasswordResponse = (postAuthResetPasswordResponseSuccess | postAuthResetPasswordResponseError)
+
+export const getPostAuthResetPasswordUrl = () => {
+
+
+
+
+  return `/auth/reset-password`
+}
+
+/**
+ * Ganti password memakai kode reset; semua sesi lama dicabut
+ * @summary Reset password
+ */
+export const postAuthResetPassword = async (dtoResetPasswordRequest: DtoResetPasswordRequest, options?: RequestInit): Promise<postAuthResetPasswordResponse> => {
+
+  return customInstance<postAuthResetPasswordResponse>(getPostAuthResetPasswordUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      dtoResetPasswordRequest,)
+  }
+);}
+
+
+
+
+export const getPostAuthResetPasswordMutationOptions = <TError = DtoErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postAuthResetPassword>>, TError,{data: DtoResetPasswordRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof postAuthResetPassword>>, TError,{data: DtoResetPasswordRequest}, TContext> => {
+
+const mutationKey = ['postAuthResetPassword'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postAuthResetPassword>>, {data: DtoResetPasswordRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  postAuthResetPassword(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostAuthResetPasswordMutationResult = NonNullable<Awaited<ReturnType<typeof postAuthResetPassword>>>
+    export type PostAuthResetPasswordMutationBody = DtoResetPasswordRequest
+    export type PostAuthResetPasswordMutationError = DtoErrorResponse
+
+    /**
+ * @summary Reset password
+ */
+export const usePostAuthResetPassword = <TError = DtoErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postAuthResetPassword>>, TError,{data: DtoResetPasswordRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postAuthResetPassword>>,
+        TError,
+        {data: DtoResetPasswordRequest},
+        TContext
+      > => {
+      return useMutation(getPostAuthResetPasswordMutationOptions(options), queryClient);
+    }
+    export type postAuthVerifyEmailResponse200 = {
+  data: DtoSuccessResponse
+  status: 200
+}
+
+export type postAuthVerifyEmailResponse400 = {
+  data: DtoErrorResponse
+  status: 400
+}
+
+export type postAuthVerifyEmailResponseSuccess = (postAuthVerifyEmailResponse200) & {
+  headers: Headers;
+};
+export type postAuthVerifyEmailResponseError = (postAuthVerifyEmailResponse400) & {
+  headers: Headers;
+};
+
+export type postAuthVerifyEmailResponse = (postAuthVerifyEmailResponseSuccess | postAuthVerifyEmailResponseError)
+
+export const getPostAuthVerifyEmailUrl = () => {
+
+
+
+
+  return `/auth/verify-email`
+}
+
+/**
+ * Validasi kode verifikasi email dan menandai email terverifikasi
+ * @summary Verify email
+ */
+export const postAuthVerifyEmail = async (dtoVerifyEmailRequest: DtoVerifyEmailRequest, options?: RequestInit): Promise<postAuthVerifyEmailResponse> => {
+
+  return customInstance<postAuthVerifyEmailResponse>(getPostAuthVerifyEmailUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      dtoVerifyEmailRequest,)
+  }
+);}
+
+
+
+
+export const getPostAuthVerifyEmailMutationOptions = <TError = DtoErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postAuthVerifyEmail>>, TError,{data: DtoVerifyEmailRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof postAuthVerifyEmail>>, TError,{data: DtoVerifyEmailRequest}, TContext> => {
+
+const mutationKey = ['postAuthVerifyEmail'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postAuthVerifyEmail>>, {data: DtoVerifyEmailRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  postAuthVerifyEmail(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostAuthVerifyEmailMutationResult = NonNullable<Awaited<ReturnType<typeof postAuthVerifyEmail>>>
+    export type PostAuthVerifyEmailMutationBody = DtoVerifyEmailRequest
+    export type PostAuthVerifyEmailMutationError = DtoErrorResponse
+
+    /**
+ * @summary Verify email
+ */
+export const usePostAuthVerifyEmail = <TError = DtoErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postAuthVerifyEmail>>, TError,{data: DtoVerifyEmailRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postAuthVerifyEmail>>,
+        TError,
+        {data: DtoVerifyEmailRequest},
+        TContext
+      > => {
+      return useMutation(getPostAuthVerifyEmailMutationOptions(options), queryClient);
     }
     export type getUsersResponse200 = {
   data: DtoSuccessResponse

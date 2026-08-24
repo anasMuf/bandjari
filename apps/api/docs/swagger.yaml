@@ -1,5 +1,17 @@
 basePath: /api/v1
 definitions:
+  dto.CheckEmailRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
+  dto.CheckEmailResponse:
+    properties:
+      method:
+        type: string
+    type: object
   dto.CreateSectionRequest:
     properties:
       name:
@@ -54,8 +66,10 @@ definitions:
         minLength: 1
         type: string
       password:
-        maxLength: 255
-        minLength: 6
+        description: 'Password: min 8 karakter (NIST SP 800-63B), maks 72 (batas bcrypt)
+          — E-AUTH-2026 R11.'
+        maxLength: 72
+        minLength: 8
         type: string
     required:
     - email
@@ -71,6 +85,13 @@ definitions:
         type: string
       status:
         type: integer
+    type: object
+  dto.ForgotPasswordRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
     type: object
   dto.LoginUserRequest:
     properties:
@@ -113,6 +134,11 @@ definitions:
       value:
         type: integer
     type: object
+  dto.RefreshTokenResponse:
+    properties:
+      token:
+        type: string
+    type: object
   dto.RenameSampleRequest:
     properties:
       name:
@@ -127,6 +153,25 @@ definitions:
       order_index:
         minimum: 0
         type: integer
+    type: object
+  dto.ResendVerificationRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
+  dto.ResetPasswordRequest:
+    properties:
+      code:
+        type: string
+      password:
+        maxLength: 72
+        minLength: 8
+        type: string
+    required:
+    - code
+    - password
     type: object
   dto.SuccessResponse:
     properties:
@@ -192,6 +237,13 @@ definitions:
       steps:
         $ref: '#/definitions/dto.NullableString'
     type: object
+  dto.VerifyEmailRequest:
+    properties:
+      code:
+        type: string
+    required:
+    - code
+    type: object
 host: localhost:8080
 info:
   contact:
@@ -206,6 +258,73 @@ info:
   title: BandJari API
   version: "1.0"
 paths:
+  /auth/check-email:
+    post:
+      consumes:
+      - application/json
+      description: 'Email-first login: kembalikan metode login (password/google/none)'
+      parameters:
+      - description: Email
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CheckEmailRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.CheckEmailResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Check login method for email
+      tags:
+      - auth
+  /auth/forgot-password:
+    post:
+      consumes:
+      - application/json
+      description: Kirim link reset password. Respons selalu 200 (anti email-enumeration)
+      parameters:
+      - description: Email
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ForgotPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+      summary: Request password reset
+      tags:
+      - auth
+  /auth/google:
+    get:
+      description: Redirect ke Google OAuth (state di cookie, anti-CSRF)
+      responses:
+        "302":
+          description: Found
+      summary: Login with Google
+      tags:
+      - auth
+  /auth/google/callback:
+    get:
+      description: Tukar code → profil → buat/link akun → set session → redirect ke
+        frontend
+      responses:
+        "302":
+          description: Found
+      summary: Google OAuth callback
+      tags:
+      - auth
   /auth/login:
     post:
       consumes:
@@ -236,6 +355,35 @@ paths:
       summary: Login user
       tags:
       - auth
+  /auth/logout:
+    post:
+      description: Mencabut refresh token server-side dan menghapus cookie (idempotent)
+      responses:
+        "204":
+          description: No Content
+      summary: Logout
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Memutar refresh token (httpOnly cookie) dan mengembalikan access
+        token baru
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.RefreshTokenResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Refresh access token
+      tags:
+      - auth
   /auth/register:
     post:
       consumes:
@@ -264,6 +412,80 @@ paths:
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
       summary: Register new user
+      tags:
+      - auth
+  /auth/resend-verification:
+    post:
+      consumes:
+      - application/json
+      description: Kirim ulang link verifikasi. Respons selalu 200 (anti email-enumeration)
+      parameters:
+      - description: Email
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ResendVerificationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+      summary: Resend verification email
+      tags:
+      - auth
+  /auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Ganti password memakai kode reset; semua sesi lama dicabut
+      parameters:
+      - description: Email + kode + password baru
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Reset password
+      tags:
+      - auth
+  /auth/verify-email:
+    post:
+      consumes:
+      - application/json
+      description: Validasi kode verifikasi email dan menandai email terverifikasi
+      parameters:
+      - description: Email + kode verifikasi
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.VerifyEmailRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Verify email
       tags:
       - auth
   /samples:

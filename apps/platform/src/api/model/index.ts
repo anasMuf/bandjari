@@ -6,24 +6,31 @@
  * OpenAPI spec version: 1.0
  */
 
+export * from './dtoCheckEmailRequest';
+export * from './dtoCheckEmailResponse';
 export * from './dtoCreateSectionRequest';
 export * from './dtoCreateSongRequest';
 export * from './dtoCreateSoundSlotRequest';
 export * from './dtoCreateUserRequest';
 export * from './dtoErrorResponse';
+export * from './dtoForgotPasswordRequest';
 export * from './dtoLoginUserRequest';
 export * from './dtoLoginUserResponse';
 export * from './dtoNullableInt16';
 export * from './dtoNullableString';
 export * from './dtoNullableUint';
+export * from './dtoRefreshTokenResponse';
 export * from './dtoRenameSampleRequest';
 export * from './dtoReorderSectionRequest';
+export * from './dtoResendVerificationRequest';
+export * from './dtoResetPasswordRequest';
 export * from './dtoSuccessResponse';
 export * from './dtoUpdateSectionRequest';
 export * from './dtoUpdateSectionRequestNextMode';
 export * from './dtoUpdateSongRequest';
 export * from './dtoUpdateSoundSlotRequest';
 export * from './dtoUpdateStepsRequest';
+export * from './dtoVerifyEmailRequest';
 export * from './getSamplesParams';
 export * from './getSamplesTemplatesParams';
 export * from './postSamplesBody';

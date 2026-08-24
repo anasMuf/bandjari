@@ -6,16 +6,9 @@
  * OpenAPI spec version: 1.0
  */
 
-export interface DtoCreateUserRequest {
-  /** @maxLength 255 */
-  email: string;
+export interface DtoResetPasswordRequest {
+  code: string;
   /**
-     * @minLength 1
-     * @maxLength 255
-     */
-  name: string;
-  /**
-     * Password: min 8 karakter (NIST SP 800-63B), maks 72 (batas bcrypt) — E-AUTH-2026 R11.
      * @minLength 8
      * @maxLength 72
      */

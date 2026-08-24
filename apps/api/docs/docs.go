@@ -24,6 +24,108 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/auth/check-email": {
+            "post": {
+                "description": "Email-first login: kembalikan metode login (password/google/none)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Check login method for email",
+                "parameters": [
+                    {
+                        "description": "Email",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CheckEmailRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CheckEmailResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/forgot-password": {
+            "post": {
+                "description": "Kirim link reset password. Respons selalu 200 (anti email-enumeration)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Request password reset",
+                "parameters": [
+                    {
+                        "description": "Email",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.ForgotPasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SuccessResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/google": {
+            "get": {
+                "description": "Redirect ke Google OAuth (state di cookie, anti-CSRF)",
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Login with Google",
+                "responses": {
+                    "302": {
+                        "description": "Found"
+                    }
+                }
+            }
+        },
+        "/auth/google/callback": {
+            "get": {
+                "description": "Tukar code → profil → buat/link akun → set session → redirect ke frontend",
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Google OAuth callback",
+                "responses": {
+                    "302": {
+                        "description": "Found"
+                    }
+                }
+            }
+        },
         "/auth/login": {
             "post": {
                 "description": "Authenticate user and return JWT token",
@@ -59,6 +161,49 @@ const docTemplate = `{
                         "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/logout": {
+            "post": {
+                "description": "Mencabut refresh token server-side dan menghapus cookie (idempotent)",
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Logout",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/auth/refresh": {
+            "post": {
+                "description": "Memutar refresh token (httpOnly cookie) dan mengembalikan access token baru",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Refresh access token",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.RefreshTokenResponse"
                         }
                     },
                     "401": {
@@ -109,6 +254,120 @@ const docTemplate = `{
                     },
                     "409": {
                         "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/resend-verification": {
+            "post": {
+                "description": "Kirim ulang link verifikasi. Respons selalu 200 (anti email-enumeration)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Resend verification email",
+                "parameters": [
+                    {
+                        "description": "Email",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.ResendVerificationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SuccessResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/reset-password": {
+            "post": {
+                "description": "Ganti password memakai kode reset; semua sesi lama dicabut",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Reset password",
+                "parameters": [
+                    {
+                        "description": "Email + kode + password baru",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.ResetPasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/verify-email": {
+            "post": {
+                "description": "Validasi kode verifikasi email dan menandai email terverifikasi",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Verify email",
+                "parameters": [
+                    {
+                        "description": "Email + kode verifikasi",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.VerifyEmailRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
@@ -1458,6 +1717,25 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "dto.CheckEmailRequest": {
+            "type": "object",
+            "required": [
+                "email"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.CheckEmailResponse": {
+            "type": "object",
+            "properties": {
+                "method": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.CreateSectionRequest": {
             "type": "object",
             "required": [
@@ -1534,9 +1812,10 @@ const docTemplate = `{
                     "minLength": 1
                 },
                 "password": {
+                    "description": "Password: min 8 karakter (NIST SP 800-63B), maks 72 (batas bcrypt) — E-AUTH-2026 R11.",
                     "type": "string",
-                    "maxLength": 255,
-                    "minLength": 6
+                    "maxLength": 72,
+                    "minLength": 8
                 }
             }
         },
@@ -1552,6 +1831,17 @@ const docTemplate = `{
                 },
                 "status": {
                     "type": "integer"
+                }
+            }
+        },
+        "dto.ForgotPasswordRequest": {
+            "type": "object",
+            "required": [
+                "email"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
                 }
             }
         },
@@ -1616,6 +1906,14 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.RefreshTokenResponse": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.RenameSampleRequest": {
             "type": "object",
             "required": [
@@ -1635,6 +1933,34 @@ const docTemplate = `{
                 "order_index": {
                     "type": "integer",
                     "minimum": 0
+                }
+            }
+        },
+        "dto.ResendVerificationRequest": {
+            "type": "object",
+            "required": [
+                "email"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ResetPasswordRequest": {
+            "type": "object",
+            "required": [
+                "code",
+                "password"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string",
+                    "maxLength": 72,
+                    "minLength": 8
                 }
             }
         },
@@ -1718,6 +2044,17 @@ const docTemplate = `{
             "properties": {
                 "steps": {
                     "$ref": "#/definitions/dto.NullableString"
+                }
+            }
+        },
+        "dto.VerifyEmailRequest": {
+            "type": "object",
+            "required": [
+                "code"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string"
                 }
             }
         }
