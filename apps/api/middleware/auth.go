@@ -3,6 +3,7 @@ package middleware
 import (
 	"api/model"
 	"api/repository"
+	"api/utility"
 	"net/http"
 	"os"
 	"strings"
@@ -27,6 +28,15 @@ func parseToken(tokenString string) (jwt.MapClaims, error) {
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
 		return nil, echo.NewHTTPError(http.StatusUnauthorized, "Invalid token claims")
+	}
+	// E-AUTH-2026 R8: token baru wajib membawa iss/aud yang sesuai. Token lama
+	// (tanpa claims ini) tetap diterima sampai exp — TIDAK ada logout massal
+	// saat deploy (anti-pattern epic).
+	if iss, ok := claims["iss"].(string); ok && iss != utility.TokenIssuer() {
+		return nil, echo.NewHTTPError(http.StatusUnauthorized, "Token issuer tidak dikenal")
+	}
+	if aud, ok := claims["aud"].(string); ok && aud != utility.Audience {
+		return nil, echo.NewHTTPError(http.StatusUnauthorized, "Token audience tidak sesuai")
 	}
 	return claims, nil
 }

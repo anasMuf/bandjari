@@ -3,6 +3,7 @@ package middleware
 import (
 	"api/model"
 	"api/repository"
+	"api/utility"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -38,6 +39,29 @@ func (f *fakeUserRepo) Create(req *model.User) error {
 	return nil
 }
 
+func (f *fakeUserRepo) Save(user *model.User) error {
+	f.users[user.Email] = user
+	return nil
+}
+
+func (f *fakeUserRepo) FindByVerificationTokenHash(hash string) (*model.User, error) {
+	for _, u := range f.users {
+		if u.VerificationTokenHash == hash {
+			return u, nil
+		}
+	}
+	return nil, gorm.ErrRecordNotFound
+}
+
+func (f *fakeUserRepo) FindByResetTokenHash(hash string) (*model.User, error) {
+	for _, u := range f.users {
+		if u.ResetTokenHash == hash {
+			return u, nil
+		}
+	}
+	return nil, gorm.ErrRecordNotFound
+}
+
 var _ repository.UserRepository = (*fakeUserRepo)(nil)
 
 func makeToken(t *testing.T, userID uint, email string) string {
@@ -48,6 +72,17 @@ func makeToken(t *testing.T, userID uint, email string) string {
 		"role":    "user",
 		"exp":     time.Now().Add(time.Hour).Unix(),
 	})
+	s, err := token.SignedString([]byte("test-secret"))
+	if err != nil {
+		t.Fatalf("gagal sign token: %v", err)
+	}
+	return s
+}
+
+// makeTokenWithClaims membuat token JWT dengan claims arbitrer (untuk uji iss/aud).
+func makeTokenWithClaims(t *testing.T, claims jwt.MapClaims) string {
+	t.Helper()
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	s, err := token.SignedString([]byte("test-secret"))
 	if err != nil {
 		t.Fatalf("gagal sign token: %v", err)
@@ -170,5 +205,53 @@ func TestOptionalAuth_IgnoresInvalidToken(t *testing.T) {
 	}
 	if c.Get("user_id") != nil {
 		t.Fatalf("user_id seharusnya kosong untuk token invalid, got %v", c.Get("user_id"))
+	}
+}
+
+// E-AUTH-2026 R8: token dengan iss/aud yang salah harus ditolak.
+func TestJWTAuth_RejectsWrongIssuerOrAudience(t *testing.T) {
+	t.Setenv("JWT_SECRET", "test-secret")
+	repo := newFakeUserRepo()
+	repo.users["a@mail.com"] = &model.User{Name: "A", Email: "a@mail.com", Role: "user"}
+	repo.users["a@mail.com"].ID = 1
+
+	// iss salah.
+	badIss := makeTokenWithClaims(t, jwt.MapClaims{
+		"user_id": float64(1), "email": "a@mail.com", "role": "user",
+		"exp": time.Now().Add(time.Hour).Unix(),
+		"iss": "https://evil.example", "aud": utility.Audience, "jti": "x",
+	})
+	called, _ := runMiddleware(t, JWTAuth(repo), badIss)
+	if called {
+		t.Fatal("handler seharusnya TIDAK dipanggil untuk iss salah")
+	}
+
+	// aud salah.
+	badAud := makeTokenWithClaims(t, jwt.MapClaims{
+		"user_id": float64(1), "email": "a@mail.com", "role": "user",
+		"exp": time.Now().Add(time.Hour).Unix(),
+		"iss": utility.TokenIssuer(), "aud": "aplikasi-lain", "jti": "x",
+	})
+	called, _ = runMiddleware(t, JWTAuth(repo), badAud)
+	if called {
+		t.Fatal("handler seharusnya TIDAK dipanggil untuk aud salah")
+	}
+}
+
+// Kompatibilitas: token lama (tanpa iss/aud/jti) tetap diterima sampai exp —
+// TIDAK ada logout massal saat deploy (anti-pattern epic).
+func TestJWTAuth_AcceptsTokenWithoutIssAud(t *testing.T) {
+	t.Setenv("JWT_SECRET", "test-secret")
+	repo := newFakeUserRepo()
+	repo.users["a@mail.com"] = &model.User{Name: "A", Email: "a@mail.com", Role: "user"}
+	repo.users["a@mail.com"].ID = 1
+
+	legacy := makeToken(t, 1, "a@mail.com") // helper existing: tanpa iss/aud/jti
+	called, c := runMiddleware(t, JWTAuth(repo), legacy)
+	if !called {
+		t.Fatal("token lama tanpa claims harus tetap diterima (kompatibilitas)")
+	}
+	if got := c.Get("user_id"); got != uint(1) {
+		t.Fatalf("user_id = %v, want 1", got)
 	}
 }

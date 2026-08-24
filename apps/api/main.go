@@ -28,12 +28,16 @@ import (
 	"api/repository"
 	"api/service"
 	"api/utility"
+	"net/http"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	echoMiddleware "github.com/labstack/echo/v4/middleware"
 	echoSwagger "github.com/swaggo/echo-swagger"
+	"golang.org/x/time/rate"
 )
 
 func main() {
@@ -50,6 +54,8 @@ func main() {
 		&model.Section{},
 		&model.SectionPart{},
 		&model.SoundSlot{},
+		&model.RefreshToken{},
+		&model.AuditLog{},
 	); err != nil {
 		panic("Gagal auto-migrate tabel: " + err.Error())
 	}
@@ -59,6 +65,8 @@ func main() {
 
 	//repository
 	userRepo := repository.NewUserRepository(db)
+	refreshTokenRepo := repository.NewRefreshTokenRepository(db)
+	auditLogRepo := repository.NewAuditLogRepository(db)
 	songRepo := repository.NewSongRepository(db)
 	sectionRepo := repository.NewSectionRepository(db)
 	sampleRepo := repository.NewSampleRepository(db)
@@ -66,6 +74,12 @@ func main() {
 	soundSlotRepo := repository.NewSoundSlotRepository(db)
 	//service
 	userService := service.NewUserService(userRepo)
+	tokenService := service.NewTokenService(userRepo, refreshTokenRepo)
+	mailer := service.NewMailer()
+	verificationService := service.NewVerificationService(userRepo, mailer)
+	passwordResetService := service.NewPasswordResetService(userRepo, refreshTokenRepo, mailer)
+	oauthService := service.NewOAuthService(userRepo)
+	auditService := service.NewAuditService(auditLogRepo)
 	songService := service.NewSongService(songRepo)
 	sectionService := service.NewSectionService(sectionRepo, songRepo, sampleRepo)
 	sectionPartService := service.NewSectionPartService(sectionPartRepo, sectionRepo, songRepo)
@@ -80,7 +94,9 @@ func main() {
 	}
 	sampleService := service.NewSampleService(sampleRepo, storageService)
 	//handler
-	userHandler := handler.NewUserHandler(userService)
+	userHandler := handler.NewUserHandler(userService, tokenService, verificationService, passwordResetService, auditService)
+	googleCfg, googleEnabled := config.LoadGoogleConfig()
+	oauthHandler := handler.NewOAuthHandler(googleCfg, googleEnabled, oauthService, tokenService, auditService)
 	songHandler := handler.NewSongHandler(songService)
 	sectionHandler := handler.NewSectionHandler(sectionService)
 	sampleHandler := handler.NewSampleHandler(sampleService)
@@ -102,14 +118,48 @@ func main() {
 			echo.HeaderAccept,
 			echo.HeaderAuthorization,
 		},
-		MaxAge: 86400,
+		// Wajib untuk cookie refresh token (E-AUTH-2026 R5): browser menolak
+		// kirim cookie pada fetch lintas-origin tanpa izin credentials.
+		// Echo meng-echo origin asli (bukan "*") saat credentials aktif.
+		AllowCredentials: true,
+		MaxAge:           86400,
 	}))
 
 	e.HTTPErrorHandler = handler.CustomHTTPErrorHandler
 
+	// Rate limit per IP khusus route auth (E-AUTH-2026 R7) — brute-force
+	// protection. Memory store cukup untuk single-instance VPS; multi-replica
+	// membutuhkan store bersama (Redis) — di luar scope.
+	e.Use(echoMiddleware.RateLimiterWithConfig(echoMiddleware.RateLimiterConfig{
+		Skipper: func(c echo.Context) bool {
+			return !strings.HasPrefix(c.Path(), "/api/v1/auth")
+		},
+		Store: echoMiddleware.NewRateLimiterMemoryStoreWithConfig(
+			echoMiddleware.RateLimiterMemoryStoreConfig{
+				Rate:      rate.Limit(10.0 / 60.0), // ~10 permintaan per menit per IP
+				Burst:     10,
+				ExpiresIn: 3 * time.Minute,
+			},
+		),
+		ErrorHandler: func(c echo.Context, err error) error {
+			return echo.NewHTTPError(http.StatusTooManyRequests, "Terlalu banyak permintaan — coba lagi nanti")
+		},
+	}))
+
 	api := e.Group("/api/v1")
 	api.POST("/auth/register", userHandler.CreateUser)
 	api.POST("/auth/login", userHandler.LoginUser)
+	api.POST("/auth/refresh", userHandler.RefreshSession)
+	api.POST("/auth/logout", userHandler.Logout)
+	api.POST("/auth/verify-email", userHandler.VerifyEmail)
+	api.POST("/auth/resend-verification", userHandler.ResendVerification)
+	api.POST("/auth/forgot-password", userHandler.ForgotPassword)
+	api.POST("/auth/reset-password", userHandler.ResetPassword)
+	api.POST("/auth/check-email", userHandler.CheckEmail)
+
+	// Google OAuth — bila GOOGLE_CLIENT_ID/SECRET kosong, endpoint mengembalikan 503.
+	api.GET("/auth/google", oauthHandler.GoogleLogin)
+	api.GET("/auth/google/callback", oauthHandler.GoogleCallback)
 
 	// Middleware untuk JWT — role disinkronkan dari DB agar perubahan role
 	// langsung berlaku (FR-ROLE).

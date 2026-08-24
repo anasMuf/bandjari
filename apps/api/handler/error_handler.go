@@ -31,6 +31,8 @@ func parseErrorCode(message string, status int) string {
 		return "FILE_TOO_LARGE"
 	case http.StatusUnsupportedMediaType:
 		return "UNSUPPORTED_MEDIA_TYPE"
+	case http.StatusTooManyRequests:
+		return "TOO_MANY_REQUESTS"
 	default:
 		return "INTERNAL_ERROR"
 	}
@@ -41,6 +43,7 @@ func CustomHTTPErrorHandler(err error, c echo.Context) {
 	code := http.StatusInternalServerError
 	msg := "Internal Server Error"
 	var details interface{}
+	errCode := ""
 
 	// Default dari Echo adalah *echo.HTTPError
 	if he, ok := err.(*echo.HTTPError); ok {
@@ -49,8 +52,13 @@ func CustomHTTPErrorHandler(err error, c echo.Context) {
 		case string:
 			msg = m
 		case map[string]interface{}:
-			msg = m["message"].(string)
+			msg, _ = m["message"].(string)
 			details = m["details"]
+			// Kode eksplisit (mis. "SOCIAL_LOGIN_REQUIRED") — override parse default,
+			// agar frontend bisa bereaksi terstruktur (mis. menampilkan tombol).
+			if c, ok := m["code"].(string); ok && c != "" {
+				errCode = c
+			}
 		default:
 			msg = he.Message.(string)
 		}
@@ -62,7 +70,9 @@ func CustomHTTPErrorHandler(err error, c echo.Context) {
 	middleware.MakeLogEntry(c).Error(msg)
 
 	// Generate standardized code (bisa diimprove ke const/error map)
-	errCode := parseErrorCode(msg, code)
+	if errCode == "" {
+		errCode = parseErrorCode(msg, code)
+	}
 
 	// Buat response error contract
 	res := dto.ErrorResponse{

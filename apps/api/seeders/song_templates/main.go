@@ -193,6 +193,8 @@ func main() {
 		&model.Section{},
 		&model.SectionPart{},
 		&model.SoundSlot{},
+		&model.RefreshToken{},
+		&model.AuditLog{},
 	); err != nil {
 		log.Fatalf("migrate: %v", err)
 	}
