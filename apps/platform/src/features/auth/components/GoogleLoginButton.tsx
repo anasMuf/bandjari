@@ -7,7 +7,7 @@ interface GoogleLoginButtonProps {
   label?: string;
   /** Mode LINK (hubungkan Google ke akun yang sedang login) — redirect ?link=1. */
   link?: boolean;
-  /** Kelas tambahan untuk Button. */
+  /** Kelas tambahan untuk Button — default w-full (lebar penuh di Login/Register). */
   className?: string;
 }
 
@@ -16,7 +16,7 @@ interface GoogleLoginButtonProps {
  * (bukan fetch; alur callback server-side lalu SPA pulih session via cookie).
  * `link` = hubungkan ke akun existing (dari halaman Profile, E-PROFILE-2026 R3).
  */
-export function GoogleLoginButton({ label = 'Masuk dengan Google', link = false, className = '' }: GoogleLoginButtonProps) {
+export function GoogleLoginButton({ label = 'Masuk dengan Google', link = false, className = 'w-full' }: GoogleLoginButtonProps) {
   return (
     <Button
       type="button"
