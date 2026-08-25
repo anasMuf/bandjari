@@ -12,6 +12,10 @@ import (
 // ResetTokenTTL — umur kode reset password (E-AUTH-2026 R10): 1 jam.
 const ResetTokenTTL = time.Hour
 
+// ResetCooldown — interval minimum antar pengiriman email reset ke alamat yang
+// sama (anti email-bombing via forgot-password — review E-AUTH-2026).
+const ResetCooldown = 60 * time.Second
+
 // PasswordResetService — alur lupa password (E-AUTH-2026 R10).
 type PasswordResetService interface {
 	// RequestPasswordReset membuat kode reset & mengirim email. Email tidak
@@ -53,12 +57,19 @@ func (s *passwordResetService) RequestPasswordReset(email string) error {
 	if err != nil {
 		return nil // anti-enumeration — tanpa email terkirim
 	}
+	// Cooldown anti-spam: no-op bila kirim ulang terlalu cepat ke alamat yang
+	// sama (respons tetap seragam — anti-enumeration terjaga).
+	if user.ResetSentAt != nil && time.Since(*user.ResetSentAt) < ResetCooldown {
+		return nil
+	}
 
 	raw, hash, err := utility.GenerateVerificationCode()
 	if err != nil {
 		return err
 	}
 	exp := time.Now().Add(ResetTokenTTL)
+	now := time.Now()
+	user.ResetSentAt = &now
 	user.ResetTokenHash = hash
 	user.ResetExpiresAt = &exp
 	if err := s.userRepo.Save(user); err != nil {

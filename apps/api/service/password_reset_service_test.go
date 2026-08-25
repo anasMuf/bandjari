@@ -87,6 +87,41 @@ func TestRequestPasswordReset_UnknownEmailNoEmail(t *testing.T) {
 	}
 }
 
+func TestRequestPasswordReset_CooldownNoResend(t *testing.T) {
+	users, mailer, _, svc := newPasswordResetTest(t)
+
+	if err := svc.RequestPasswordReset("a@mail.com"); err != nil {
+		t.Fatalf("kirim pertama error = %v", err)
+	}
+	if len(mailer.sent) != 1 {
+		t.Fatalf("email terkirim = %d, want 1", len(mailer.sent))
+	}
+	if users.users[1].ResetSentAt == nil {
+		t.Fatal("reset_sent_at harus tercatat")
+	}
+
+	// Kirim lagi dalam cooldown → no-op, tanpa email kedua.
+	if err := svc.RequestPasswordReset("a@mail.com"); err != nil {
+		t.Fatalf("kirim kedua error = %v (harus no-op)", err)
+	}
+	if len(mailer.sent) != 1 {
+		t.Fatalf("cooldown harus mencegah kirim ulang: email = %d, want 1", len(mailer.sent))
+	}
+}
+
+func TestRequestPasswordReset_CooldownExpiredAllowsResend(t *testing.T) {
+	users, mailer, _, svc := newPasswordResetTest(t)
+	past := time.Now().Add(-3 * time.Minute)
+	users.users[1].ResetSentAt = &past
+
+	if err := svc.RequestPasswordReset("a@mail.com"); err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if len(mailer.sent) != 1 {
+		t.Fatalf("cooldown sudah lewat → boleh kirim: email = %d, want 1", len(mailer.sent))
+	}
+}
+
 func TestResetPassword_ValidToken(t *testing.T) {
 	users, _, refresh, svc := newPasswordResetTest(t)
 	raw := setupResetToken(users)

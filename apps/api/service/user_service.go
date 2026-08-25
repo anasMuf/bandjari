@@ -26,6 +26,17 @@ const (
 	MaxLoginAttempts = 5
 )
 
+// dummyPasswordHash — hash bcrypt untuk email TIDAK dikenal. Dipakai login
+// agar waktu respons setara dengan akun yang ada (anti timing-attack
+// enumeration). Dihasilkan sekali saat init; biayanya setara DefaultCost.
+var dummyPasswordHash = func() []byte {
+	h, err := bcrypt.GenerateFromPassword([]byte("dummy-password-untuk-timing"), bcrypt.DefaultCost)
+	if err != nil {
+		panic("gagal membuat dummy hash: " + err.Error())
+	}
+	return h
+}()
+
 // Metode autentikasi akun — dipakai endpoint check-email (email-first login).
 const (
 	AuthMethodPassword = "password" // akun punya password (login biasa)
@@ -179,6 +190,9 @@ func (s *userService) CheckEmailMethod(email string) (string, error) {
 func (s *userService) LoginUser(email, password string) (*dto.UserResponse, error) {
 	user, err := s.userRepository.FindByEmail(email)
 	if err != nil {
+		// Timing: jalankan bcrypt compare dummy agar waktu respons setara
+		// dengan akun yang terdaftar (anti enumerasi via waktu).
+		_ = bcrypt.CompareHashAndPassword(dummyPasswordHash, []byte(password))
 		return nil, ErrInvalidCredentials
 	}
 

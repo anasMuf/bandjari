@@ -39,6 +39,9 @@ type User struct {
 	// TTL 1 jam (E-AUTH-2026 R10). Hanya hash yang disimpan.
 	ResetTokenHash string     `json:"-" gorm:"column:reset_token_hash;type:char(64)"`
 	ResetExpiresAt *time.Time `json:"-" gorm:"column:reset_expires_at"`
+	// ResetSentAt — waktu pengiriman email reset terakhir, untuk cooldown
+	// anti-spam (60 detik) per alamat (review E-AUTH-2026).
+	ResetSentAt *time.Time `json:"-" gorm:"column:reset_sent_at"`
 }
 
 func (User) TableName() string {
