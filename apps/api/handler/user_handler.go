@@ -7,6 +7,7 @@ import (
 	"api/utility"
 	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/labstack/echo/v4"
 )
@@ -213,6 +214,232 @@ func (h *UserHandler) ResetPassword(c echo.Context) error {
 	return c.JSON(http.StatusOK, dto.SuccessResponse{
 		Message: "Password berhasil diubah — silakan masuk dengan password baru",
 	})
+}
+
+// UpdateUser godoc
+// @Summary      Update profile (name)
+// @Description  Edit nama user yang sedang login. Email/role tidak berubah.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Security     ApiKeyAuth
+// @Param        request  body      dto.UpdateUserRequest  true  "Nama baru"
+// @Success      200      {object}  dto.SuccessResponse
+// @Failure      400      {object}  dto.ErrorResponse
+// @Failure      401      {object}  dto.ErrorResponse
+// @Router       /users [patch]
+func (h *UserHandler) UpdateUser(c echo.Context) error {
+	var req dto.UpdateUserRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid JSON")
+	}
+	if err := c.Validate(&req); err != nil {
+		return err
+	}
+	userID, ok := c.Get("user_id").(uint)
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, "user_id tidak ditemukan di konteks")
+	}
+	user, err := h.userService.UpdateProfile(userID, req.Name)
+	if err != nil {
+		if errors.Is(err, service.ErrUserNotFound) {
+			return echo.NewHTTPError(http.StatusNotFound, "User tidak ditemukan")
+		}
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	h.recordAudit(c, service.ActionProfileUpdate, &userID, map[string]any{"name": req.Name})
+	return c.JSON(http.StatusOK, dto.SuccessResponse{Message: "Profil berhasil diperbarui", Data: user})
+}
+
+// ChangePassword godoc
+// @Summary      Change password
+// @Description  Ganti password dengan verifikasi password lama; semua sesi lain dicabut
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Security     ApiKeyAuth
+// @Param        request  body      dto.ChangePasswordRequest  true  "Password lama + baru"
+// @Success      200      {object}  dto.SuccessResponse
+// @Failure      400      {object}  dto.ErrorResponse
+// @Failure      401      {object}  dto.ErrorResponse
+// @Router       /auth/change-password [post]
+func (h *UserHandler) ChangePassword(c echo.Context) error {
+	var req dto.ChangePasswordRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid JSON")
+	}
+	if err := c.Validate(&req); err != nil {
+		return err
+	}
+	userID, ok := c.Get("user_id").(uint)
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, "user_id tidak ditemukan di konteks")
+	}
+	// Sesuai keputusan Q3-A: sesi current tetap hidup → beri tahu service hash-nya.
+	keepRaw := ""
+	if cookie, err := c.Cookie(utility.RefreshTokenCookieName); err == nil {
+		keepRaw = cookie.Value
+	}
+	if err := h.userService.ChangePassword(userID, req.CurrentPassword, req.NewPassword, keepRaw); err != nil {
+		if errors.Is(err, service.ErrInvalidCredentials) {
+			return echo.NewHTTPError(http.StatusUnauthorized, "Password lama salah")
+		}
+		if errors.Is(err, service.ErrNoPassword) {
+			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		}
+		if errors.Is(err, service.ErrWeakPassword) {
+			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		}
+		if errors.Is(err, service.ErrUserNotFound) {
+			return echo.NewHTTPError(http.StatusNotFound, "User tidak ditemukan")
+		}
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	h.recordAudit(c, service.ActionPasswordChange, &userID, nil)
+	return c.JSON(http.StatusOK, dto.SuccessResponse{Message: "Password berhasil diubah"})
+}
+
+// SetPassword godoc
+// @Summary      Set password (akun Google-only)
+// @Description  Pasang password untuk akun tanpa password; semua sesi lain dicabut
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Security     ApiKeyAuth
+// @Param        request  body      dto.SetPasswordRequest  true  "Password baru"
+// @Success      200      {object}  dto.SuccessResponse
+// @Failure      400      {object}  dto.ErrorResponse
+// @Failure      401      {object}  dto.ErrorResponse
+// @Router       /auth/set-password [post]
+func (h *UserHandler) SetPassword(c echo.Context) error {
+	var req dto.SetPasswordRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid JSON")
+	}
+	if err := c.Validate(&req); err != nil {
+		return err
+	}
+	userID, ok := c.Get("user_id").(uint)
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, "user_id tidak ditemukan di konteks")
+	}
+	keepRaw := ""
+	if cookie, err := c.Cookie(utility.RefreshTokenCookieName); err == nil {
+		keepRaw = cookie.Value
+	}
+	if err := h.userService.SetPassword(userID, req.NewPassword, keepRaw); err != nil {
+		if errors.Is(err, service.ErrPasswordAlreadySet) {
+			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		}
+		if errors.Is(err, service.ErrWeakPassword) {
+			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		}
+		if errors.Is(err, service.ErrUserNotFound) {
+			return echo.NewHTTPError(http.StatusNotFound, "User tidak ditemukan")
+		}
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	h.recordAudit(c, service.ActionPasswordChange, &userID, nil)
+	return c.JSON(http.StatusOK, dto.SuccessResponse{Message: "Password berhasil dibuat"})
+}
+
+// ListSessions godoc
+// @Summary      List active sessions
+// @Description  Daftar sesi aktif (device, IP, waktu). `current=true` untuk sesi ini.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Security     ApiKeyAuth
+// @Success      200  {object}  dto.SuccessResponse
+// @Failure      401  {object}  dto.ErrorResponse
+// @Router       /auth/sessions [get]
+func (h *UserHandler) ListSessions(c echo.Context) error {
+	userID, ok := c.Get("user_id").(uint)
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, "user_id tidak ditemukan di konteks")
+	}
+	// Sesi current = yang memakai refresh cookie ini.
+	currentHash := ""
+	if cookie, err := c.Cookie(utility.RefreshTokenCookieName); err == nil {
+		currentHash = utility.HashToken(cookie.Value)
+	}
+	sessions, err := h.tokenService.ListActiveSessions(userID, currentHash)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Gagal memuat sesi")
+	}
+	return c.JSON(http.StatusOK, dto.SuccessResponse{Message: "Sesi aktif", Data: sessions})
+}
+
+// RevokeSession godoc
+// @Summary      Revoke one session
+// @Description  Putuskan satu sesi aktif by id (hanya milik user sendiri)
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Security     ApiKeyAuth
+// @Param        id   path      int  true  "Session (refresh token) ID"
+// @Success      200  {object}  dto.SuccessResponse
+// @Failure      401  {object}  dto.ErrorResponse
+// @Failure      404  {object}  dto.ErrorResponse
+// @Router       /auth/sessions/{id}/revoke [post]
+func (h *UserHandler) RevokeSession(c echo.Context) error {
+	userID, ok := c.Get("user_id").(uint)
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, "user_id tidak ditemukan di konteks")
+	}
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil || id == 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, "ID sesi tidak valid")
+	}
+	if err := h.tokenService.RevokeSessionByID(userID, uint(id)); err != nil {
+		if errors.Is(err, service.ErrNotFound) {
+			return echo.NewHTTPError(http.StatusNotFound, "Sesi tidak ditemukan")
+		}
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	h.recordAudit(c, service.ActionSessionRevoke, &userID, map[string]any{"session_id": id})
+	return c.JSON(http.StatusOK, dto.SuccessResponse{Message: "Sesi diputuskan"})
+}
+
+// DeleteAccount godoc
+// @Summary      Delete account
+// @Description  Hapus akun: soft delete + anonimisasi email + revoke semua sesi.
+// @Description  Password wajib untuk akun ber-password; Google-only cukup sesi aktif.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Security     ApiKeyAuth
+// @Param        request  body      dto.DeleteAccountRequest  true  "Konfirmasi password (opsional untuk Google-only)"
+// @Success      200      {object}  dto.SuccessResponse
+// @Failure      400      {object}  dto.ErrorResponse
+// @Failure      401      {object}  dto.ErrorResponse
+// @Failure      404      {object}  dto.ErrorResponse
+// @Router       /auth/delete-account [post]
+func (h *UserHandler) DeleteAccount(c echo.Context) error {
+	var req dto.DeleteAccountRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid JSON")
+	}
+	if err := c.Validate(&req); err != nil {
+		return err
+	}
+	userID, ok := c.Get("user_id").(uint)
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, "user_id tidak ditemukan di konteks")
+	}
+	if err := h.userService.DeleteAccount(userID, req.Password); err != nil {
+		if errors.Is(err, service.ErrInvalidCredentials) {
+			return echo.NewHTTPError(http.StatusUnauthorized, "Password salah")
+		}
+		if errors.Is(err, service.ErrUserNotFound) {
+			return echo.NewHTTPError(http.StatusNotFound, "User tidak ditemukan")
+		}
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	h.recordAudit(c, service.ActionAccountDelete, &userID, nil)
+	// Bersihkan refresh cookie — sesi sudah dicabut server-side.
+	clearRefreshCookie(c)
+	return c.JSON(http.StatusOK, dto.SuccessResponse{Message: "Akun berhasil dihapus"})
 }
 
 // CheckEmail godoc

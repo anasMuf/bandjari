@@ -49,6 +49,7 @@ func main() {
 
 	if err := db.AutoMigrate(
 		&model.User{},
+		&model.UserProvider{},
 		&model.Sample{},
 		&model.Song{},
 		&model.Section{},
@@ -65,6 +66,7 @@ func main() {
 
 	//repository
 	userRepo := repository.NewUserRepository(db)
+	userProviderRepo := repository.NewUserProviderRepository(db)
 	refreshTokenRepo := repository.NewRefreshTokenRepository(db)
 	auditLogRepo := repository.NewAuditLogRepository(db)
 	songRepo := repository.NewSongRepository(db)
@@ -73,12 +75,12 @@ func main() {
 	sectionPartRepo := repository.NewSectionPartRepository(db)
 	soundSlotRepo := repository.NewSoundSlotRepository(db)
 	//service
-	userService := service.NewUserService(userRepo)
+	userService := service.NewUserService(userRepo, userProviderRepo, refreshTokenRepo, songRepo, sampleRepo)
 	tokenService := service.NewTokenService(userRepo, refreshTokenRepo)
 	mailer := service.NewMailer()
 	verificationService := service.NewVerificationService(userRepo, mailer)
 	passwordResetService := service.NewPasswordResetService(userRepo, refreshTokenRepo, mailer)
-	oauthService := service.NewOAuthService(userRepo)
+	oauthService := service.NewOAuthService(userRepo, userProviderRepo)
 	auditService := service.NewAuditService(auditLogRepo)
 	songService := service.NewSongService(songRepo)
 	sectionService := service.NewSectionService(sectionRepo, songRepo, sampleRepo)
@@ -96,7 +98,7 @@ func main() {
 	//handler
 	userHandler := handler.NewUserHandler(userService, tokenService, verificationService, passwordResetService, auditService)
 	googleCfg, googleEnabled := config.LoadGoogleConfig()
-	oauthHandler := handler.NewOAuthHandler(googleCfg, googleEnabled, oauthService, tokenService, auditService)
+	oauthHandler := handler.NewOAuthHandler(googleCfg, googleEnabled, oauthService, tokenService, refreshTokenRepo, auditService)
 	songHandler := handler.NewSongHandler(songService)
 	sectionHandler := handler.NewSectionHandler(sectionService)
 	sampleHandler := handler.NewSampleHandler(sampleService)
@@ -169,6 +171,18 @@ func main() {
 
 	// GET /api/v1/users
 	auth.GET("/users", userHandler.GetUser)
+	// Edit nama (E-PROFILE-2026 R6)
+	auth.PATCH("/users", userHandler.UpdateUser)
+	// Keamanan akun (E-PROFILE-2026 R7/R8) — wajib login
+	auth.POST("/auth/change-password", userHandler.ChangePassword)
+	auth.POST("/auth/set-password", userHandler.SetPassword)
+	// Kelola sesi aktif (E-PROFILE-2026 R9/R10)
+	auth.GET("/auth/sessions", userHandler.ListSessions)
+	auth.POST("/auth/sessions/:id/revoke", userHandler.RevokeSession)
+	// Hapus akun (E-PROFILE-2026 R11/R12)
+	auth.POST("/auth/delete-account", userHandler.DeleteAccount)
+	// Unlink Google (E-PROFILE-2026) — wajib login; guard satu-satunya metode login.
+	auth.DELETE("/auth/providers/google", oauthHandler.UnlinkGoogle)
 
 	// Song — GET /:id memakai auth opsional (akses Guest untuk Song Template System, TDD 6.8)
 	api.GET("/songs/templates", songHandler.ListTemplates, middleware.OptionalAuth)

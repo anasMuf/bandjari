@@ -62,6 +62,10 @@ func (f *fakeUserRepo) FindByResetTokenHash(hash string) (*model.User, error) {
 	return nil, gorm.ErrRecordNotFound
 }
 
+func (f *fakeUserRepo) Delete(userID uint) error {
+	return nil
+}
+
 var _ repository.UserRepository = (*fakeUserRepo)(nil)
 
 func makeToken(t *testing.T, userID uint, email string) string {

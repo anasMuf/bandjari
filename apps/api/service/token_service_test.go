@@ -62,6 +62,16 @@ func (f *fakeTokenUserRepo) FindByResetTokenHash(hash string) (*model.User, erro
 	return nil, gorm.ErrRecordNotFound
 }
 
+func (f *fakeTokenUserRepo) Delete(userID uint) error {
+	for id, u := range f.users {
+		if u.ID == userID {
+			delete(f.users, id)
+			return nil
+		}
+	}
+	return gorm.ErrRecordNotFound
+}
+
 // fakeRefreshRepo — implementasi repository.RefreshTokenRepository di memory.
 type fakeRefreshRepo struct {
 	tokens map[string]*model.RefreshToken // key: token_hash
@@ -89,6 +99,26 @@ func (f *fakeRefreshRepo) FindByTokenHash(hash string) (*model.RefreshToken, err
 	return nil, gorm.ErrRecordNotFound
 }
 
+func (f *fakeRefreshRepo) FindByID(id uint) (*model.RefreshToken, error) {
+	for _, t := range f.tokens {
+		if t.ID == id {
+			return t, nil
+		}
+	}
+	return nil, gorm.ErrRecordNotFound
+}
+
+func (f *fakeRefreshRepo) ListActiveByUserID(userID uint) ([]model.RefreshToken, error) {
+	now := time.Now()
+	var out []model.RefreshToken
+	for _, t := range f.tokens {
+		if t.UserID == userID && t.RevokedAt == nil && now.Before(t.ExpiresAt) {
+			out = append(out, *t)
+		}
+	}
+	return out, nil
+}
+
 func (f *fakeRefreshRepo) Rotate(old *model.RefreshToken, replacement *model.RefreshToken) error {
 	now := time.Now()
 	if err := f.Create(replacement); err != nil {
@@ -112,6 +142,16 @@ func (f *fakeRefreshRepo) RevokeAllByUserID(userID uint) error {
 	now := time.Now()
 	for _, t := range f.tokens {
 		if t.UserID == userID && t.RevokedAt == nil {
+			t.RevokedAt = &now
+		}
+	}
+	return nil
+}
+
+func (f *fakeRefreshRepo) RevokeAllByUserIDExcept(userID uint, keepTokenHash string) error {
+	now := time.Now()
+	for _, t := range f.tokens {
+		if t.UserID == userID && t.RevokedAt == nil && t.TokenHash != keepTokenHash {
 			t.RevokedAt = &now
 		}
 	}
@@ -284,5 +324,69 @@ func TestTokenService_Revoke(t *testing.T) {
 	// Revoke idempotent — memanggil ulang tidak error.
 	if err := svc.Revoke(raw); err != nil {
 		t.Fatalf("Revoke() kedua error = %v", err)
+	}
+}
+
+func TestListActiveSessions_OnlyActiveAndCurrent(t *testing.T) {
+	users, ref, svc := newTokenServiceTest(t)
+	_ = users
+	now := time.Now()
+	// Sesi aktif (current): hash cocok dengan currentTokenHash.
+	ref.tokens["h1"] = &model.RefreshToken{BaseModel: model.BaseModel{PrimaryKey: model.PrimaryKey{ID: 1}}, UserID: 1, TokenHash: "h1", UserAgent: "Chrome", IP: "1.1.1.1", ExpiresAt: now.Add(time.Hour)}
+	// Sesi aktif lain.
+	ref.tokens["h2"] = &model.RefreshToken{BaseModel: model.BaseModel{PrimaryKey: model.PrimaryKey{ID: 2}}, UserID: 1, TokenHash: "h2", UserAgent: "Firefox", ExpiresAt: now.Add(time.Hour)}
+	// Sesi revoked — tidak boleh muncul.
+	revokedAt := now
+	ref.tokens["h3"] = &model.RefreshToken{BaseModel: model.BaseModel{PrimaryKey: model.PrimaryKey{ID: 3}}, UserID: 1, TokenHash: "h3", ExpiresAt: now.Add(time.Hour), RevokedAt: &revokedAt}
+	// Sesi expired — tidak boleh muncul.
+	ref.tokens["h4"] = &model.RefreshToken{BaseModel: model.BaseModel{PrimaryKey: model.PrimaryKey{ID: 4}}, UserID: 1, TokenHash: "h4", ExpiresAt: now.Add(-time.Minute)}
+	// Sesi user lain — tidak boleh muncul.
+	ref.tokens["h5"] = &model.RefreshToken{BaseModel: model.BaseModel{PrimaryKey: model.PrimaryKey{ID: 5}}, UserID: 2, TokenHash: "h5", ExpiresAt: now.Add(time.Hour)}
+
+	sessions, err := svc.ListActiveSessions(1, "h1")
+	if err != nil {
+		t.Fatalf("ListActiveSessions() error = %v", err)
+	}
+	if len(sessions) != 2 {
+		t.Fatalf("jumlah sesi = %d, want 2", len(sessions))
+	}
+	currentFound := false
+	for _, s := range sessions {
+		if s.ID == 1 && s.Current && s.UserAgent == "Chrome" && s.IP == "1.1.1.1" {
+			currentFound = true
+		}
+		if s.ID == 2 && s.Current {
+			t.Fatal("sesi non-current tidak boleh ber-flag current")
+		}
+	}
+	if !currentFound {
+		t.Fatal("sesi current (id 1) harus terdeteksi")
+	}
+}
+
+func TestRevokeSessionByID_OwnershipEnforced(t *testing.T) {
+	users, ref, svc := newTokenServiceTest(t)
+	_ = users
+	now := time.Now()
+	ref.tokens["a"] = &model.RefreshToken{BaseModel: model.BaseModel{PrimaryKey: model.PrimaryKey{ID: 1}}, UserID: 1, TokenHash: "a", ExpiresAt: now.Add(time.Hour)}
+	ref.tokens["b"] = &model.RefreshToken{BaseModel: model.BaseModel{PrimaryKey: model.PrimaryKey{ID: 2}}, UserID: 2, TokenHash: "b", ExpiresAt: now.Add(time.Hour)}
+
+	// Sesi milik user 1 → berhasil dicabut.
+	if err := svc.RevokeSessionByID(1, 1); err != nil {
+		t.Fatalf("revoke sesi sendiri error = %v", err)
+	}
+	if ref.tokens["a"].RevokedAt == nil {
+		t.Fatal("sesi 1 harus tercabut")
+	}
+	// Sesi user lain → ErrNotFound (tidak bocorkan keberadaan).
+	if err := svc.RevokeSessionByID(1, 2); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("revoke sesi user lain = %v, want ErrNotFound", err)
+	}
+	if ref.tokens["b"].RevokedAt != nil {
+		t.Fatal("sesi user lain tidak boleh tercabut")
+	}
+	// Sesi tidak ada → ErrNotFound.
+	if err := svc.RevokeSessionByID(1, 99); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("revoke sesi tak ada = %v, want ErrNotFound", err)
 	}
 }

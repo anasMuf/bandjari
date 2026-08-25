@@ -24,4 +24,19 @@ var (
 	// ErrSocialLoginRequired — akun dibuat via Google (tanpa password). Login
 	// password TIDAK mungkin; UX menuntun ke "Masuk dengan Google".
 	ErrSocialLoginRequired = errors.New("akun ini menggunakan login Google")
+	// ErrSocialLinkRequired — akun punya password tapi belum terhubung ke
+	// provider. Login Google DITOLAK (V1-A); UX menuntun ke link eksplisit
+	// dari pengaturan.
+	ErrSocialLinkRequired = errors.New("hubungkan Google dari pengaturan akun")
+	// ErrProviderTaken — provider subject sudah terhubung ke akun lain.
+	ErrProviderTaken = errors.New("akun provider ini sudah terhubung ke akun lain")
+	// ErrLastLoginMethod — unlink ditolak karena ini satu-satunya metode login
+	// (tanpa password & tanpa provider lain).
+	ErrLastLoginMethod = errors.New("tidak bisa memutuskan satu-satunya metode login — set password dulu")
+	// ErrNoPassword — akun tanpa password (Google-only) mencoba change-password.
+	// Arahkan ke set-password.
+	ErrNoPassword = errors.New("akun belum punya password — gunakan set password")
+	// ErrPasswordAlreadySet — akun sudah punya password mencoba set-password.
+	// Arahkan ke change-password.
+	ErrPasswordAlreadySet = errors.New("akun sudah punya password — gunakan ganti password")
 )

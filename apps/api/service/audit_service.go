@@ -19,6 +19,13 @@ const (
 	ActionResetPassword  = "reset_password"
 	ActionGoogleLogin    = "google_login"
 	ActionRoleChange     = "role_change"
+	// --- E-PROFILE-2026: pengelolaan akun ---
+	ActionProviderLink   = "provider_link"
+	ActionProviderUnlink = "provider_unlink"
+	ActionProfileUpdate  = "profile_update"
+	ActionPasswordChange = "password_change"
+	ActionSessionRevoke  = "session_revoke"
+	ActionAccountDelete  = "account_delete"
 )
 
 // AuditService — pencatatan jejak keamanan. Best-effort: caller BOLEH

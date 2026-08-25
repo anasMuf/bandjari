@@ -1,5 +1,17 @@
 basePath: /api/v1
 definitions:
+  dto.ChangePasswordRequest:
+    properties:
+      current_password:
+        type: string
+      new_password:
+        maxLength: 72
+        minLength: 8
+        type: string
+    required:
+    - current_password
+    - new_password
+    type: object
   dto.CheckEmailRequest:
     properties:
       email:
@@ -75,6 +87,11 @@ definitions:
     - email
     - name
     - password
+    type: object
+  dto.DeleteAccountRequest:
+    properties:
+      password:
+        type: string
     type: object
   dto.ErrorResponse:
     properties:
@@ -173,6 +190,15 @@ definitions:
     - code
     - password
     type: object
+  dto.SetPasswordRequest:
+    properties:
+      new_password:
+        maxLength: 72
+        minLength: 8
+        type: string
+    required:
+    - new_password
+    type: object
   dto.SuccessResponse:
     properties:
       data: {}
@@ -237,6 +263,15 @@ definitions:
       steps:
         $ref: '#/definitions/dto.NullableString'
     type: object
+  dto.UpdateUserRequest:
+    properties:
+      name:
+        maxLength: 255
+        minLength: 1
+        type: string
+    required:
+    - name
+    type: object
   dto.VerifyEmailRequest:
     properties:
       code:
@@ -258,6 +293,39 @@ info:
   title: BandJari API
   version: "1.0"
 paths:
+  /auth/change-password:
+    post:
+      consumes:
+      - application/json
+      description: Ganti password dengan verifikasi password lama; semua sesi lain
+        dicabut
+      parameters:
+      - description: Password lama + baru
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ChangePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Change password
+      tags:
+      - auth
   /auth/check-email:
     post:
       consumes:
@@ -284,6 +352,44 @@ paths:
       summary: Check login method for email
       tags:
       - auth
+  /auth/delete-account:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Hapus akun: soft delete + anonimisasi email + revoke semua sesi.
+        Password wajib untuk akun ber-password; Google-only cukup sesi aktif.
+      parameters:
+      - description: Konfirmasi password (opsional untuk Google-only)
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.DeleteAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Delete account
+      tags:
+      - auth
   /auth/forgot-password:
     post:
       consumes:
@@ -308,7 +414,15 @@ paths:
       - auth
   /auth/google:
     get:
-      description: Redirect ke Google OAuth (state di cookie, anti-CSRF)
+      description: |-
+        Redirect ke Google OAuth (state di cookie, anti-CSRF).
+        Param `link=1` menandakan mode LINK (hubungkan Google ke akun
+        yang sedang login) — dipakai dari halaman Profile.
+      parameters:
+      - description: 1 = mode link (akun sudah login)
+        in: query
+        name: link
+        type: integer
       responses:
         "302":
           description: Found
@@ -317,8 +431,10 @@ paths:
       - auth
   /auth/google/callback:
     get:
-      description: Tukar code → profil → buat/link akun → set session → redirect ke
-        frontend
+      description: |-
+        Tukar code → profil → buat/link akun → set session → redirect ke frontend.
+        Mode link (state diawali "link:") → hubungkan provider ke user
+        sesi aktif (validasi refresh cookie) → redirect /profile.
       responses:
         "302":
           description: Found
@@ -362,6 +478,33 @@ paths:
         "204":
           description: No Content
       summary: Logout
+      tags:
+      - auth
+  /auth/providers/google:
+    delete:
+      consumes:
+      - application/json
+      description: |-
+        Putuskan hubungan Google dari akun. Ditolak (409) bila ini
+        satu-satunya metode login (tanpa password & tanpa provider lain).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Unlink Google provider
       tags:
       - auth
   /auth/refresh:
@@ -460,6 +603,91 @@ paths:
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
       summary: Reset password
+      tags:
+      - auth
+  /auth/sessions:
+    get:
+      consumes:
+      - application/json
+      description: Daftar sesi aktif (device, IP, waktu). `current=true` untuk sesi
+        ini.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: List active sessions
+      tags:
+      - auth
+  /auth/sessions/{id}/revoke:
+    post:
+      consumes:
+      - application/json
+      description: Putuskan satu sesi aktif by id (hanya milik user sendiri)
+      parameters:
+      - description: Session (refresh token) ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Revoke one session
+      tags:
+      - auth
+  /auth/set-password:
+    post:
+      consumes:
+      - application/json
+      description: Pasang password untuk akun tanpa password; semua sesi lain dicabut
+      parameters:
+      - description: Password baru
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.SetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Set password (akun Google-only)
       tags:
       - auth
   /auth/verify-email:
@@ -1365,6 +1593,37 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Get user profile
+      tags:
+      - auth
+    patch:
+      consumes:
+      - application/json
+      description: Edit nama user yang sedang login. Email/role tidak berubah.
+      parameters:
+      - description: Nama baru
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Update profile (name)
       tags:
       - auth
 securityDefinitions:

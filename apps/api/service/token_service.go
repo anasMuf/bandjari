@@ -1,6 +1,7 @@
 package service
 
 import (
+	"api/dto"
 	"api/model"
 	"api/repository"
 	"api/utility"
@@ -24,6 +25,13 @@ type TokenService interface {
 	// Revoke mencabut satu refresh token (logout). Idempotent bila token tidak
 	// ditemukan atau sudah dicabut.
 	Revoke(raw string) error
+	// ListActiveSessions — daftar sesi aktif user (non-revoked, non-expired),
+	// termutakhir dulu. Current=true hanya untuk token hash yang cocok
+	// (sesi yang sedang dipakai) — E-PROFILE-2026 R9.
+	ListActiveSessions(userID uint, currentTokenHash string) ([]dto.SessionResponse, error)
+	// RevokeSessionByID — putus satu sesi by id. Hanya sesi milik userID yang
+	// boleh dicabut (ErrNotFound bila bukan miliknya / tidak ada).
+	RevokeSessionByID(userID, sessionID uint) error
 }
 
 type tokenService struct {
@@ -124,6 +132,36 @@ func (s *tokenService) Revoke(raw string) error {
 			return nil // idempotent — tidak ada yang dicabut
 		}
 		return err
+	}
+	return s.refreshRepo.Revoke(token)
+}
+
+func (s *tokenService) ListActiveSessions(userID uint, currentTokenHash string) ([]dto.SessionResponse, error) {
+	tokens, err := s.refreshRepo.ListActiveByUserID(userID)
+	if err != nil {
+		return nil, err
+	}
+	sessions := make([]dto.SessionResponse, 0, len(tokens))
+	for _, t := range tokens {
+		sessions = append(sessions, dto.SessionResponse{
+			ID:        t.ID,
+			UserAgent: t.UserAgent,
+			IP:        t.IP,
+			CreatedAt: t.CreatedAt,
+			ExpiresAt: t.ExpiresAt,
+			Current:   currentTokenHash != "" && t.TokenHash == currentTokenHash,
+		})
+	}
+	return sessions, nil
+}
+
+func (s *tokenService) RevokeSessionByID(userID, sessionID uint) error {
+	token, err := s.refreshRepo.FindByID(sessionID)
+	if err != nil {
+		return ErrNotFound
+	}
+	if token.UserID != userID {
+		return ErrNotFound // bukan milik user — tidak bocorkan keberadaan sesi lain
 	}
 	return s.refreshRepo.Revoke(token)
 }

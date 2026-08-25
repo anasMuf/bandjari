@@ -18,6 +18,9 @@ type UserRepository interface {
 	// tanpa email di URL (E-AUTH-2026 R9/R10).
 	FindByVerificationTokenHash(hash string) (*model.User, error)
 	FindByResetTokenHash(hash string) (*model.User, error)
+	// Delete — soft delete (gorm.DeletedAt di BaseModel). Dipakai delete
+	// account setelah email/name dianonimkan (E-PROFILE-2026 R12).
+	Delete(userID uint) error
 }
 
 type userRepository struct {
@@ -60,4 +63,8 @@ func (r *userRepository) FindByResetTokenHash(hash string) (*model.User, error) 
 	var user model.User
 	err := r.db.Where("reset_token_hash = ?", hash).First(&user).Error
 	return &user, err
+}
+
+func (r *userRepository) Delete(userID uint) error {
+	return r.db.Delete(&model.User{}, userID).Error
 }

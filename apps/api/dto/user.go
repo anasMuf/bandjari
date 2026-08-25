@@ -8,6 +8,11 @@ type UserResponse struct {
 	Role string `json:"role"`
 	// EmailVerified — status verifikasi email (untuk banner UI, E-AUTH-2026 R9).
 	EmailVerified bool `json:"email_verified"`
+	// HasPassword — true bila akun punya password (bisa login biasa). Akun
+	// Google-only bernilai false (E-PROFILE-2026 R14).
+	HasPassword bool `json:"has_password"`
+	// Providers — daftar provider OAuth yang terhubung (mis. ["google"]).
+	Providers []string `json:"providers"`
 }
 
 type CreateUserRequest struct {
@@ -15,6 +20,32 @@ type CreateUserRequest struct {
 	Email string `json:"email" validate:"required,email,max=255"`
 	// Password: min 8 karakter (NIST SP 800-63B), maks 72 (batas bcrypt) — E-AUTH-2026 R11.
 	Password string `json:"password" validate:"required,min=8,max=72"`
+}
+
+// UpdateUserRequest — edit nama (E-PROFILE-2026 R6). Email/avatar TIDAK
+// termasuk iterasi ini (keputusan Q2-A).
+type UpdateUserRequest struct {
+	Name string `json:"name" validate:"required,min=1,max=255"`
+}
+
+// ChangePasswordRequest — ganti password dengan verifikasi password lama
+// (OWASP re-authentication, E-PROFILE-2026 R7).
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"current_password" validate:"required"`
+	NewPassword     string `json:"new_password" validate:"required,min=8,max=72"`
+}
+
+// SetPasswordRequest — set password untuk akun tanpa password (Google-only),
+// prasyarat unlink (E-PROFILE-2026 R8). Tanpa current password.
+type SetPasswordRequest struct {
+	NewPassword string `json:"new_password" validate:"required,min=8,max=72"`
+}
+
+// DeleteAccountRequest — konfirmasi hapus akun (E-PROFILE-2026 R11). Password
+// wajib untuk akun ber-password; akun Google-only boleh kosong (sesi aktif
+// cukup — keputusan V2-A).
+type DeleteAccountRequest struct {
+	Password string `json:"password" validate:"omitempty"`
 }
 
 type LoginUserRequest struct {
