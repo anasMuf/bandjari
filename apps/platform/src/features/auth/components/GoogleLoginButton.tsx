@@ -1,4 +1,5 @@
 import { Button } from '../../../components/atoms/Button';
+import { GoogleIcon } from './GoogleIcon';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
 
@@ -21,11 +22,12 @@ export function GoogleLoginButton({ label = 'Masuk dengan Google', link = false,
     <Button
       type="button"
       variant="secondary"
-      className={className}
+      className={`${className} gap-3`}
       onClick={() => {
         window.location.href = `${API_URL}/auth/google${link ? '?link=1' : ''}`;
       }}
     >
+      <GoogleIcon />
       {label}
     </Button>
   );
