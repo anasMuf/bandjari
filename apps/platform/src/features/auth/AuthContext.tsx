@@ -18,6 +18,10 @@ export interface User {
   role?: string;
   /** true bila email sudah diverifikasi (E-AUTH-2026 R9) — dipakai banner. */
   email_verified?: boolean;
+  /** true bila akun punya password (bisa login biasa) — akun Google-only false. */
+  has_password?: boolean;
+  /** Provider OAuth terhubung (mis. ["google"]) — E-PROFILE-2026 R14. */
+  providers?: string[];
 }
 
 interface AuthContextType {

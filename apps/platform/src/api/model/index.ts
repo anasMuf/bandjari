@@ -6,12 +6,14 @@
  * OpenAPI spec version: 1.0
  */
 
+export * from './dtoChangePasswordRequest';
 export * from './dtoCheckEmailRequest';
 export * from './dtoCheckEmailResponse';
 export * from './dtoCreateSectionRequest';
 export * from './dtoCreateSongRequest';
 export * from './dtoCreateSoundSlotRequest';
 export * from './dtoCreateUserRequest';
+export * from './dtoDeleteAccountRequest';
 export * from './dtoErrorResponse';
 export * from './dtoForgotPasswordRequest';
 export * from './dtoLoginUserRequest';
@@ -24,13 +26,16 @@ export * from './dtoRenameSampleRequest';
 export * from './dtoReorderSectionRequest';
 export * from './dtoResendVerificationRequest';
 export * from './dtoResetPasswordRequest';
+export * from './dtoSetPasswordRequest';
 export * from './dtoSuccessResponse';
 export * from './dtoUpdateSectionRequest';
 export * from './dtoUpdateSectionRequestNextMode';
 export * from './dtoUpdateSongRequest';
 export * from './dtoUpdateSoundSlotRequest';
 export * from './dtoUpdateStepsRequest';
+export * from './dtoUpdateUserRequest';
 export * from './dtoVerifyEmailRequest';
+export * from './getAuthGoogleParams';
 export * from './getSamplesParams';
 export * from './getSamplesTemplatesParams';
 export * from './postSamplesBody';
