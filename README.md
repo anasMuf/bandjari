@@ -160,6 +160,12 @@ User default ber-role `user`. Penugasan admin dilakukan manual via database:
 UPDATE users SET role = 'admin' WHERE email = 'anas@bandjari.com';
 ```
 
+Atau lewat seeder (mendukung beberapa email, `ADMIN_EMAILS` dipisah koma):
+
+```bash
+cd apps/api && go run ./seeders/promote_admin
+```
+
 Hak admin:
 
 - Buat **Song Template System** (checkbox di form buat lagu) & kelola penuh (section, steps, sound slot).
