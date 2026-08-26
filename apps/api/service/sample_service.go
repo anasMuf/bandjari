@@ -216,6 +216,11 @@ func (s *sampleService) PlaybackURL(currentUserID *uint, sampleID uint) (string,
 	if sample.IsSystemTemplate {
 		return s.storage.GenerateSignedURL(context.Background(), sample.ObjectKey, sampleSignedURLTTL)
 	}
+	// Cek pemilik lebih dulu (tanpa query tambahan) — pemilik selalu berhak,
+	// tidak perlu menelusuri referensi lagu publik (FR-VIS).
+	if currentUserID != nil && sample.UserID != nil && *sample.UserID == *currentUserID {
+		return s.storage.GenerateSignedURL(context.Background(), sample.ObjectKey, sampleSignedURLTTL)
+	}
 	usedByPublicSong, err := s.sampleRepo.IsReferencedByPublicSong(sampleID)
 	if err != nil {
 		return "", err
@@ -223,8 +228,5 @@ func (s *sampleService) PlaybackURL(currentUserID *uint, sampleID uint) (string,
 	if usedByPublicSong {
 		return s.storage.GenerateSignedURL(context.Background(), sample.ObjectKey, sampleSignedURLTTL)
 	}
-	if currentUserID == nil || sample.UserID == nil || *sample.UserID != *currentUserID {
-		return "", ErrForbidden // NFR-04
-	}
-	return s.storage.GenerateSignedURL(context.Background(), sample.ObjectKey, sampleSignedURLTTL)
+	return "", ErrForbidden // NFR-04
 }

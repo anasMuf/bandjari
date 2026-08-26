@@ -261,8 +261,12 @@ func (s *songService) Duplicate(userID uint, songID uint) (*dto.SongResponse, er
 	copied := &model.Song{
 		UserID:           &userID,
 		IsSystemTemplate: false,
-		Name:             fmt.Sprintf("%s (Salinan)", song.Name),
-		Bpm:              song.Bpm,
+		// Salinan selalu private (FR-VIS) — publikasi tidak ikut terduplikasi;
+		// diset eksplisit agar nilai "private" benar-benar tersimpan & respons
+		// konsisten (GORM melewati field zero-value pada INSERT).
+		Visibility: string(model.VisibilityPrivate),
+		Name:       fmt.Sprintf("%s (Salinan)", song.Name),
+		Bpm:        song.Bpm,
 	}
 	oldIDs := make([]uint, 0, len(song.Sections))
 	for _, sec := range song.Sections {

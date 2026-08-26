@@ -20,6 +20,9 @@ type fakeSampleRepo struct {
 	refs    map[uint]int64 // sampleID -> jumlah referensi SoundSlot
 	// publicRefs: sampleID -> dipakai lagu public/template (FR-VIS)
 	publicRefs map[uint]bool
+	// publicRefCalls menghitung pemanggilan IsReferencedByPublicSong — dipakai
+	// memastikan pemilik sample tidak menanggung query referensi (FR-VIS).
+	publicRefCalls int
 }
 
 func newFakeSampleRepo() *fakeSampleRepo {
@@ -118,6 +121,7 @@ func (f *fakeSampleRepo) CountSoundSlotsBySampleIDs(sampleIDs []uint) (map[uint]
 }
 
 func (f *fakeSampleRepo) IsReferencedByPublicSong(sampleID uint) (bool, error) {
+	f.publicRefCalls++
 	return f.publicRefs[sampleID], nil
 }
 
@@ -387,6 +391,23 @@ func TestSamplePlaybackURL_PublicSongReferenceAccessibleToGuest(t *testing.T) {
 	}
 	if url == "" {
 		t.Fatal("URL kosong")
+	}
+}
+
+// TestSamplePlaybackURL_OwnerSkipsPublicRefQuery — pemilik sample tidak perlu
+// menelusuri referensi lagu publik (FR-VIS): urutan cek pemilik harus lebih
+// dulu agar tidak ada query tambahan di tiap request playback milik pemilik.
+func TestSamplePlaybackURL_OwnerSkipsPublicRefQuery(t *testing.T) {
+	repo := newFakeSampleRepo()
+	repo.samples[1] = &model.Sample{UserID: uptr(5), Name: "Milik", Part: model.PartRebana1, ObjectKey: "samples/5/1.wav"}
+	repo.nextID = 2
+	svc := NewSampleService(repo, newFakeStorage())
+
+	if _, err := svc.PlaybackURL(uptr(5), 1); err != nil {
+		t.Fatalf("pemilik harus bisa akses, err = %v", err)
+	}
+	if repo.publicRefCalls != 0 {
+		t.Fatalf("query referensi lagu publik tidak boleh dipanggil untuk pemilik, dipanggil %d kali", repo.publicRefCalls)
 	}
 }
 

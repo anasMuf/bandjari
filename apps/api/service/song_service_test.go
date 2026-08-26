@@ -339,6 +339,24 @@ func TestSongDuplicate_TemplateByAnyUser(t *testing.T) {
 	}
 }
 
+// TestSongDuplicate_ResultIsPrivate — salinan selalu private (FR-VIS): status
+// publikasi tidak ikut terduplikasi, baik dari lagu publik maupun pribadi.
+func TestSongDuplicate_ResultIsPrivate(t *testing.T) {
+	repo := newFakeSongRepo(&model.Song{UserID: uptr(5), Name: "Publik", Bpm: 90, Visibility: string(model.VisibilityPublic)})
+	svc := NewSongService(repo)
+
+	copied, err := svc.Duplicate(5, 1)
+	if err != nil {
+		t.Fatalf("Duplicate() error = %v", err)
+	}
+	if copied.Visibility != string(model.VisibilityPrivate) {
+		t.Fatalf("hasil duplikasi visibility = %q, want private (FR-VIS)", copied.Visibility)
+	}
+	if repo.songs[copied.ID].Visibility != string(model.VisibilityPrivate) {
+		t.Fatal("visibility salinan harus tersimpan private")
+	}
+}
+
 func TestSongDuplicate_OtherUsersSongForbidden(t *testing.T) {
 	repo := newFakeSongRepo(&model.Song{UserID: uptr(5), Name: "Lagu", Bpm: 90})
 	svc := NewSongService(repo)
