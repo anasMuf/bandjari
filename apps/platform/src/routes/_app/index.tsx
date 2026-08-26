@@ -7,7 +7,7 @@ export const Route = createFileRoute('/_app/')({
     seoMeta({
       title: 'BandJari - Aplikasi Banjari, Pemutar Banjari, Buat Musik Banjari',
       description:
-        'Susun pola pukulan rebana Al-Banjari (4 rebana + 1 bass) per section, dan mainkan live cukup dengan jari — gratis, tanpa login.',
+        'Aplikasi banjari untuk buat musik banjari dan pemutar banjari. Susun pola rebana Al-Banjari, mainkan live cukup dengan jari - gratis.',
       pathname: match.pathname,
       jsonLd: {
         '@context': 'https://schema.org',
