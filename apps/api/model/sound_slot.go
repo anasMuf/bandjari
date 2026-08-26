@@ -11,8 +11,10 @@ type SoundSlot struct {
 	// Keunikan key per SectionPart dikelola sebagai indeks unik PARSIAL hanya
 	// untuk baris aktif (deleted_at IS NULL) di EnsureConstraints — lihat catatan
 	// di config/database.go — agar key bekas slot terhapus bisa dipakai kembali.
-	Key        string  `gorm:"not null;size:2" json:"key"`
-	SampleID   *uint   `json:"sample_id"`
+	Key string `gorm:"not null;size:2" json:"key"`
+	// SampleID ber-index — query referensi (CountReferencedBySoundSlots,
+	// IsReferencedByPublicSong) memindai kolom ini per sample (FR-VIS).
+	SampleID   *uint   `gorm:"index" json:"sample_id"`
 	Sample     *Sample `gorm:"foreignKey:SampleID;constraint:OnDelete:RESTRICT" json:"sample,omitempty"`
 	OrderIndex int     `gorm:"not null;default:0" json:"order_index"`
 }
