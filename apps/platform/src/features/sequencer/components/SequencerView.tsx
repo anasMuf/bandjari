@@ -40,7 +40,7 @@ const STEP_BATCH = 4;
 
 export function SequencerView({ songId, sectionId, sectionName, songBpm, bpmOverride }: SequencerViewProps) {
   const { addToast } = useToast();
-  const { isAuthenticated, isAdmin } = useAuth();
+  const { isAuthenticated, isAdmin, user } = useAuth();
   const partsQuery = useGetSectionsIdParts(sectionId);
   const songQuery = useGetSongsId(songId);
   const saveStepsMutation = usePutSectionPartsId();
@@ -120,13 +120,17 @@ export function SequencerView({ songId, sectionId, sectionName, songBpm, bpmOver
 
   const songResp = songQuery.data?.data;
   const songData =
-    songResp && 'data' in songResp ? (songResp.data as { bpm?: number; is_system_template?: boolean }) : undefined;
+    songResp && 'data' in songResp
+      ? (songResp.data as { bpm?: number; is_system_template?: boolean; user_id?: number | null })
+      : undefined;
   // Tempo efektif = BPM override Section (AC-9) atau BPM dasar Song.
   const effectiveBpm = bpmOverride ?? songBpm;
   const isTemplate = songData?.is_system_template === true;
-  // Song Template System read-only bagi non-admin (FR-SONG-08); Guest read-only
-  // semua (FR-AUTH-06); admin boleh mengedit template (FR-ROLE).
-  const readOnly = !isAuthenticated || (isTemplate && !isAdmin);
+  // Pemilik lagu (login) — lagu publik milik user lain tetap read-only (FR-VIS).
+  const isOwner = isAuthenticated && user?.id != null && songData?.user_id === user.id;
+  // Read-only untuk: Guest (FR-AUTH-06), template bagi non-admin (FR-SONG-08),
+  // dan lagu milik user lain (FR-AUTH-02/FR-VIS). Admin boleh edit template (FR-ROLE).
+  const readOnly = !isAuthenticated || (isTemplate ? !isAdmin : !isOwner);
 
   const dirtyParts = orderedParts.filter((part) => stepsOf(part) !== (part.steps ?? ''));
   const allPartsEmpty = orderedParts.every((part) => part.sound_slots.length === 0);

@@ -16,6 +16,8 @@ interface SongDetail {
   name: string;
   bpm: number;
   is_system_template: boolean;
+  /** Pemilik lagu — menentukan apakah user login berhak mengedit (FR-VIS). */
+  user_id?: number | null;
   sections?: SectionItem[];
 }
 
@@ -27,7 +29,7 @@ function SongDetailPage() {
   const { songId } = Route.useParams()
   const id = Number(songId)
   const songQuery = useGetSongsId(id)
-  const { isAuthenticated, isAdmin } = useAuth()
+  const { isAuthenticated, isAdmin, user } = useAuth()
   const [showPrompt, setShowPrompt] = useState(false)
 
   if (songQuery.isLoading) {
@@ -64,6 +66,8 @@ function SongDetailPage() {
 
   const resp = songQuery.data?.data;
   const song = resp && 'data' in resp ? (resp.data as SongDetail) : undefined;
+  // Pemilik lagu (login) — lagu publik milik user lain tetap read-only (FR-VIS).
+  const isOwner = isAuthenticated && user?.id != null && song?.user_id === user.id;
   if (!song) return null;
 
   return (
@@ -86,9 +90,9 @@ function SongDetailPage() {
             <span className="max-sm:hidden">← Semua lagu</span>
           </Link>
         }
-        // Song Template System hanya bisa diedit admin (FR-ROLE); non-admin
-        // yang sampai ke rute ini (mis. lewat URL langsung) melihat mode lihat-saja.
-        readOnly={song.is_system_template && !isAdmin}
+        // Read-only untuk: lagu milik user lain (FR-VIS), template bagi non-admin
+        // (FR-SONG-08); admin boleh edit template (FR-ROLE).
+        readOnly={song.is_system_template ? !isAdmin : !isOwner}
         onEditAttempt={() => setShowPrompt(true)}
         onChanged={() => songQuery.refetch()}
       />
