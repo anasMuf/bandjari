@@ -69,6 +69,16 @@ func (f *fakeSongRepo) ListTemplates() ([]model.Song, error) {
 	return res, nil
 }
 
+func (f *fakeSongRepo) ListPublic() ([]model.Song, error) {
+	var res []model.Song
+	for _, s := range f.songs {
+		if !s.IsSystemTemplate && s.Visibility == string(model.VisibilityPublic) {
+			res = append(res, *s)
+		}
+	}
+	return res, nil
+}
+
 func (f *fakeSongRepo) Save(song *model.Song) error {
 	f.songs[song.ID] = song
 	return nil
@@ -381,6 +391,151 @@ func TestSongRole_CreateTemplate(t *testing.T) {
 	}
 	if !created.IsSystemTemplate || created.UserID != nil {
 		t.Fatalf("harus template tanpa pemilik: %+v", created)
+	}
+}
+
+// --- FR-VIS: visibility saat create ---
+
+func TestSongCreate_DefaultPrivate(t *testing.T) {
+	repo := newFakeSongRepo()
+	svc := NewSongService(repo)
+
+	created, err := svc.Create(5, false, dto.CreateSongRequest{Name: "Lagu", Bpm: 90})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created.Visibility != string(model.VisibilityPrivate) {
+		t.Fatalf("visibility = %q, want private (FR-VIS)", created.Visibility)
+	}
+}
+
+func TestSongCreate_AdminCanCreatePublic(t *testing.T) {
+	repo := newFakeSongRepo()
+	svc := NewSongService(repo)
+	public := string(model.VisibilityPublic)
+
+	created, err := svc.Create(5, true, dto.CreateSongRequest{Name: "Lagu Publik", Bpm: 90, Visibility: &public})
+	if err != nil {
+		t.Fatalf("admin buat lagu public error = %v", err)
+	}
+	if created.Visibility != string(model.VisibilityPublic) {
+		t.Fatalf("visibility = %q, want public", created.Visibility)
+	}
+}
+
+func TestSongCreate_NonAdminCannotCreatePublic(t *testing.T) {
+	repo := newFakeSongRepo()
+	svc := NewSongService(repo)
+	public := string(model.VisibilityPublic)
+
+	_, err := svc.Create(5, false, dto.CreateSongRequest{Name: "Lagu", Bpm: 90, Visibility: &public})
+	if !errors.Is(err, ErrForbidden) {
+		t.Fatalf("user biasa tidak boleh publish saat create, err = %v, want ErrForbidden (FR-VIS)", err)
+	}
+}
+
+// --- FR-VIS: status lagu public/private ---
+
+func TestSongSetVisibility_OwnerAdminCanToggle(t *testing.T) {
+	repo := newFakeSongRepo(&model.Song{UserID: uptr(5), Name: "Lagu", Bpm: 90})
+	svc := NewSongService(repo)
+
+	updated, err := svc.SetVisibility(5, true, 1, string(model.VisibilityPublic))
+	if err != nil {
+		t.Fatalf("admin pemilik harus bisa set public, err = %v", err)
+	}
+	if updated.Visibility != string(model.VisibilityPublic) {
+		t.Fatalf("visibility = %q, want public", updated.Visibility)
+	}
+	if repo.songs[1].Visibility != string(model.VisibilityPublic) {
+		t.Fatal("visibility harus tersimpan ke repository")
+	}
+
+	if _, err := svc.SetVisibility(5, true, 1, string(model.VisibilityPrivate)); err != nil {
+		t.Fatalf("admin pemilik harus bisa set private, err = %v", err)
+	}
+}
+
+func TestSongSetVisibility_RegularUserForbidden(t *testing.T) {
+	repo := newFakeSongRepo(&model.Song{UserID: uptr(5), Name: "Lagu", Bpm: 90})
+	svc := NewSongService(repo)
+
+	_, err := svc.SetVisibility(5, false, 1, string(model.VisibilityPublic))
+	if !errors.Is(err, ErrForbidden) {
+		t.Fatalf("user biasa tidak boleh set visibility, err = %v, want ErrForbidden (FR-VIS)", err)
+	}
+}
+
+func TestSongSetVisibility_AdminNotOwnerForbidden(t *testing.T) {
+	repo := newFakeSongRepo(&model.Song{UserID: uptr(5), Name: "Lagu", Bpm: 90})
+	svc := NewSongService(repo)
+
+	_, err := svc.SetVisibility(99, true, 1, string(model.VisibilityPublic))
+	if !errors.Is(err, ErrForbidden) {
+		t.Fatalf("admin non-pemilik tidak boleh set visibility lagu user lain, err = %v (FR-AUTH-02)", err)
+	}
+}
+
+func TestSongSetVisibility_TemplateForbidden(t *testing.T) {
+	repo := newFakeSongRepo(&model.Song{IsSystemTemplate: true, Name: "Template", Bpm: 90})
+	svc := NewSongService(repo)
+
+	_, err := svc.SetVisibility(5, true, 1, string(model.VisibilityPublic))
+	if !errors.Is(err, ErrForbidden) {
+		t.Fatalf("template tak punya pemilik → visibility tak bisa diubah, err = %v", err)
+	}
+}
+
+func TestSongSetVisibility_NotFound(t *testing.T) {
+	repo := newFakeSongRepo()
+	svc := NewSongService(repo)
+
+	_, err := svc.SetVisibility(5, true, 1, string(model.VisibilityPublic))
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("err = %v, want ErrNotFound", err)
+	}
+}
+
+func TestSongListPublic_OnlyPublicNonTemplate(t *testing.T) {
+	repo := newFakeSongRepo(
+		&model.Song{UserID: uptr(1), Name: "Publik", Bpm: 90, Visibility: string(model.VisibilityPublic),
+			Author: &model.User{Name: "Admin Satu"}},
+		&model.Song{UserID: uptr(1), Name: "Privat", Bpm: 90}, // default private
+		&model.Song{IsSystemTemplate: true, Name: "Template", Bpm: 90},
+	)
+	svc := NewSongService(repo)
+
+	res, err := svc.ListPublic()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res) != 1 {
+		t.Fatalf("len = %d, want 1 (hanya lagu public non-template)", len(res))
+	}
+	if res[0].Name != "Publik" || res[0].AuthorName != "Admin Satu" {
+		t.Fatalf("res = %+v, want Publik + author Admin Satu", res[0])
+	}
+}
+
+func TestSongGetByID_PublicSong_AccessibleToGuest(t *testing.T) {
+	repo := newFakeSongRepo(&model.Song{UserID: uptr(5), Name: "Publik", Bpm: 90, Visibility: string(model.VisibilityPublic)})
+	svc := NewSongService(repo)
+
+	song, err := svc.GetByID(1, nil)
+	if err != nil {
+		t.Fatalf("Guest seharusnya bisa akses lagu public, err = %v (FR-VIS)", err)
+	}
+	if song.Name != "Publik" {
+		t.Fatal("response tidak sesuai")
+	}
+}
+
+func TestSongGetByID_PublicSong_AccessibleToAnyUser(t *testing.T) {
+	repo := newFakeSongRepo(&model.Song{UserID: uptr(5), Name: "Publik", Bpm: 90, Visibility: string(model.VisibilityPublic)})
+	svc := NewSongService(repo)
+
+	if _, err := svc.GetByID(1, uptr(99)); err != nil {
+		t.Fatalf("user lain seharusnya bisa akses lagu public, err = %v (FR-VIS)", err)
 	}
 }
 

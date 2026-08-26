@@ -61,6 +61,22 @@ func (h *SongHandler) ListTemplates(c echo.Context) error {
 	return c.JSON(http.StatusOK, dto.SuccessResponse{Message: "Song templates retrieved successfully", Data: songs})
 }
 
+// ListPublicSongs godoc
+// @Summary      List public songs
+// @Description  Daftar lagu publik milik user (dengan author_name) untuk Explore — Guest maupun User login
+// @Tags         songs
+// @Accept       json
+// @Produce      json
+// @Success      200  {object}  dto.SuccessResponse
+// @Router       /songs/public [get]
+func (h *SongHandler) ListPublicSongs(c echo.Context) error {
+	songs, err := h.songService.ListPublic()
+	if err != nil {
+		return mapServiceError(err)
+	}
+	return c.JSON(http.StatusOK, dto.SuccessResponse{Message: "Public songs retrieved successfully", Data: songs})
+}
+
 // CreateSong godoc
 // @Summary      Create song
 // @Description  Buat Song baru (nama, BPM) milik user yang login
@@ -146,6 +162,41 @@ func (h *SongHandler) UpdateSong(c echo.Context) error {
 		return mapServiceError(err)
 	}
 	return c.JSON(http.StatusOK, dto.SuccessResponse{Message: "Song updated successfully", Data: song})
+}
+
+// UpdateSongVisibility godoc
+// @Summary      Update song visibility (public/private)
+// @Description  Ubah status lagu public/private. Hanya admin pemilik lagu (FR-VIS); lagu template tidak bisa diubah statusnya.
+// @Tags         songs
+// @Accept       json
+// @Produce      json
+// @Security     ApiKeyAuth
+// @Param        id       path      int                              true  "Song ID"
+// @Param        request  body      dto.UpdateSongVisibilityRequest  true  "Visibility update"
+// @Success      200      {object}  dto.SuccessResponse
+// @Failure      400      {object}  dto.ErrorResponse
+// @Failure      401      {object}  dto.ErrorResponse
+// @Failure      403      {object}  dto.ErrorResponse
+// @Failure      404      {object}  dto.ErrorResponse
+// @Router       /songs/{id}/visibility [put]
+func (h *SongHandler) UpdateSongVisibility(c echo.Context) error {
+	songID, err := parseIDParam(c, "id")
+	if err != nil {
+		return err
+	}
+	var req dto.UpdateSongVisibilityRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid JSON")
+	}
+	if err := c.Validate(&req); err != nil {
+		return err
+	}
+	userID := utility.GetCurrentUserID(c)
+	song, err := h.songService.SetVisibility(*userID, utility.IsAdmin(c), songID, req.Visibility)
+	if err != nil {
+		return mapServiceError(err)
+	}
+	return c.JSON(http.StatusOK, dto.SuccessResponse{Message: "Song visibility updated successfully", Data: song})
 }
 
 // DeleteSong godoc

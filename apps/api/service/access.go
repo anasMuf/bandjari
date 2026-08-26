@@ -21,3 +21,11 @@ func canMutateSample(sample *model.Sample, userID uint, isAdmin bool) bool {
 	}
 	return sample.UserID != nil && *sample.UserID == userID
 }
+
+// canSetVisibility menentukan siapa boleh mengubah status public/private lagu
+// (FR-VIS): hanya PEMILIK lagu yang ber-role admin. Admin non-pemilik tidak
+// berhak atas lagu user lain (FR-AUTH-02), dan template (user_id NULL) tidak
+// punya pemilik — statusnya selalu publik via is_system_template.
+func canSetVisibility(song *model.Song, userID uint, isAdmin bool) bool {
+	return isAdmin && song.UserID != nil && *song.UserID == userID
+}

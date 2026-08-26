@@ -40,9 +40,9 @@ func toSectionPartResponse(part *model.SectionPart) *dto.SectionPartResponse {
 	return res
 }
 
-// ListBySection menerapkan akses baca TDD 6.8: Section milik Song Template
-// boleh dilihat siapapun (termasuk Guest, read-only); Section milik Song user
-// hanya pemiliknya.
+// ListBySection menerapkan akses baca TDD 6.8 + FR-VIS: Section milik Song
+// Template atau lagu publik (visibility=public) boleh dilihat siapapun
+// (termasuk Guest, read-only); Section milik lagu pribadi hanya pemiliknya.
 func (s *sectionPartService) ListBySection(currentUserID *uint, sectionID uint) ([]dto.SectionPartResponse, error) {
 	section, err := s.sectionRepo.FindByID(sectionID)
 	if err != nil {
@@ -58,9 +58,9 @@ func (s *sectionPartService) ListBySection(currentUserID *uint, sectionID uint) 
 		}
 		return nil, err
 	}
-	if !song.IsSystemTemplate {
+	if !song.IsSystemTemplate && song.Visibility != string(model.VisibilityPublic) {
 		if currentUserID == nil {
-			return nil, ErrNotFound // Guest coba akses Song milik User → 404 (FR-AUTH-05)
+			return nil, ErrNotFound // Guest coba akses lagu pribadi → 404 (FR-AUTH-05)
 		}
 		if song.UserID == nil || *song.UserID != *currentUserID {
 			return nil, ErrForbidden // FR-AUTH-02

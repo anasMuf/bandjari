@@ -185,7 +185,9 @@ func main() {
 	auth.DELETE("/auth/providers/google", oauthHandler.UnlinkGoogle)
 
 	// Song — GET /:id memakai auth opsional (akses Guest untuk Song Template System, TDD 6.8)
+	// GET /songs/public juga opsional — lagu publik bisa dilihat Guest maupun user login (FR-VIS).
 	api.GET("/songs/templates", songHandler.ListTemplates, middleware.OptionalAuth)
+	api.GET("/songs/public", songHandler.ListPublicSongs, middleware.OptionalAuth)
 	api.GET("/songs/:id", songHandler.GetSong, middleware.OptionalAuth)
 
 	songs := api.Group("/songs")
@@ -193,6 +195,7 @@ func main() {
 	songs.GET("", songHandler.ListSongs)
 	songs.POST("", songHandler.CreateSong)
 	songs.PUT("/:id", songHandler.UpdateSong)
+	songs.PUT("/:id/visibility", songHandler.UpdateSongVisibility)
 	songs.DELETE("/:id", songHandler.DeleteSong)
 	songs.POST("/:id/duplicate", songHandler.DuplicateSong)
 

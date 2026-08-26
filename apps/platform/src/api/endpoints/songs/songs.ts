@@ -28,7 +28,8 @@ import type {
   DtoCreateSongRequest,
   DtoErrorResponse,
   DtoSuccessResponse,
-  DtoUpdateSongRequest
+  DtoUpdateSongRequest,
+  DtoUpdateSongVisibilityRequest
 } from '../../model';
 
 import { customInstance } from '../../mutator/custom-instance';
@@ -253,7 +254,120 @@ export const usePostSongs = <TError = DtoErrorResponse,
       > => {
       return useMutation(getPostSongsMutationOptions(options), queryClient);
     }
-    export type getSongsTemplatesResponse200 = {
+    export type getSongsPublicResponse200 = {
+  data: DtoSuccessResponse
+  status: 200
+}
+
+export type getSongsPublicResponseSuccess = (getSongsPublicResponse200) & {
+  headers: Headers;
+};
+;
+
+export type getSongsPublicResponse = (getSongsPublicResponseSuccess)
+
+export const getGetSongsPublicUrl = () => {
+
+
+
+
+  return `/songs/public`
+}
+
+/**
+ * Daftar lagu publik milik user (dengan author_name) untuk Explore — Guest maupun User login
+ * @summary List public songs
+ */
+export const getSongsPublic = async ( options?: RequestInit): Promise<getSongsPublicResponse> => {
+
+  return customInstance<getSongsPublicResponse>(getGetSongsPublicUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSongsPublicQueryKey = () => {
+    return [
+    `/songs/public`
+    ] as const;
+    }
+
+
+export const getGetSongsPublicQueryOptions = <TData = Awaited<ReturnType<typeof getSongsPublic>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSongsPublic>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSongsPublicQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSongsPublic>>> = ({ signal }) => getSongsPublic({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSongsPublic>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetSongsPublicQueryResult = NonNullable<Awaited<ReturnType<typeof getSongsPublic>>>
+export type GetSongsPublicQueryError = unknown
+
+
+export function useGetSongsPublic<TData = Awaited<ReturnType<typeof getSongsPublic>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSongsPublic>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSongsPublic>>,
+          TError,
+          Awaited<ReturnType<typeof getSongsPublic>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSongsPublic<TData = Awaited<ReturnType<typeof getSongsPublic>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSongsPublic>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSongsPublic>>,
+          TError,
+          Awaited<ReturnType<typeof getSongsPublic>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSongsPublic<TData = Awaited<ReturnType<typeof getSongsPublic>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSongsPublic>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List public songs
+ */
+
+export function useGetSongsPublic<TData = Awaited<ReturnType<typeof getSongsPublic>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSongsPublic>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetSongsPublicQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export type getSongsTemplatesResponse200 = {
   data: DtoSuccessResponse
   status: 200
 }
@@ -794,4 +908,110 @@ export const usePostSongsIdDuplicate = <TError = DtoErrorResponse,
         TContext
       > => {
       return useMutation(getPostSongsIdDuplicateMutationOptions(options), queryClient);
+    }
+    export type putSongsIdVisibilityResponse200 = {
+  data: DtoSuccessResponse
+  status: 200
+}
+
+export type putSongsIdVisibilityResponse400 = {
+  data: DtoErrorResponse
+  status: 400
+}
+
+export type putSongsIdVisibilityResponse401 = {
+  data: DtoErrorResponse
+  status: 401
+}
+
+export type putSongsIdVisibilityResponse403 = {
+  data: DtoErrorResponse
+  status: 403
+}
+
+export type putSongsIdVisibilityResponse404 = {
+  data: DtoErrorResponse
+  status: 404
+}
+
+export type putSongsIdVisibilityResponseSuccess = (putSongsIdVisibilityResponse200) & {
+  headers: Headers;
+};
+export type putSongsIdVisibilityResponseError = (putSongsIdVisibilityResponse400 | putSongsIdVisibilityResponse401 | putSongsIdVisibilityResponse403 | putSongsIdVisibilityResponse404) & {
+  headers: Headers;
+};
+
+export type putSongsIdVisibilityResponse = (putSongsIdVisibilityResponseSuccess | putSongsIdVisibilityResponseError)
+
+export const getPutSongsIdVisibilityUrl = (id: number,) => {
+
+
+
+
+  return `/songs/${id}/visibility`
+}
+
+/**
+ * Ubah status lagu public/private. Hanya admin pemilik lagu (FR-VIS); lagu template tidak bisa diubah statusnya.
+ * @summary Update song visibility (public/private)
+ */
+export const putSongsIdVisibility = async (id: number,
+    dtoUpdateSongVisibilityRequest: DtoUpdateSongVisibilityRequest, options?: RequestInit): Promise<putSongsIdVisibilityResponse> => {
+
+  return customInstance<putSongsIdVisibilityResponse>(getPutSongsIdVisibilityUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      dtoUpdateSongVisibilityRequest,)
+  }
+);}
+
+
+
+
+export const getPutSongsIdVisibilityMutationOptions = <TError = DtoErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof putSongsIdVisibility>>, TError,{id: number;data: DtoUpdateSongVisibilityRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof putSongsIdVisibility>>, TError,{id: number;data: DtoUpdateSongVisibilityRequest}, TContext> => {
+
+const mutationKey = ['putSongsIdVisibility'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof putSongsIdVisibility>>, {id: number;data: DtoUpdateSongVisibilityRequest}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  putSongsIdVisibility(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PutSongsIdVisibilityMutationResult = NonNullable<Awaited<ReturnType<typeof putSongsIdVisibility>>>
+    export type PutSongsIdVisibilityMutationBody = DtoUpdateSongVisibilityRequest
+    export type PutSongsIdVisibilityMutationError = DtoErrorResponse
+
+    /**
+ * @summary Update song visibility (public/private)
+ */
+export const usePutSongsIdVisibility = <TError = DtoErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof putSongsIdVisibility>>, TError,{id: number;data: DtoUpdateSongVisibilityRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof putSongsIdVisibility>>,
+        TError,
+        {id: number;data: DtoUpdateSongVisibilityRequest},
+        TContext
+      > => {
+      return useMutation(getPutSongsIdVisibilityMutationOptions(options), queryClient);
     }

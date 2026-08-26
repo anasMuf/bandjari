@@ -5,6 +5,7 @@ import { useGetSongsId } from '../api/endpoints/songs/songs'
 import { useAuth } from '../features/auth/AuthContext'
 import { LoginPromptInline } from '../features/auth/components/LoginPromptInline'
 import { PageHeader } from '../components/molecules/PageHeader'
+import { useToast } from '../components/molecules/Toast'
 import { LauncherGrid } from '../features/launcher/components/LauncherGrid'
 import {
   useLauncherPlayback,
@@ -20,22 +21,31 @@ interface SongDetail {
   name: string;
   bpm: number;
   is_system_template: boolean;
+  /** Pemilik lagu — untuk membedakan lagu sendiri vs lagu publik orang lain (FR-VIS). */
+  user_id?: number | null;
+  visibility?: string;
   sections?: LauncherSection[];
 }
 
 /**
  * Launcher Mode (layar 5 wireframe) — mode pemutaran live (clip launcher).
- * Dapat diakses Guest untuk Song Template System (AC-11) dan pemilik Song.
+ * Dapat diakses Guest untuk Song Template System (AC-11), lagu publik (FR-VIS),
+ * dan pemilik lagu pribadi.
  */
 function LauncherPage() {
   const { songId } = Route.useParams()
   const id = Number(songId)
   const songQuery = useGetSongsId(id)
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
+  const { addToast } = useToast()
   const navigate = useNavigate()
   const [showPrompt, setShowPrompt] = useState(false)
   const resp = songQuery.data?.data;
   const song = resp && 'data' in resp ? (resp.data as SongDetail) : undefined;
+
+  // Lagu sendiri (pemilik login) vs lagu publik milik orang lain — menentukan
+  // tujuan tombol kembali dan aksi "Tambah Section" (FR-VIS).
+  const isOwner = isAuthenticated && !!user && song?.user_id === user.id;
 
   const playback = useLauncherPlayback(song?.bpm ?? 90);
   const { prepare, ready } = playback;
@@ -89,11 +99,24 @@ function LauncherPage() {
     );
   }
 
-  const backTo = isAuthenticated && !song.is_system_template ? '/songs/$songId' : '/templates/$songId';
+  const backTo = song.is_system_template
+    ? '/templates/$songId'
+    : isOwner
+      ? '/songs/$songId'
+      : '/songs/public/$songId';
 
   const handleAddSection = () => {
-    if (isAuthenticated && !song.is_system_template) {
+    if (isOwner) {
       navigate({ to: '/songs/$songId', params: { songId: String(id) } });
+      return;
+    }
+    if (isAuthenticated) {
+      // Lagu publik milik orang lain — bukan masalah login, tapi kepemilikan (FR-AUTH-02).
+      addToast({
+        variant: 'info',
+        title: 'Lagu milik pengguna lain',
+        message: 'Hanya pemilik lagu yang bisa menambah Section.',
+      });
       return;
     }
     setShowPrompt(true);
@@ -137,7 +160,7 @@ function LauncherPage() {
           <p className="mt-1 text-sm text-stone-500">
             Section adalah bagian lagu (Awalan, Dasar, Naik, dst) yang menjadi pad di Launcher.
           </p>
-          {isAuthenticated && !song.is_system_template && (
+          {isOwner && (
             <Link
               to="/songs/$songId"
               params={{ songId: String(id) }}

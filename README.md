@@ -165,6 +165,7 @@ Hak admin:
 - Buat **Song Template System** (checkbox di form buat lagu) & kelola penuh (section, steps, sound slot).
 - Upload/rename/hapus **Sample Template System** (checkbox di form upload sample).
 - Halaman template menampilkan **Mode Admin** yang bisa diedit.
+- **Set status public/private lagu miliknya sendiri** (FR-VIS) — kontrol di form buat & edit lagu, hanya tampil untuk admin. Lagu **public** tampil di Explore beserta nama penulis; **private** (default) hanya untuk pemiliknya. Admin tidak bisa mengubah status lagu milik user lain.
 
 Role dibaca dari database pada **setiap request** (middleware JWT), sehingga promosi/demosi berlaku seketika — tidak perlu menunggu token kedaluwarsa. Non-admin tetap tidak bisa menyentuh template (403), dan aturan kepemilikan data pribadi tidak berubah.
 
@@ -192,7 +193,7 @@ Role dibaca dari database pada **setiap request** (middleware JWT), sehingga pro
 | Area | Endpoint |
 |---|---|
 | Auth | `POST /auth/register`, `POST /auth/login`, `GET /users` |
-| Songs | `GET/POST /songs`, `GET/PUT/DELETE /songs/:id`, `GET /songs/templates`, `POST /songs/:id/duplicate` |
+| Songs | `GET/POST /songs`, `GET /songs/templates`, `GET /songs/public`, `GET/PUT/DELETE /songs/:id`, `PUT /songs/:id/visibility`, `POST /songs/:id/duplicate` |
 | Sections | `POST /songs/:songId/sections`, `PUT/DELETE /sections/:id`, `PUT /sections/:id/reorder`, `POST /sections/:id/duplicate` |
 | Sequencer | `GET /sections/:id/parts`, `PUT /section-parts/:id`, `POST /section-parts/:id/sound-slots`, `PUT/DELETE /sound-slots/:id` |
 | Samples | `GET/POST /samples`, `GET /samples/templates`, `PUT/DELETE /samples/:id`, `GET /samples/:id/playback-url` |

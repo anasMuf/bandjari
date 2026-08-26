@@ -114,6 +114,44 @@ func TestListBySection_TemplateAccessibleToGuest(t *testing.T) {
 	}
 }
 
+// setupPartEnvPublicSong membangun env dengan lagu public (FR-VIS) — Guest
+// boleh melihat parts-nya, sama seperti template.
+func setupPartEnvPublicSong(t *testing.T) (*sectionPartService, uint, *fakePartRepo) {
+	t.Helper()
+	song := &model.Song{UserID: uptr(5), Name: "Publik", Bpm: 90, Visibility: string(model.VisibilityPublic)}
+	songRepo := newFakeSongRepo(song)
+	sectionRepo := newFakeSectionRepo()
+	sec := &model.Section{SongID: 1, Name: "Dasar"}
+	sectionRepo.assignIDs(sec)
+	sectionRepo.sections[sec.ID] = sec
+
+	steps := "T,D"
+	part := &model.SectionPart{SectionID: sec.ID, Part: model.PartRebana1, Steps: &steps}
+	partRepo := &fakePartRepo{parts: map[uint]*model.SectionPart{1: part}}
+	part.ID = 1
+
+	svc := NewSectionPartService(partRepo, sectionRepo, songRepo).(*sectionPartService)
+	return svc, part.ID, partRepo
+}
+
+func TestListBySection_PublicSongAccessibleToGuest(t *testing.T) {
+	svc, _, _ := setupPartEnvPublicSong(t)
+	res, err := svc.ListBySection(nil, 1)
+	if err != nil {
+		t.Fatalf("Guest seharusnya bisa lihat parts lagu public (FR-VIS), err = %v", err)
+	}
+	if len(res) != 1 {
+		t.Fatalf("len = %d, want 1", len(res))
+	}
+}
+
+func TestListBySection_PublicSongAccessibleToAnyUser(t *testing.T) {
+	svc, _, _ := setupPartEnvPublicSong(t)
+	if _, err := svc.ListBySection(uptr(99), 1); err != nil {
+		t.Fatalf("user lain seharusnya bisa lihat parts lagu public (FR-VIS), err = %v", err)
+	}
+}
+
 func TestListBySection_OwnerOK(t *testing.T) {
 	svc, _, _ := setupPartEnv(t, false)
 	res, err := svc.ListBySection(uptr(5), 1)

@@ -32,6 +32,7 @@ import { Route as AppProjectIndexRouteImport } from './routes/_app/project.index
 import { Route as AppProjectSamplesRouteImport } from './routes/_app/project.samples'
 import { Route as SongsSongIdIndexRouteImport } from './routes/songs.$songId.index'
 import { Route as SongsSongIdPlayRouteImport } from './routes/songs.$songId.play'
+import { Route as SongsPublicSongIdRouteImport } from './routes/songs.public.$songId'
 import { Route as SongsSongIdSectionsSectionIdRouteImport } from './routes/songs.$songId.sections.$sectionId'
 
 const AppRoute = AppRouteImport.update({
@@ -148,6 +149,11 @@ const SongsSongIdPlayRoute = SongsSongIdPlayRouteImport.update({
   path: '/play',
   getParentRoute: () => SongsSongIdRoute,
 } as any)
+const SongsPublicSongIdRoute = SongsPublicSongIdRouteImport.update({
+  id: '/songs/public/$songId',
+  path: '/songs/public/$songId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SongsSongIdSectionsSectionIdRoute =
   SongsSongIdSectionsSectionIdRouteImport.update({
     id: '/sections/$sectionId',
@@ -176,6 +182,7 @@ export interface FileRoutesByFullPath {
   '/templates/$songId': typeof TemplatesSongIdRoute
   '/project/samples': typeof AppProjectSamplesRoute
   '/songs/$songId/play': typeof SongsSongIdPlayRoute
+  '/songs/public/$songId': typeof SongsPublicSongIdRoute
   '/project/': typeof AppProjectIndexRoute
   '/songs/$songId/': typeof SongsSongIdIndexRoute
   '/songs/$songId/sections/$sectionId': typeof SongsSongIdSectionsSectionIdRoute
@@ -199,6 +206,7 @@ export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
   '/project/samples': typeof AppProjectSamplesRoute
   '/songs/$songId/play': typeof SongsSongIdPlayRoute
+  '/songs/public/$songId': typeof SongsPublicSongIdRoute
   '/project': typeof AppProjectIndexRoute
   '/songs/$songId': typeof SongsSongIdIndexRoute
   '/songs/$songId/sections/$sectionId': typeof SongsSongIdSectionsSectionIdRoute
@@ -226,6 +234,7 @@ export interface FileRoutesById {
   '/_app/': typeof AppIndexRoute
   '/_app/project/samples': typeof AppProjectSamplesRoute
   '/songs/$songId/play': typeof SongsSongIdPlayRoute
+  '/songs/public/$songId': typeof SongsPublicSongIdRoute
   '/_app/project/': typeof AppProjectIndexRoute
   '/songs/$songId/': typeof SongsSongIdIndexRoute
   '/songs/$songId/sections/$sectionId': typeof SongsSongIdSectionsSectionIdRoute
@@ -253,6 +262,7 @@ export interface FileRouteTypes {
     | '/templates/$songId'
     | '/project/samples'
     | '/songs/$songId/play'
+    | '/songs/public/$songId'
     | '/project/'
     | '/songs/$songId/'
     | '/songs/$songId/sections/$sectionId'
@@ -276,6 +286,7 @@ export interface FileRouteTypes {
     | '/'
     | '/project/samples'
     | '/songs/$songId/play'
+    | '/songs/public/$songId'
     | '/project'
     | '/songs/$songId'
     | '/songs/$songId/sections/$sectionId'
@@ -302,6 +313,7 @@ export interface FileRouteTypes {
     | '/_app/'
     | '/_app/project/samples'
     | '/songs/$songId/play'
+    | '/songs/public/$songId'
     | '/_app/project/'
     | '/songs/$songId/'
     | '/songs/$songId/sections/$sectionId'
@@ -316,6 +328,7 @@ export interface RootRouteChildren {
   VerifyRoute: typeof VerifyRoute
   SongsSongIdRoute: typeof SongsSongIdRouteWithChildren
   TemplatesSongIdRoute: typeof TemplatesSongIdRoute
+  SongsPublicSongIdRoute: typeof SongsPublicSongIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -481,6 +494,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SongsSongIdPlayRouteImport
       parentRoute: typeof SongsSongIdRoute
     }
+    '/songs/public/$songId': {
+      id: '/songs/public/$songId'
+      path: '/songs/public/$songId'
+      fullPath: '/songs/public/$songId'
+      preLoaderRoute: typeof SongsPublicSongIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/songs/$songId/sections/$sectionId': {
       id: '/songs/$songId/sections/$sectionId'
       path: '/sections/$sectionId'
@@ -560,6 +580,7 @@ const rootRouteChildren: RootRouteChildren = {
   VerifyRoute: VerifyRoute,
   SongsSongIdRoute: SongsSongIdRouteWithChildren,
   TemplatesSongIdRoute: TemplatesSongIdRoute,
+  SongsPublicSongIdRoute: SongsPublicSongIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

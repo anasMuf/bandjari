@@ -1523,6 +1523,29 @@ const docTemplate = `{
                 }
             }
         },
+        "/songs/public": {
+            "get": {
+                "description": "Daftar lagu publik milik user (dengan author_name) untuk Explore — Guest maupun User login",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "songs"
+                ],
+                "summary": "List public songs",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SuccessResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/songs/templates": {
             "get": {
                 "description": "Daftar Song Template System — dapat diakses Guest maupun User login",
@@ -1743,6 +1766,76 @@ const docTemplate = `{
                         "description": "Created",
                         "schema": {
                             "$ref": "#/definitions/dto.SuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/songs/{id}/visibility": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Ubah status lagu public/private. Hanya admin pemilik lagu (FR-VIS); lagu template tidak bisa diubah statusnya.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "songs"
+                ],
+                "summary": "Update song visibility (public/private)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Song ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Visibility update",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateSongVisibilityRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "401": {
@@ -2125,6 +2218,14 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 255,
                     "minLength": 1
+                },
+                "visibility": {
+                    "description": "Visibility opsional (FR-VIS): \"public\" hanya boleh dipakai admin;\ndefault \"private\" — lagu tidak tampil di Explore sampai dipublikasikan.",
+                    "type": "string",
+                    "enum": [
+                        "public",
+                        "private"
+                    ]
                 }
             }
         },
@@ -2395,6 +2496,21 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 255,
                     "minLength": 1
+                }
+            }
+        },
+        "dto.UpdateSongVisibilityRequest": {
+            "type": "object",
+            "required": [
+                "visibility"
+            ],
+            "properties": {
+                "visibility": {
+                    "type": "string",
+                    "enum": [
+                        "public",
+                        "private"
+                    ]
                 }
             }
         },

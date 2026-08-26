@@ -6,9 +6,11 @@ import {
   usePutSongsId,
   useDeleteSongsId,
   usePostSongsIdDuplicate,
+  usePutSongsIdVisibility,
 } from '../../../api/endpoints/songs/songs';
 import type { DtoSuccessResponse } from '../../../api/model';
 import { Button } from '../../../components/atoms/Button';
+import { Badge } from '../../../components/atoms/Badge';
 import { FormField } from '../../../components/molecules/FormField';
 import { ConfirmDialog } from '../../../components/molecules/ConfirmDialog';
 import { PageHeader } from '../../../components/molecules/PageHeader';
@@ -22,6 +24,8 @@ interface SongItem {
   name: string;
   bpm: number;
   is_system_template: boolean;
+  /** Status publikasi: "public" tampil di Explore, "private" hanya untuk pemilik (FR-VIS). */
+  visibility?: string;
   section_count?: number;
   updated_at?: string;
 }
@@ -31,9 +35,11 @@ interface SongFormData {
   bpm: number;
   /** Admin: jadikan Song Template System (FR-ROLE). */
   asTemplate: boolean;
+  /** Admin pemilik: status publikasi lagu (FR-VIS). */
+  visibility: 'public' | 'private';
 }
 
-const emptyForm: SongFormData = { name: '', bpm: 90, asTemplate: false };
+const emptyForm: SongFormData = { name: '', bpm: 90, asTemplate: false, visibility: 'private' };
 
 /** "diubah 2 hari lalu" — meta relatif singkat untuk daftar Song. */
 function formatRelativeTime(iso?: string): string {
@@ -59,6 +65,7 @@ export function SongListView() {
   const updateMutation = usePutSongsId();
   const deleteMutation = useDeleteSongsId();
   const duplicateMutation = usePostSongsIdDuplicate();
+  const visibilityMutation = usePutSongsIdVisibility();
 
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<SongItem | null>(null);
@@ -81,7 +88,12 @@ export function SongListView() {
 
   const openEdit = (song: SongItem) => {
     setEditing(song);
-    setForm({ name: song.name, bpm: song.bpm, asTemplate: song.is_system_template });
+    setForm({
+      name: song.name,
+      bpm: song.bpm,
+      asTemplate: song.is_system_template,
+      visibility: song.visibility === 'public' ? 'public' : 'private',
+    });
     setShowForm(true);
   };
 
@@ -91,7 +103,31 @@ export function SongListView() {
       name: form.name,
       bpm: Number(form.bpm),
       is_system_template: form.asTemplate || undefined,
+      // FR-VIS: hanya dikirim saat buat (edit memakai endpoint visibility terpisah).
+      visibility: !editing && isAdmin ? form.visibility : undefined,
     };
+
+    // FR-VIS: admin pemilik boleh mengubah status public/private — lewat endpoint
+    // terpisah agar guard aksesnya eksplisit (bukan tercampur guard name/bpm).
+    const visibilityChanged =
+      !!editing &&
+      isAdmin &&
+      form.visibility !== (editing.visibility === 'public' ? 'public' : 'private');
+
+    const applyVisibility = () => {
+      if (!visibilityChanged || !editing) return;
+      visibilityMutation.mutate(
+        { id: editing.id, data: { visibility: form.visibility } },
+        {
+          onSuccess: () => {
+            notify('Status lagu diperbarui', form.visibility === 'public' ? 'Lagu kini tampil di Explore.' : 'Lagu kini privat — hanya Anda yang bisa melihatnya.');
+            refresh();
+          },
+          onError: (error) => showError(error, 'Gagal memperbarui status lagu'),
+        },
+      );
+    };
+
     if (editing) {
       updateMutation.mutate(
         { id: editing.id, data: payload },
@@ -100,6 +136,7 @@ export function SongListView() {
             notify('Lagu diperbarui', 'Perubahan berhasil disimpan.');
             setShowForm(false);
             refresh();
+            applyVisibility();
           },
           onError: (error) => showError(error, 'Gagal memperbarui lagu'),
         },
@@ -231,6 +268,38 @@ export function SongListView() {
               Jadikan Song Template System (dapat dilihat semua orang, hanya admin yang bisa mengelola)
             </label>
           )}
+          {isAdmin && !form.asTemplate && (
+            <fieldset className="mt-4">
+              <legend className="text-sm font-medium text-stone-700">Status Publikasi</legend>
+              <p className="mt-0.5 text-xs text-stone-500">
+                Publik = lagu tampil di Explore beserta nama Anda sebagai penulis; privat = hanya Anda yang bisa melihat (FR-VIS).
+              </p>
+              <div className="mt-2 flex gap-4">
+                <label className="flex items-center gap-2 text-sm text-stone-700 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="visibility"
+                    value="public"
+                    checked={form.visibility === 'public'}
+                    onChange={() => setForm({ ...form, visibility: 'public' })}
+                    className="size-4 border-stone-300 accent-brand-700"
+                  />
+                  Publik
+                </label>
+                <label className="flex items-center gap-2 text-sm text-stone-700 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="visibility"
+                    value="private"
+                    checked={form.visibility === 'private'}
+                    onChange={() => setForm({ ...form, visibility: 'private' })}
+                    className="size-4 border-stone-300 accent-brand-700"
+                  />
+                  Privat
+                </label>
+              </div>
+            </fieldset>
+          )}
           <div className="mt-4 flex gap-2">
             <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
               {editing ? 'Simpan' : 'Simpan & Lanjut ke Section →'}
@@ -257,11 +326,17 @@ export function SongListView() {
           {(songs ?? []).map((song) => (
             <li key={song.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-4">
               <Link to="/songs/$songId" params={{ songId: String(song.id) }} className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-stone-900 hover:text-brand-700">
-                  {song.name}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="truncate text-sm font-medium text-stone-900 hover:text-brand-700">
+                    {song.name}
+                  </p>
+                  {isAdmin && (
+                    <Badge>{song.visibility === 'public' ? 'PUBLIK' : 'PRIVAT'}</Badge>
+                  )}
+                </div>
                 <p className="mt-0.5 text-xs text-stone-500">
                   BPM {song.bpm} · {song.section_count ?? 0} Section · {formatRelativeTime(song.updated_at)}
+                  {isAdmin && song.visibility === 'public' && ' · tampil di Explore'}
                 </p>
               </Link>
               <div className="flex flex-wrap items-center gap-2 max-sm:w-full max-sm:justify-end">

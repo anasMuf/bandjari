@@ -16,6 +16,10 @@ type SampleRepository interface {
 	FindTemplateByPartAndLabel(part model.Part, label string) (*model.Sample, error)
 	CountReferencedBySoundSlots(sampleID uint) (int64, error)
 	CountSoundSlotsBySampleIDs(sampleIDs []uint) (map[uint]int64, error)
+	// IsReferencedByPublicSong true bila sample dipakai oleh ≥1 lagu yang
+	// terlihat publik (visibility='public' atau template) — dasar izin Guest
+	// memutar audio lagu publik (FR-VIS).
+	IsReferencedByPublicSong(sampleID uint) (bool, error)
 	Save(sample *model.Sample) error
 	Delete(id uint) error
 }
@@ -114,6 +118,25 @@ func (r *sampleRepository) CountSoundSlotsBySampleIDs(sampleIDs []uint) (map[uin
 
 func (r *sampleRepository) Save(sample *model.Sample) error {
 	return r.db.Save(sample).Error
+}
+
+// IsReferencedByPublicSong mengecek apakah sample direferensikan SoundSlot dari
+// lagu yang terlihat publik. Relasi: sound_slots → section_parts → sections →
+// songs. `deleted_at IS NULL` manual untuk tabel join (GORM hanya mengotomatiskan
+// filter soft-delete pada tabel utama).
+func (r *sampleRepository) IsReferencedByPublicSong(sampleID uint) (bool, error) {
+	var count int64
+	err := r.db.Model(&model.SoundSlot{}).
+		Joins("JOIN section_parts ON section_parts.id = sound_slots.section_part_id"+
+			" AND section_parts.deleted_at IS NULL").
+		Joins("JOIN sections ON sections.id = section_parts.section_id"+
+			" AND sections.deleted_at IS NULL").
+		Joins("JOIN songs ON songs.id = sections.song_id"+
+			" AND songs.deleted_at IS NULL").
+		Where("sound_slots.sample_id = ?", sampleID).
+		Where("songs.is_system_template = ? OR songs.visibility = ?", true, model.VisibilityPublic).
+		Count(&count).Error
+	return count > 0, err
 }
 
 func (r *sampleRepository) Delete(id uint) error {

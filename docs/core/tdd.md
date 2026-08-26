@@ -110,6 +110,7 @@ users
 | `id` | `BIGSERIAL` | PK | |
 | `user_id` | `BIGINT` | FK → `users.id`, **NULLABLE**, INDEX | `NULL` untuk Song Template System (milik System, bukan User manapun) — pola identik dengan `samples.user_id`, lihat Bagian 4.3 |
 | `is_system_template` | `BOOLEAN` | NOT NULL, DEFAULT `false`, INDEX | *(baru)* `true` untuk Song Template System (PRD Bagian 10 keputusan #13) |
+| `visibility` | `VARCHAR(16)` | NOT NULL, DEFAULT `'private'`, INDEX | *(baru — FR-VIS)* `'public'` \| `'private'` — lagu publik tampil di Explore beserta nama penulis; hanya admin **pemilik** lagu yang bisa mengubahnya |
 | `name` | `VARCHAR(255)` | NOT NULL | |
 | `bpm` | `SMALLINT` | NOT NULL, CHECK (`bpm` BETWEEN 20 AND 400) | Batas wajar BPM musik (bukan pembatasan produk, murni sanity check teknis) |
 | `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT now() | |
@@ -228,8 +229,10 @@ type Song struct {
     BaseModel
     UserID           *uint     `gorm:"index" json:"user_id"`                                    // nullable — nil untuk Song Template System
     IsSystemTemplate bool      `gorm:"not null;default:false;index" json:"is_system_template"` // true = Song Template System (read-only, dapat diakses Guest)
+    Visibility       string    `gorm:"not null;size:16;default:private;index" json:"visibility"` // FR-VIS: public = tampil di Explore
     Name             string    `gorm:"not null;size:255" json:"name"`
     Bpm              int16     `gorm:"not null" json:"bpm"`
+    Author           *User     `gorm:"foreignKey:UserID;references:ID" json:"-"`               // relasi nama pemilik (Preload saat perlu), FR-VIS
     Sections         []Section `gorm:"foreignKey:SongID;constraint:OnDelete:CASCADE" json:"sections,omitempty"`
 }
 
@@ -288,9 +291,11 @@ Base path: `/api/v1`. Semua endpoint (kecuali auth) memerlukan header `Authoriza
 |---|---|---|---|---|
 | GET | `/songs` | Wajib | Daftar Song milik user login | FR-SONG-05 |
 | GET | `/songs/templates` | **Opsional** | Daftar Song Template System (`is_system_template = true`) — dapat diakses Guest maupun User login | FR-SONG-07, FR-SONG-09, FR-AUTH-04 |
-| POST | `/songs` | Wajib | Buat Song baru (`name`, `bpm`), otomatis `user_id` = user login, `is_system_template` = false. **Admin** boleh set `is_system_template: true` untuk membuat Song Template System (FR-ROLE) | FR-SONG-01, FR-SONG-02 |
-| GET | `/songs/:id` | **Opsional*** | Detail Song beserta Section & SectionPart (nested). *Wajib login apabila Song target bukan Song Template System — lihat aturan akses di Bagian 6.8 | FR-SONG-05, FR-AUTH-04, FR-AUTH-05 |
+| GET | `/songs/public` | **Opsional** | *(baru — FR-VIS)* Daftar lagu publik milik user (`is_system_template = false AND visibility = 'public'`) beserta `author_name` — data Explore selain "Lagu Bawaan" | FR-VIS |
+| POST | `/songs` | Wajib | Buat Song baru (`name`, `bpm`), otomatis `user_id` = user login, `is_system_template` = false, `visibility` = `'private'`. **Admin** boleh set `is_system_template: true` untuk membuat Song Template System (FR-ROLE) dan `visibility: 'public'` untuk langsung memublikasikan (FR-VIS); non-admin yang mengirim `public` → 403 | FR-SONG-01, FR-SONG-02, FR-VIS |
+| GET | `/songs/:id` | **Opsional*** | Detail Song beserta Section & SectionPart (nested). *Wajib login apabila Song target bukan Song Template System **dan bukan lagu publik** — lihat aturan akses di Bagian 6.8 | FR-SONG-05, FR-AUTH-04, FR-AUTH-05, FR-VIS |
 | PUT | `/songs/:id` | Wajib | Update `name`/`bpm` — **ditolak (403)** apabila target adalah Song Template System dan user bukan admin | FR-SONG-03, FR-SONG-08, FR-ROLE |
+| PUT | `/songs/:id/visibility` | Wajib | *(baru — FR-VIS)* Set status `visibility` (`'public'` \| `'private'`). Hanya admin **pemilik** lagu; admin non-pemilik, user biasa, dan Song Template System → **403** | FR-VIS |
 | DELETE | `/songs/:id` | Wajib | Hapus Song (cascade) — **ditolak (403)** apabila target adalah Song Template System dan user bukan admin | FR-SONG-04, FR-SONG-08, FR-ROLE |
 | POST | `/songs/:id/duplicate` | Wajib | Duplikasi Song beserta seluruh Section/SectionPart — berlaku untuk Song milik User maupun Song Template System (hasil duplikasi selalu menjadi milik User yang login, `is_system_template = false`) | FR-SONG-06, FR-SONG-10 |
 
@@ -394,7 +399,10 @@ Merinci implementasi FR-AUTH-04–07 (PRD Bagian 10 keputusan #13–16) pada lev
 | Lihat daftar Song Template System (`GET /songs/templates`) | ✅ Diizinkan | ✅ Diizinkan |
 | Lihat detail + playback (Launcher Mode) Song Template System | ✅ Diizinkan | ✅ Diizinkan |
 | Lihat Sequencer Mode Song Template System (read-only) | ✅ Diizinkan | ✅ Diizinkan |
-| Lihat/akses Song milik User manapun | ❌ Ditolak (404) | ✅ Hanya milik sendiri (403 untuk milik user lain) |
+| Lihat daftar lagu publik (`GET /songs/public`) *(baru — FR-VIS)* | ✅ Diizinkan | ✅ Diizinkan |
+| Lihat detail + playback lagu **publik** milik user lain *(baru — FR-VIS)* | ✅ Diizinkan | ✅ Diizinkan |
+| Set status public/private lagu *(baru — FR-VIS)* | ❌ 401 | ❌ Hanya admin **pemilik** lagu; lainnya 403 |
+| Lihat/akses lagu **pribadi** milik User manapun | ❌ Ditolak (404) | ✅ Hanya milik sendiri (403 untuk milik user lain) |
 | Buat/edit/hapus Song, Section, SectionPart, SoundSlot, Sample apapun | ❌ Ditolak (403) | ✅ Diizinkan (untuk resource miliknya) |
 | Edit/hapus Song/Sample Template System | ❌ Ditolak (403) | ❌ Ditolak (403) — read-only bagi siapapun, lihat FR-SONG-08, FR-SAMP-12 |
 
@@ -425,8 +433,8 @@ func (s *SongService) GetByID(ctx context.Context, songID uint, currentUserID *u
         return nil, err
     }
 
-    if song.IsSystemTemplate {
-        return song, nil // Guest maupun User, semua boleh lihat — FR-AUTH-04
+    if song.IsSystemTemplate || song.Visibility == "public" {
+        return song, nil // Template (FR-AUTH-04) & lagu publik (FR-VIS) boleh dilihat siapa pun
     }
 
     if currentUserID == nil {
@@ -439,7 +447,9 @@ func (s *SongService) GetByID(ctx context.Context, songID uint, currentUserID *u
 }
 ```
 
-> Pola yang sama (cek `IsSystemTemplate` lalu cek kepemilikan) diterapkan konsisten di seluruh service yang menangani resource bertingkat di bawah Song (Section, SectionPart, SoundSlot) — mewarisi status akses dari Song induknya, bukan dicek ulang per level secara independen.
+> Pola yang sama (cek `IsSystemTemplate`/`Visibility` lalu cek kepemilikan) diterapkan konsisten di seluruh service yang menangani resource bertingkat di bawah Song (Section, SectionPart, SoundSlot) — mewarisi status akses dari Song induknya, bukan dicek ulang per level secara independen.
+
+> **FR-VIS — playback audio lagu publik:** Sample milik user yang dipakai oleh lagu publik (atau template) ikut bisa diputar Guest lewat `GET /samples/:id/playback-url` — ditentukan via query referensi `sound_slots → section_parts → sections → songs` (`IsReferencedByPublicSong`). Saat lagu di-private-kan kembali, akses Guest ke sample tersebut otomatis hilang (kecuali dipakai lagu publik lain).
 
 ### 6.9 Sistem Role: Admin & User *(baru — FR-ROLE)*
 
@@ -457,6 +467,8 @@ Role dibaca **dari tabel `users` di middleware JWT** (`JWTAuth`) — bukan dari 
 | Sample Template System (upload, rename, hapus) | ✅ | ❌ 403 | ❌ 401/403 |
 | Song/Sample milik User lain | ❌ 403 (aturan kepemilikan tetap) | ❌ 403 | ❌ 401/403/404 |
 | Song/Sample milik sendiri | ✅ | ✅ | ❌ |
+| **Set status public/private lagu milik sendiri** *(baru — FR-VIS)* | ✅ | ❌ 403 (fitur khusus admin) | ❌ 401 |
+| **Set status public/private lagu milik user lain** *(baru — FR-VIS)* | ❌ 403 (aturan kepemilikan tetap) | ❌ 403 | ❌ 401 |
 
 Catatan penting: admin **tidak** otomatis mendapat akses ke data pribadi user lain — aturan kepemilikan FR-AUTH-02 tidak berubah.
 
@@ -468,6 +480,18 @@ Catatan penting: admin **tidak** otomatis mendapat akses ke data pribadi user la
 - Login response & `GET /users` menyertakan `role` agar frontend dapat menampilkan kontrol admin.
 
 Implementasi guard terpusat di `service/access.go` (`canMutateSong` / `canMutateSample`), dipakai seluruh service mutasi (Song, Section, SectionPart, SoundSlot, Sample).
+
+#### FR-VIS — status lagu public/private *(baru)*
+
+Fitur ini memungkinkan lagu milik **admin** dipublikasikan ke Explore. Ringkasannya:
+
+- **Siapa yang boleh set:** hanya admin **pemilik** lagu (`canSetVisibility` di `service/access.go`). Admin non-pemilik tetap 403 — aturan kepemilikan FR-AUTH-02 tidak berubah. User biasa tidak dapat mengakses fitur ini sama sekali.
+- **Saat buat:** admin boleh langsung set `visibility: 'public'` pada `POST /songs`; non-admin yang mengirim `public` ditolak 403 (pola sama dengan `is_system_template`).
+- **Template:** `visibility` tidak berlaku — template selalu tampil di Explore sebagai "Lagu Bawaan" (via `is_system_template`), dan tidak bisa diubah statusnya (403).
+- **Default:** `'private'` — lagu baru tidak tampil di Explore sampai admin pemiliknya memublikasikan.
+- **Explore:** `GET /songs/public` (endpoint) + `GET /songs/templates` digabung di halaman Explore frontend — seksi "Lagu Bawaan" (author = Tim BandJari) dan seksi "Lagu Publik" (author = nama pemilik).
+- **Viewer publik:** halaman lihat-saja `/songs/public/:id` (read-only) — duplikasi ke "Lagu Saya" untuk user login.
+- **Implikasi audio:** sample milik user yang dipakai lagu publik ikut diputar Guest (lihat catatan Bagian 6.8).
 
 ---
 

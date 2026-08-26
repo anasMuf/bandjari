@@ -198,7 +198,10 @@ func (s *sampleService) Delete(userID uint, isAdmin bool, sampleID uint) error {
 }
 
 // PlaybackURL menghasilkan signed URL 60 menit. Sample Template System boleh
-// diakses siapapun (mendukung playback Guest); Sample milik User hanya pemiliknya.
+// diakses siapapun (mendukung playback Guest); Sample milik User hanya
+// pemiliknya — KECUALI sample yang dipakai lagu publik (atau template): lagu
+// publik harus benar-benar bisa dimainkan Guest, jadi audio-nya ikut dibagikan
+// (FR-VIS). Saat lagu di-private-kan lagi, akses Guest otomatis hilang.
 func (s *sampleService) PlaybackURL(currentUserID *uint, sampleID uint) (string, error) {
 	if s.storage == nil {
 		return "", fmt.Errorf("object storage belum dikonfigurasi (STORAGE_ENDPOINT/STORAGE_BUCKET)")
@@ -211,6 +214,13 @@ func (s *sampleService) PlaybackURL(currentUserID *uint, sampleID uint) (string,
 		return "", err
 	}
 	if sample.IsSystemTemplate {
+		return s.storage.GenerateSignedURL(context.Background(), sample.ObjectKey, sampleSignedURLTTL)
+	}
+	usedByPublicSong, err := s.sampleRepo.IsReferencedByPublicSong(sampleID)
+	if err != nil {
+		return "", err
+	}
+	if usedByPublicSong {
 		return s.storage.GenerateSignedURL(context.Background(), sample.ObjectKey, sampleSignedURLTTL)
 	}
 	if currentUserID == nil || sample.UserID == nil || *sample.UserID != *currentUserID {

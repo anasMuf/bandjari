@@ -48,6 +48,14 @@ definitions:
         maxLength: 255
         minLength: 1
         type: string
+      visibility:
+        description: |-
+          Visibility opsional (FR-VIS): "public" hanya boleh dipakai admin;
+          default "private" — lagu tidak tampil di Explore sampai dipublikasikan.
+        enum:
+        - public
+        - private
+        type: string
     required:
     - bpm
     - name
@@ -244,6 +252,16 @@ definitions:
         maxLength: 255
         minLength: 1
         type: string
+    type: object
+  dto.UpdateSongVisibilityRequest:
+    properties:
+      visibility:
+        enum:
+        - public
+        - private
+        type: string
+    required:
+    - visibility
     type: object
   dto.UpdateSoundSlotRequest:
     properties:
@@ -1425,6 +1443,52 @@ paths:
       summary: Duplicate song
       tags:
       - songs
+  /songs/{id}/visibility:
+    put:
+      consumes:
+      - application/json
+      description: Ubah status lagu public/private. Hanya admin pemilik lagu (FR-VIS);
+        lagu template tidak bisa diubah statusnya.
+      parameters:
+      - description: Song ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Visibility update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateSongVisibilityRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Update song visibility (public/private)
+      tags:
+      - songs
   /songs/{songId}/sections:
     post:
       consumes:
@@ -1471,6 +1535,22 @@ paths:
       summary: Create section
       tags:
       - sections
+  /songs/public:
+    get:
+      consumes:
+      - application/json
+      description: Daftar lagu publik milik user (dengan author_name) untuk Explore
+        — Guest maupun User login
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+      summary: List public songs
+      tags:
+      - songs
   /songs/templates:
     get:
       consumes:

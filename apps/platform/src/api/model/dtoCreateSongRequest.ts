@@ -5,6 +5,7 @@
  * API untuk BandJari — penyusun & pemutar pola pukulan rebana Al-Banjari.
  * OpenAPI spec version: 1.0
  */
+import type { DtoCreateSongRequestVisibility } from './dtoCreateSongRequestVisibility';
 
 export interface DtoCreateSongRequest {
   /**
@@ -20,4 +21,7 @@ export interface DtoCreateSongRequest {
      * @maxLength 255
      */
   name: string;
+  /** Visibility opsional (FR-VIS): "public" hanya boleh dipakai admin;
+  default "private" — lagu tidak tampil di Explore sampai dipublikasikan. */
+  visibility?: DtoCreateSongRequestVisibility;
 }

@@ -13,8 +13,13 @@ type SongService interface {
 	Create(userID uint, isAdmin bool, req dto.CreateSongRequest) (*dto.SongResponse, error)
 	List(userID uint) ([]dto.SongResponse, error)
 	ListTemplates() ([]dto.SongResponse, error)
+	// ListPublic mengembalikan lagu publik (non-template) untuk Explore —
+	// termasuk author_name pemiliknya (FR-VIS).
+	ListPublic() ([]dto.SongResponse, error)
 	GetByID(songID uint, currentUserID *uint) (*dto.SongResponse, error)
 	Update(userID uint, isAdmin bool, songID uint, req dto.UpdateSongRequest) (*dto.SongResponse, error)
+	// SetVisibility mengubah status public/private — hanya admin pemilik lagu (FR-VIS).
+	SetVisibility(userID uint, isAdmin bool, songID uint, visibility string) (*dto.SongResponse, error)
 	Delete(userID uint, isAdmin bool, songID uint) error
 	Duplicate(userID uint, songID uint) (*dto.SongResponse, error)
 }
@@ -32,10 +37,15 @@ func toSongResponse(song *model.Song) *dto.SongResponse {
 		ID:               song.ID,
 		UserID:           song.UserID,
 		IsSystemTemplate: song.IsSystemTemplate,
+		Visibility:       song.Visibility,
 		Name:             song.Name,
 		Bpm:              song.Bpm,
 		SectionCount:     len(song.Sections),
 		UpdatedAt:        song.UpdatedAt,
+	}
+	// AuthorName terisi saat relasi Author di-load (daftar lagu publik).
+	if song.Author != nil {
+		res.AuthorName = song.Author.Name
 	}
 	for i := range song.Sections {
 		res.Sections = append(res.Sections, *toSectionResponse(&song.Sections[i]))
@@ -50,8 +60,18 @@ func (s *songService) Create(userID uint, isAdmin bool, req dto.CreateSongReques
 	if asTemplate && !isAdmin {
 		return nil, ErrForbidden // hanya admin yang boleh membuat template (FR-ROLE)
 	}
+	// FR-VIS: default private. Hanya admin yang boleh mempublikasikan lagu saat
+	// dibuat — non-admin yang mengirim "public" ditolak (konsisten dengan template).
+	visibility := string(model.VisibilityPrivate)
+	if req.Visibility != nil {
+		if *req.Visibility == string(model.VisibilityPublic) && !isAdmin {
+			return nil, ErrForbidden
+		}
+		visibility = *req.Visibility
+	}
 	song := &model.Song{
 		IsSystemTemplate: asTemplate,
+		Visibility:       visibility,
 		Name:             req.Name,
 		Bpm:              req.Bpm,
 	}
@@ -90,6 +110,20 @@ func (s *songService) ListTemplates() ([]dto.SongResponse, error) {
 	return fillSectionCounts(s.songRepo, res), nil
 }
 
+// ListPublic mengembalikan lagu publik milik user (FR-VIS) — data Explore
+// selain "Lagu Bawaan". Template dikecualikan (ditangani ListTemplates).
+func (s *songService) ListPublic() ([]dto.SongResponse, error) {
+	songs, err := s.songRepo.ListPublic()
+	if err != nil {
+		return nil, err
+	}
+	res := make([]dto.SongResponse, 0, len(songs))
+	for i := range songs {
+		res = append(res, *toSongResponse(&songs[i]))
+	}
+	return fillSectionCounts(s.songRepo, res), nil
+}
+
 // fillSectionCounts melengkapi meta "N Section" pada respons daftar Song
 // (relasi Section tidak dimuat di query daftar) — RD-3.
 func fillSectionCounts(songRepo repository.SongRepository, res []dto.SongResponse) []dto.SongResponse {
@@ -107,9 +141,10 @@ func fillSectionCounts(songRepo repository.SongRepository, res []dto.SongRespons
 	return res
 }
 
-// GetByID menerapkan matriks akses TDD Bagian 6.8:
+// GetByID menerapkan matriks akses TDD Bagian 6.8 (+FR-VIS):
 // - Song Template System → boleh diakses siapapun (Guest maupun User)
-// - Song milik User → hanya pemiliknya; Guest dapat 404 (tanpa membocorkan keberadaan)
+// - Lagu public (visibility=public) → boleh diakses siapapun (FR-VIS)
+// - Lagu private milik User → hanya pemiliknya; Guest dapat 404 (tanpa membocorkan keberadaan)
 func (s *songService) GetByID(songID uint, currentUserID *uint) (*dto.SongResponse, error) {
 	song, err := s.songRepo.FindByIDWithSections(songID)
 	if err != nil {
@@ -119,11 +154,11 @@ func (s *songService) GetByID(songID uint, currentUserID *uint) (*dto.SongRespon
 		return nil, err
 	}
 
-	if song.IsSystemTemplate {
-		return toSongResponse(song), nil // FR-AUTH-04
+	if song.IsSystemTemplate || song.Visibility == string(model.VisibilityPublic) {
+		return toSongResponse(song), nil // FR-AUTH-04 / FR-VIS
 	}
 	if currentUserID == nil {
-		return nil, ErrNotFound // Guest coba akses Song milik User → 404 (FR-AUTH-05)
+		return nil, ErrNotFound // Guest coba akses lagu pribadi → 404 (FR-AUTH-05)
 	}
 	if song.UserID == nil || *song.UserID != *currentUserID {
 		return nil, ErrForbidden // bukan pemilik → 403 (FR-AUTH-02)
@@ -149,6 +184,27 @@ func (s *songService) Update(userID uint, isAdmin bool, songID uint, req dto.Upd
 	if req.Bpm != nil {
 		song.Bpm = *req.Bpm
 	}
+	if err := s.songRepo.Save(song); err != nil {
+		return nil, err
+	}
+	return toSongResponse(song), nil
+}
+
+// SetVisibility mengubah status public/private sebuah lagu (FR-VIS). Hanya
+// admin PEMILIK lagu yang boleh; template (tanpa pemilik) selalu publik dan
+// tidak bisa diubah statusnya.
+func (s *songService) SetVisibility(userID uint, isAdmin bool, songID uint, visibility string) (*dto.SongResponse, error) {
+	song, err := s.songRepo.FindByID(songID)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	if !canSetVisibility(song, userID, isAdmin) {
+		return nil, ErrForbidden
+	}
+	song.Visibility = visibility
 	if err := s.songRepo.Save(song); err != nil {
 		return nil, err
 	}

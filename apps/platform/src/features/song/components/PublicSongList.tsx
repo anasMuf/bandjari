@@ -1,61 +1,63 @@
 import { Link } from '@tanstack/react-router';
-import { useGetSongsTemplates } from '../../../api/endpoints/songs/songs';
+import { useGetSongsPublic } from '../../../api/endpoints/songs/songs';
 import type { DtoSuccessResponse } from '../../../api/model';
 import { Badge } from '../../../components/atoms/Badge';
 import { SectionHeader } from '../../../components/molecules/SectionHeader';
 import { EmptyState } from '../../../components/molecules/EmptyState';
 
-interface TemplateSong {
+interface PublicSong {
   id: number;
   name: string;
   bpm: number;
-  is_system_template: boolean;
+  visibility: string;
+  /** Nama pemilik lagu — dari relasi Author (FR-VIS). */
+  author_name?: string;
   section_count?: number;
 }
 
 /**
- * Daftar Song Template System di Beranda — entry point Guest (Flow 5.0, AC-11):
- * tanpa login, pengunjung langsung disuguhi lagu bawaan yang siap dimainkan.
+ * Daftar lagu publik (milik user, status visibility=public) di Explore (FR-VIS).
+ * Setiap lagu menampilkan nama author; nama lagu membuka viewer lihat-saja,
+ * tombol ▶ Main langsung ke Launcher (Guest bisa memutar — audio ikut dibagikan).
  */
-export function SongTemplateList() {
-  const templatesQuery = useGetSongsTemplates();
+export function PublicSongList() {
+  const publicQuery = useGetSongsPublic();
 
-  const templates = ((templatesQuery.data?.data as DtoSuccessResponse | undefined)?.data ??
-    []) as TemplateSong[];
+  const songs = ((publicQuery.data?.data as DtoSuccessResponse | undefined)?.data ?? []) as PublicSong[];
 
-  if (templatesQuery.isLoading) {
-    return <p className="mt-6 text-sm text-stone-500">Memuat lagu bawaan...</p>;
+  if (publicQuery.isLoading) {
+    return <p className="mt-6 text-sm text-stone-500">Memuat lagu publik...</p>;
   }
 
   return (
-    <section aria-label="Lagu bawaan" className="mt-6 sm:mt-10">
+    <section aria-label="Lagu publik" className="mt-6 sm:mt-10">
       <SectionHeader
-        title="Lagu Bawaan"
-        subtitle="Susunan standar Al-Banjari — bebas dimainkan tanpa login"
+        title="Lagu Publik"
+        subtitle="Lagu dari komunitas yang dipublikasikan — lengkap dengan nama penulisnya"
       />
 
-      {templates.length === 0 ? (
+      {songs.length === 0 ? (
         <EmptyState
-          icon="♪"
-          title="Belum ada lagu bawaan"
-          description="Tim platform sedang menyiapkan susunan standar. Kembali lagi nanti."
+          icon="♫"
+          title="Belum ada lagu publik"
+          description="Lagu publik akan tampil di sini beserta nama penulisnya saat admin memublikasikan karyanya."
         />
       ) : (
         <ul className="mt-4 divide-y divide-stone-100 overflow-hidden rounded-lg bg-white ring-1 ring-stone-900/5">
-          {templates.map((song) => (
+          {songs.map((song) => (
             <li key={song.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-4">
               <Link
-                to="/templates/$songId"
+                to="/songs/public/$songId"
                 params={{ songId: String(song.id) }}
                 className="min-w-0 flex-1 rounded-md -m-1 p-1 transition-colors hover:bg-stone-50"
               >
                 <div className="flex items-center gap-2">
                   <span className="truncate text-sm font-semibold text-stone-900">{song.name}</span>
-                  <Badge>SYSTEM</Badge>
+                  <Badge>PUBLIK</Badge>
                 </div>
                 <p className="mt-1 text-xs text-stone-500">
-                  oleh <span className="font-medium text-stone-700">Tim BandJari</span>
-                  {' · '}BPM {song.bpm} · {song.section_count ?? 0} Section — siap dimainkan
+                  oleh <span className="font-medium text-stone-700">{song.author_name ?? '—'}</span>
+                  {' · '}BPM {song.bpm} · {song.section_count ?? 0} Section
                 </p>
               </Link>
               <Link

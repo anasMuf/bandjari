@@ -18,10 +18,12 @@ type fakeSampleRepo struct {
 	samples map[uint]*model.Sample
 	nextID  uint
 	refs    map[uint]int64 // sampleID -> jumlah referensi SoundSlot
+	// publicRefs: sampleID -> dipakai lagu public/template (FR-VIS)
+	publicRefs map[uint]bool
 }
 
 func newFakeSampleRepo() *fakeSampleRepo {
-	return &fakeSampleRepo{samples: map[uint]*model.Sample{}, nextID: 1, refs: map[uint]int64{}}
+	return &fakeSampleRepo{samples: map[uint]*model.Sample{}, nextID: 1, refs: map[uint]int64{}, publicRefs: map[uint]bool{}}
 }
 
 func (f *fakeSampleRepo) Create(sample *model.Sample) error {
@@ -113,6 +115,10 @@ func (f *fakeSampleRepo) CountSoundSlotsBySampleIDs(sampleIDs []uint) (map[uint]
 		res[id] = f.refs[id]
 	}
 	return res, nil
+}
+
+func (f *fakeSampleRepo) IsReferencedByPublicSong(sampleID uint) (bool, error) {
+	return f.publicRefs[sampleID], nil
 }
 
 func (f *fakeSampleRepo) Save(sample *model.Sample) error {
@@ -362,6 +368,38 @@ func TestSamplePlaybackURL_UserSampleOwnerOnly(t *testing.T) {
 	}
 	if _, err := svc.PlaybackURL(nil, 1); !errors.Is(err, ErrForbidden) {
 		t.Fatalf("guest err = %v, want ErrForbidden (NFR-04)", err)
+	}
+}
+
+// TestSamplePlaybackURL_PublicSongReference — sample milik user yang dipakai
+// lagu public ikut bisa diputar Guest (FR-VIS): lagu public harus benar-benar
+// bisa dimainkan tanpa login.
+func TestSamplePlaybackURL_PublicSongReferenceAccessibleToGuest(t *testing.T) {
+	repo := newFakeSampleRepo()
+	repo.samples[1] = &model.Sample{UserID: uptr(5), Name: "Dipake Lagu Public", Part: model.PartRebana1, ObjectKey: "samples/5/1.wav"}
+	repo.nextID = 2
+	repo.publicRefs[1] = true
+	svc := NewSampleService(repo, newFakeStorage())
+
+	url, err := svc.PlaybackURL(nil, 1)
+	if err != nil {
+		t.Fatalf("Guest seharusnya bisa putar sample yang dipakai lagu public, err = %v (FR-VIS)", err)
+	}
+	if url == "" {
+		t.Fatal("URL kosong")
+	}
+}
+
+// TestSamplePlaybackURL_PrivateSampleStillForbidden — sample yang tidak dipakai
+// lagu public/template tetap hanya pemiliknya (tidak ada pelebaran akses).
+func TestSamplePlaybackURL_PrivateSampleStillForbidden(t *testing.T) {
+	repo := newFakeSampleRepo()
+	repo.samples[1] = &model.Sample{UserID: uptr(5), Name: "Pribadi", Part: model.PartRebana1, ObjectKey: "samples/5/1.wav"}
+	repo.nextID = 2
+	svc := NewSampleService(repo, newFakeStorage())
+
+	if _, err := svc.PlaybackURL(nil, 1); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("guest err = %v, want ErrForbidden", err)
 	}
 }
 

@@ -12,6 +12,9 @@ type SongRepository interface {
 	FindByIDWithSections(id uint) (*model.Song, error)
 	ListByUserID(userID uint) ([]model.Song, error)
 	ListTemplates() ([]model.Song, error)
+	// ListPublic mengembalikan lagu milik user yang statusnya public
+	// (visibility = 'public', is_system_template = false) — sumber data Explore (FR-VIS).
+	ListPublic() ([]model.Song, error)
 	CountSectionsBySongIDs(songIDs []uint) (map[uint]int64, error)
 	// UpdateSectionNextTarget menimpa mode lanjut & target satu Section — dipakai
 	// remap next_section_id saat duplikasi Song.
@@ -52,7 +55,9 @@ func (r *songRepository) FindByID(id uint) (*model.Song, error) {
 
 func (r *songRepository) FindByIDWithSections(id uint) (*model.Song, error) {
 	var song model.Song
-	err := r.db.Preload("Sections.Parts.SoundSlots.Sample").First(&song, id).Error
+	// Preload Author agar author_name terisi pada detail lagu (FR-VIS) —
+	// viewer publik menampilkan nama penulis.
+	err := r.db.Preload("Author").Preload("Sections.Parts.SoundSlots.Sample").First(&song, id).Error
 	return &song, err
 }
 
@@ -66,6 +71,18 @@ func (r *songRepository) ListByUserID(userID uint) ([]model.Song, error) {
 func (r *songRepository) ListTemplates() ([]model.Song, error) {
 	var songs []model.Song
 	err := r.db.Where("is_system_template = true").Order("created_at DESC").Find(&songs).Error
+	return songs, err
+}
+
+// ListPublic mengembalikan lagu publik (non-template) beserta relasi Author
+// untuk menampilkan nama pemilik di Explore (FR-VIS). Template dikecualikan —
+// ia tampil lewat ListTemplates sebagai "Lagu Bawaan".
+func (r *songRepository) ListPublic() ([]model.Song, error) {
+	var songs []model.Song
+	err := r.db.Preload("Author").
+		Where("is_system_template = false AND visibility = ?", model.VisibilityPublic).
+		Order("updated_at DESC").
+		Find(&songs).Error
 	return songs, err
 }
 
