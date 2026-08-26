@@ -7,7 +7,10 @@
     <!-- Meta per-route (title, description, canonical, OG, robots) dirender oleh
          TanStack Router HeadContent dari route head(). JANGAN tambahkan title/
          description/OG statis di sini — React 19 tidak menghapus tag statis, dan
-         duplikat meta membuat crawler memakai nilai yang salah. -->
+         duplikat meta membuat crawler memakai nilai yang salah.
+         Untuk crawler tanpa JS: `scripts/prerender.mjs` (dijalankan setelah
+         `vite build`) menyuntikkan tag head per route publik ke HTML statis di
+         dist/ — nginx menyajikannya langsung tanpa eksekusi JS. -->
     <meta name="theme-color" content="#0f766e" />
     <link rel="icon" type="image/svg+xml" href="/icon_bandjari.svg" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />

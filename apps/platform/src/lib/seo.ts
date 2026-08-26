@@ -26,19 +26,25 @@ interface SeoMetaOptions {
   pathname: string;
   /** Halaman private (butuh login) — sembunyikan dari mesin pencari. */
   noindex?: boolean;
+  /**
+   * Data JSON-LD (schema.org) — dirender sebagai
+   * `<script type="application/ld+json">`. Dipakai prerender & HeadContent.
+   */
+  jsonLd?: Record<string, unknown>;
 }
 
 /**
  * Bangun entri meta + links (canonical) untuk route head().
  * TanStack Router me-merge head dari root → leaf; leaf menang untuk key yang sama.
  */
-export function seoMeta({ title, description, pathname, noindex = false }: SeoMetaOptions) {
+export function seoMeta({ title, description, pathname, noindex = false, jsonLd }: SeoMetaOptions) {
   const url = canonicalUrl(pathname)
   const robots = noindex ? 'noindex, nofollow' : 'index, follow'
   return {
     meta: [
       { title },
       { name: 'description', content: description },
+      ...(jsonLd ? [{ 'script:ld+json': jsonLd }] : []),
       { property: 'og:title', content: title },
       { property: 'og:description', content: description },
       { property: 'og:type', content: 'website' },
